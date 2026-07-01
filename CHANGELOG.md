@@ -4,10 +4,9 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
-- Document the Terms of Service gray area this integration operates in
-  (undocumented endpoint, shared OAuth client ID, no OpenAI review or
-  endorsement) explicitly in README.md, instead of only noting that the
-  internal API can change.
+- Note in README.md that this integration reuses the Codex CLI's public OAuth
+  client ID and an undocumented usage endpoint, both of which OpenAI could
+  change or restrict without notice.
 - **Privacy fix:** stop using the ChatGPT account email as the device, entity,
   and config entry name. It previously appeared in the Home Assistant UI and
   was baked into generated entity IDs (e.g.
