@@ -12,7 +12,7 @@
 Its structure and idea started as an adaptation of [`trickv/hass-claude-usage`](https://github.com/trickv/hass-claude-usage) by [**trickv**](https://github.com/trickv), retargeted from Claude to OpenAI Codex/ChatGPT. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for the full credit.
 
 > [!IMPORTANT]
-> This is an independent community integration. It is not affiliated with or supported by OpenAI. The ChatGPT usage endpoint is used by the official open-source Codex client but is not documented as a stable public REST API. OpenAI can change it without notice.
+> This is an independent community integration, not affiliated with or supported by OpenAI. It talks to an undocumented, internal ChatGPT endpoint and authenticates using the Codex CLI's public OAuth client ID rather than a client registered for this project. This sits in a legal gray area under OpenAI's Terms of Use, not something OpenAI has reviewed or endorsed — read [Terms of Service considerations](#terms-of-service-considerations) before connecting your account.
 
 ## Table of contents
 
@@ -24,6 +24,7 @@ Its structure and idea started as an adaptation of [`trickv/hass-claude-usage`](
 - [Dashboard](#dashboard)
 - [Security](#security)
 - [How it works](#how-it-works)
+- [Terms of Service considerations](#terms-of-service-considerations)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [License](#license)
@@ -126,6 +127,17 @@ The implementation follows the official open-source Codex client:
 - Usage: `chatgpt.com/backend-api/wham/usage`
 
 The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_components/codex_usage/api.py). If OpenAI changes the internal response, the Home Assistant entity code should not need to change.
+
+## Terms of Service considerations
+
+This integration is not "reverse engineered" in the traditional sense of decompiling software or sniffing network traffic: every URL, payload shape, and the OAuth `client_id` it uses come directly from OpenAI's own open-source [`openai/codex`](https://github.com/openai/codex) client. Still, read this before connecting your ChatGPT account:
+
+- **Undocumented endpoint.** `chatgpt.com/backend-api/wham/usage` is an internal API used by OpenAI's own clients, not a published, stable public API. OpenAI's Terms of Use restrict "automatically or programmatically extracting data ... from its Services," and this integration polls that endpoint on a schedule. Whether that clause is meant to cover a user reading their own account's usage numbers (as opposed to bulk-scraping ChatGPT output/content) is untested and, as far as we know, has never been clarified by OpenAI.
+- **Shared OAuth client ID, not one issued to this project.** Authorization uses the same public `client_id` (`app_EMoamEEZ73f0CkXaXp7hrann`) the official Codex CLI uses. OpenAI does not document a process for third-party tools to register their own client ID for this flow. Reusing the CLI's client ID is a known, discussed practice — other third-party tools do the same, and it is openly discussed in [OpenAI's own developer community](https://community.openai.com/t/best-practice-for-clientid-when-using-codex-oauth/1371778) without an official OpenAI answer either permitting or forbidding it.
+- **No official review or endorsement.** OpenAI has not reviewed, authorized, or endorsed this integration in any way. Nothing here guarantees this pattern stays tolerated; OpenAI can change, rate-limit, or block the endpoint, or take action against accounts that access it through non-official clients, at its sole discretion and without notice.
+- **The risk lands on your ChatGPT account, not just this code.** If OpenAI does enforce against this pattern, the realistic consequence is action against the connecting account (throttling, session revocation, or in an extreme case a suspension) — not merely "the integration stops working."
+
+Use this integration at your own risk and judgment. If this gray area is not acceptable to you, do not connect your account.
 
 ## Troubleshooting
 
