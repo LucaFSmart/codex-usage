@@ -1,7 +1,8 @@
 """Full-stack smoke test: setup, entity creation, and unload inside real Home Assistant.
 
-Runs only in CI (Linux) via the separate `smoke` workflow, since
-pytest-homeassistant-custom-component requires POSIX modules unavailable on Windows.
+Runs only in CI (Linux, `integration-smoke` job in validate.yml). Excluded from the
+default `tests/` path because pytest-homeassistant-custom-component requires POSIX
+modules (fcntl, resource) unavailable on Windows dev machines.
 """
 
 from unittest.mock import patch

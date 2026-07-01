@@ -148,6 +148,8 @@ pytest
 
 For Linux/macOS activation, use `source .venv/bin/activate`. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
+`tests/` runs everywhere, including on Windows. [`tests_integration/`](tests_integration) additionally boots a real Home Assistant instance via `pytest-homeassistant-custom-component` to exercise config entry setup, entity creation, and unload; it needs POSIX-only modules, so it only runs in the `integration-smoke` CI job (Linux), not in local Windows `pytest` runs.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
