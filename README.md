@@ -44,7 +44,7 @@ Entities unavailable for a particular plan are automatically marked unavailable.
 
 ## Requirements
 
-- Home Assistant **2026.6.0 or newer**
+- Home Assistant **2026.3.0 or newer** (the first release that requires Python 3.14, needed for this integration's syntax)
 - A ChatGPT account with Codex access
 - Device-code login enabled under ChatGPT security settings, or enabled by the workspace administrator
 - Outbound HTTPS access from Home Assistant to `auth.openai.com` and `chatgpt.com`
