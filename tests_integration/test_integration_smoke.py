@@ -104,8 +104,8 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
         return hass.states.get(entity.entity_id).state
 
     assert _state_for("_plan") == "plus"
-    assert _state_for("_five_hour_usage") == "25"
-    assert _state_for("_weekly_usage") == "40"
+    assert _state_for("_five_hour_usage") == "25.0"
+    assert _state_for("_weekly_usage") == "40.0"
     assert _state_for("_limit_reached") == "off"
     assert _state_for("_credits_available") == "on"
     assert _state_for("_spend_used") == "unavailable"
