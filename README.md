@@ -110,7 +110,8 @@ Home Assistant stores access, refresh, and ID tokens in `.storage/core.config_en
 - never asks for or stores your ChatGPT password;
 - never logs token values or API response bodies;
 - sends tokens only to OpenAI endpoints over HTTPS;
-- requests only the authentication granted to the official Codex OAuth client.
+- requests only the authentication granted to the official Codex OAuth client;
+- never uses your email address as the device, entity, or config entry name — only the opaque OpenAI workspace ID (`account_id`) is shown, so screenshots and shared dashboards don't leak it.
 
 Removing the integration deletes its Home Assistant config entry. To revoke the OpenAI session immediately, also sign out/revoke Codex sessions in ChatGPT security settings.
 

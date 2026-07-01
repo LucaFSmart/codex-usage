@@ -133,9 +133,8 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def _entry_title(credentials: CodexCredentials) -> str:
-        identity = credentials.email or credentials.account_id
         plan = f" - {credentials.plan_type}" if credentials.plan_type else ""
-        return f"Codex Usage ({identity}{plan})"
+        return f"Codex Usage ({credentials.account_id}{plan})"
 
     @staticmethod
     def _unique_id(credentials: CodexCredentials) -> str:
