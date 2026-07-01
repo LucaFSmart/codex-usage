@@ -1,0 +1,27 @@
+{
+  "entity": {
+    "sensor": {
+      "plan": {"default": "mdi:account-key"},
+      "five_hour_usage": {"default": "mdi:timer-sand"},
+      "five_hour_remaining": {"default": "mdi:timer-outline"},
+      "five_hour_reset": {"default": "mdi:timer-refresh"},
+      "weekly_usage": {"default": "mdi:calendar-week"},
+      "weekly_remaining": {"default": "mdi:calendar-clock-outline"},
+      "weekly_reset": {"default": "mdi:calendar-refresh"},
+      "weekly_pace": {"default": "mdi:speedometer"},
+      "credit_balance": {"default": "mdi:credit-card-outline"},
+      "spend_used": {"default": "mdi:cash-minus"},
+      "spend_limit": {"default": "mdi:credit-card-settings-outline"},
+      "spend_remaining": {"default": "mdi:cash-check"},
+      "spend_usage": {"default": "mdi:chart-donut"},
+      "spend_reset": {"default": "mdi:calendar-refresh-outline"}
+    },
+    "binary_sensor": {
+      "limit_reached": {"default": "mdi:speedometer-slow"},
+      "credits_available": {"default": "mdi:credit-card-check-outline"},
+      "credits_unlimited": {"default": "mdi:infinity"},
+      "spend_limit_reached": {"default": "mdi:credit-card-off-outline"}
+    }
+  }
+}
+
