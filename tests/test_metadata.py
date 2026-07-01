@@ -47,7 +47,7 @@ def test_hacs_and_manifest_metadata() -> None:
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
     assert manifest["version"] == "0.1.0"
-    assert hacs["homeassistant"] == "2026.6.0"
+    assert hacs["homeassistant"] == "2026.3.0"
     assert set(hacs) == {"homeassistant", "name"}
 
 

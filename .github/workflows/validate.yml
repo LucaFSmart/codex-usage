@@ -40,3 +40,13 @@ jobs:
           python-version: "3.14"
       - run: pip install homeassistant==2026.6.4 pytest pytest-homeassistant-custom-component
       - run: pytest tests_integration/test_integration_smoke.py -v -o asyncio_mode=auto
+
+  tests-min-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install homeassistant==2026.3.0 pytest ruff
+      - run: pytest
