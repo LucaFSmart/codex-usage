@@ -1,0 +1,18 @@
+{
+  "title": "Codex Usage",
+  "config": {
+    "step": {
+      "user": {"title": "Connect OpenAI Codex", "description": "Start the secure OpenAI device authorization flow. Your password is never sent to Home Assistant."},
+      "device": {"title": "Authorize Codex Usage", "description": "1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit. Device codes expire after approximately 15 minutes.", "data": {"confirm": "I completed authorization"}},
+      "reauth_confirm": {"title": "Reconnect OpenAI Codex", "description": "1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit.", "data": {"confirm": "I completed authorization"}}
+    },
+    "error": {"authorization_pending": "Authorization is not complete yet. Finish it in the browser and submit again.", "cannot_connect": "Unable to connect to OpenAI.", "device_auth_disabled": "Device-code login is disabled for this account or workspace. Enable it in ChatGPT security or workspace settings.", "invalid_auth": "OpenAI rejected the authorization.", "unknown": "Unexpected error while communicating with OpenAI."},
+    "abort": {"already_configured": "This ChatGPT workspace is already configured.", "cannot_connect": "Unable to connect to OpenAI.", "device_auth_disabled": "Device-code login is disabled for this account or workspace.", "device_flow_expired": "The device authorization expired. Start again.", "reauth_successful": "Reauthentication was successful."}
+  },
+  "options": {"step": {"init": {"title": "Codex Usage options", "description": "OpenAI may rate-limit excessive polling. The recommended interval is 300 seconds.", "data": {"update_interval": "Update interval (seconds)"}}}},
+  "entity": {
+    "sensor": {"plan": {"name": "Plan"}, "five_hour_usage": {"name": "5-hour usage"}, "five_hour_remaining": {"name": "5-hour remaining"}, "five_hour_reset": {"name": "5-hour reset"}, "weekly_usage": {"name": "Weekly usage"}, "weekly_remaining": {"name": "Weekly remaining"}, "weekly_reset": {"name": "Weekly reset"}, "weekly_pace": {"name": "Weekly usage pace"}, "credit_balance": {"name": "Credit balance"}, "spend_used": {"name": "Spend used"}, "spend_limit": {"name": "Spend limit"}, "spend_remaining": {"name": "Spend remaining"}, "spend_usage": {"name": "Spend usage"}, "spend_reset": {"name": "Spend reset"}},
+    "binary_sensor": {"limit_reached": {"name": "Rate limit reached"}, "credits_available": {"name": "Credits available"}, "credits_unlimited": {"name": "Unlimited credits"}, "spend_limit_reached": {"name": "Spend limit reached"}}
+  }
+}
+

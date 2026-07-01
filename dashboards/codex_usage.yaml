@@ -1,0 +1,44 @@
+title: Codex Usage
+views:
+  - title: Usage
+    path: usage
+    icon: mdi:code-braces
+    cards:
+      - type: gauge
+        entity: sensor.codex_usage_5_hour_usage
+        name: 5-hour usage
+        min: 0
+        max: 100
+        severity:
+          green: 0
+          yellow: 60
+          red: 85
+      - type: gauge
+        entity: sensor.codex_usage_weekly_usage
+        name: Weekly usage
+        min: 0
+        max: 100
+        severity:
+          green: 0
+          yellow: 60
+          red: 85
+      - type: entities
+        title: Codex limits
+        entities:
+          - sensor.codex_usage_plan
+          - sensor.codex_usage_5_hour_remaining
+          - sensor.codex_usage_5_hour_reset
+          - sensor.codex_usage_weekly_remaining
+          - sensor.codex_usage_weekly_reset
+          - sensor.codex_usage_weekly_usage_pace
+          - binary_sensor.codex_usage_rate_limit_reached
+      - type: entities
+        title: Credits and spending
+        entities:
+          - sensor.codex_usage_credit_balance
+          - sensor.codex_usage_spend_used
+          - sensor.codex_usage_spend_limit
+          - sensor.codex_usage_spend_remaining
+          - sensor.codex_usage_spend_usage
+          - binary_sensor.codex_usage_spend_limit_reached
+

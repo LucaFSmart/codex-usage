@@ -1,0 +1,13 @@
+{
+  "domain": "codex_usage",
+  "name": "Codex Usage",
+  "codeowners": ["@LucaFSmart"],
+  "config_flow": true,
+  "documentation": "https://github.com/LucaFSmart/codex-usage",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/LucaFSmart/codex-usage/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
+
