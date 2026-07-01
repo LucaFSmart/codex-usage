@@ -9,6 +9,8 @@
 
 `Codex Usage` is a custom Home Assistant integration that monitors the usage limits of Codex included with ChatGPT plans. It is installed through HACS as a custom repository and supports multiple ChatGPT workspaces.
 
+Its structure and idea started as an adaptation of [`trickv/hass-claude-usage`](https://github.com/trickv/hass-claude-usage) by [**trickv**](https://github.com/trickv), retargeted from Claude to OpenAI Codex/ChatGPT. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for the full credit.
+
 > [!IMPORTANT]
 > This is an independent community integration. It is not affiliated with or supported by OpenAI. The ChatGPT usage endpoint is used by the official open-source Codex client but is not documented as a stable public REST API. OpenAI can change it without notice.
 
