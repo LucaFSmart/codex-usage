@@ -1,7 +1,7 @@
 # Contributing
 
 1. Fork the repository and create a focused branch.
-2. Use Python 3.14 and Home Assistant 2026.6 or newer.
+2. Use Python 3.14 for development (matches CI); the integration's declared minimum is Home Assistant 2026.3.0 (see `hacs.json`).
 3. Run `ruff format .`, `ruff check .`, and `pytest`.
 4. Never include access tokens, refresh tokens, ID tokens, device codes, cookies, or unredacted diagnostics in issues or test fixtures.
 5. Explain user-visible changes in `CHANGELOG.md`.
