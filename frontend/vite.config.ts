@@ -9,9 +9,9 @@ export default defineConfig({
       fileName: () => "codex-usage-card.js",
     },
     outDir: "../custom_components/codex_usage/frontend",
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        inlineDynamicImports: true,
+        codeSplitting: false,
       },
     },
   },
