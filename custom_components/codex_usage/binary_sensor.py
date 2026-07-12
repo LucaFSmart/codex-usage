@@ -28,7 +28,13 @@ def _limit_reached(data: CodexUsageData) -> bool | None:
     """Return an explicit limit state without inventing data when absent."""
     if data.rate_limit_reached_type:
         return True
-    return data.main_limit.limit_reached
+    states = (
+        data.main_limit.limit_reached,
+        *(limit.limit_reached for limit in data.additional_limits),
+    )
+    if any(state is True for state in states):
+        return True
+    return False if any(state is False for state in states) else None
 
 
 BINARY_SENSORS: tuple[CodexBinarySensorDescription, ...] = (
@@ -46,6 +52,11 @@ BINARY_SENSORS: tuple[CodexBinarySensorDescription, ...] = (
         key="credits_unlimited",
         translation_key="credits_unlimited",
         value_fn=lambda data: data.credits.unlimited if data.credits else None,
+    ),
+    CodexBinarySensorDescription(
+        key="credits_overage_limit_reached",
+        translation_key="credits_overage_limit_reached",
+        value_fn=lambda data: data.credits.overage_limit_reached if data.credits else None,
     ),
     CodexBinarySensorDescription(
         key="spend_limit_reached",

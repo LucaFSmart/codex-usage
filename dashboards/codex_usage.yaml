@@ -31,6 +31,7 @@ views:
           - sensor.codex_usage_weekly_remaining
           - sensor.codex_usage_weekly_reset
           - sensor.codex_usage_weekly_usage_pace
+          - sensor.codex_usage_available_usage_resets
           - binary_sensor.codex_usage_rate_limit_reached
       - type: entities
         title: Credits and spending
@@ -40,5 +41,7 @@ views:
           - sensor.codex_usage_spend_limit
           - sensor.codex_usage_spend_remaining
           - sensor.codex_usage_spend_usage
+          - binary_sensor.codex_usage_credits_available
+          - binary_sensor.codex_usage_unlimited_credits
+          - binary_sensor.codex_usage_credit_overage_limit_reached
           - binary_sensor.codex_usage_spend_limit_reached
-

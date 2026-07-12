@@ -16,7 +16,8 @@ from custom_components.codex_usage.api import (
     credentials_from_token_response,
     parse_usage,
 )
-from custom_components.codex_usage.binary_sensor import _limit_reached
+from custom_components.codex_usage.binary_sensor import BINARY_SENSORS, _limit_reached
+from custom_components.codex_usage.sensor import SENSORS
 
 
 def _jwt(payload: dict[str, object]) -> str:
@@ -129,6 +130,128 @@ def test_parse_sparse_usage_response() -> None:
     assert data.spend_limit is None
 
 
+def test_weekly_only_primary_window_is_resolved_by_duration() -> None:
+    data = parse_usage(
+        {
+            "plan_type": "plus",
+            "rate_limit": {
+                "allowed": True,
+                "limit_reached": False,
+                "primary_window": {
+                    "used_percent": 17,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": 1_800_000_000,
+                },
+                "secondary_window": None,
+            },
+        }
+    )
+
+    assert data.five_hour_window is None
+    assert data.weekly_window is not None
+    assert data.weekly_window.used_percent == 17
+    assert data.weekly_window.duration_key == "weekly"
+
+
+def test_windows_are_resolved_independently_of_backend_position() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 40,
+                    "limit_window_seconds": 604_800,
+                },
+                "secondary_window": {
+                    "used_percent": 25,
+                    "limit_window_seconds": 18_001,
+                },
+            }
+        }
+    )
+
+    assert data.five_hour_window is not None
+    assert data.five_hour_window.used_percent == 25
+    assert data.weekly_window is not None
+    assert data.weekly_window.used_percent == 40
+
+
+def test_parse_new_read_only_usage_fields_and_unknown_windows() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 12,
+                    "limit_window_seconds": 86_400,
+                }
+            },
+            "code_review_rate_limit": {
+                "allowed": True,
+                "limit_reached": False,
+                "primary_window": {
+                    "used_percent": 8,
+                    "limit_window_seconds": 604_800,
+                },
+            },
+            "credits": {
+                "has_credits": True,
+                "unlimited": False,
+                "balance": "5",
+                "overage_limit_reached": True,
+            },
+            "rate_limit_reset_credits": {"available_count": 2},
+        }
+    )
+
+    assert data.available_reset_credits == 2
+    assert data.credits is not None
+    assert data.credits.overage_limit_reached is True
+    assert {limit.limit_id for limit in data.additional_limits} == {
+        "codex_1440m",
+        "code_review",
+    }
+    code_review = next(limit for limit in data.additional_limits if limit.limit_id == "code_review")
+    assert code_review.name == "Code review"
+    assert code_review.primary is not None
+    assert code_review.primary.duration_key == "weekly"
+    unknown = next(limit for limit in data.additional_limits if limit.limit_id == "codex_1440m")
+    assert unknown.primary is not None
+    assert unknown.primary.duration_label == "Daily"
+
+
+def test_static_entities_use_resolved_windows_and_new_read_only_fields() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 17,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": 1_800_000_000,
+                }
+            },
+            "credits": {
+                "has_credits": True,
+                "unlimited": False,
+                "overage_limit_reached": False,
+            },
+            "rate_limit_reset_credits": {"available_count": 3},
+        }
+    )
+    sensors = {description.key: description for description in SENSORS}
+    binary_sensors = {description.key: description for description in BINARY_SENSORS}
+
+    assert sensors["five_hour_usage"].value_fn(data) is None
+    assert sensors["weekly_usage"].value_fn(data) == 17
+    assert sensors["available_reset_credits"].value_fn(data) == 3
+    assert binary_sensors["credits_overage_limit_reached"].value_fn(data) is False
+
+
+@pytest.mark.parametrize("value", [-1, 1.5, True, "invalid", None])
+def test_invalid_reset_credit_counts_are_unavailable(value: object) -> None:
+    data = parse_usage({"rate_limit_reset_credits": {"available_count": value}})
+
+    assert data.available_reset_credits is None
+
+
 def test_parse_invalid_optional_numbers_as_unavailable() -> None:
     data = parse_usage(
         {
@@ -222,6 +345,17 @@ def test_explicit_limit_state_is_reported() -> None:
     assert _limit_reached(data) is True
 
 
+def test_additional_limit_state_is_included_in_overall_status() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"limit_reached": False},
+            "code_review_rate_limit": {"limit_reached": True},
+        }
+    )
+
+    assert _limit_reached(data) is True
+
+
 def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     session = _FakeSession(_FakeResponse(200, {"plan_type": "enterprise"}))
     credentials = CodexCredentials(
@@ -242,6 +376,6 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.2.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.3.0",
         "X-OpenAI-Fedramp": "true",
     }

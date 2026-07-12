@@ -32,15 +32,17 @@ Its structure and idea started as an adaptation of [`trickv/hass-claude-usage`](
 
 - Secure ChatGPT device-code login; no password or copied browser cookies
 - Automatic OAuth token refresh and Home Assistant reauthentication
-- Five-hour usage, remaining allowance, and reset time
+- Five-hour usage, remaining allowance, and reset time when that window is returned
 - Weekly usage, remaining allowance, reset time, and usage pace
+- Duration-based window detection that supports weekly-only and reordered responses
 - ChatGPT plan, credit balance, and spend controls when returned by OpenAI
-- Dynamically discovered model- or feature-specific Codex limits
+- Available usage-limit reset credits (read-only; this integration never redeems them)
+- Dynamically discovered model-, code-review-, feature-, and duration-specific limits
 - English and German UI translations
 - Configurable polling interval from 60 to 3,600 seconds
 - Multiple accounts/workspaces
 
-Entities unavailable for a particular plan are automatically marked unavailable. OpenAI does not return every credit or spending field for every plan.
+Entities unavailable for a particular plan are automatically marked unavailable. OpenAI does not return every rate-limit window, credit, or spending field for every plan. In particular, some plans currently return a weekly window without a separate five-hour window.
 
 ## Requirements
 
@@ -91,13 +93,17 @@ Each configured ChatGPT workspace creates one device with the following entities
 | Plan | Sensor | Current ChatGPT plan type |
 | 5-hour usage / remaining / reset | Sensor | Rolling five-hour Codex rate limit |
 | Weekly usage / remaining / reset / pace | Sensor | Rolling weekly Codex rate limit and projected pace |
+| Available usage resets | Sensor | Number of usage-limit reset credits currently available; read-only |
 | Credit balance | Sensor | Remaining prepaid credits, when returned |
 | Spend used / limit / remaining / usage / reset | Sensor | Workspace or individual spend control, when returned |
 | Rate limit reached | Binary sensor | Any Codex rate limit currently blocking requests |
 | Credits available / unlimited | Binary sensor | Credit status, when returned |
+| Credit overage limit reached | Binary sensor | Whether OpenAI explicitly reports that the credit overage limit was reached |
 | Spend limit reached | Binary sensor | Spend control currently blocking requests |
 
-Additional per-feature limits (for example image generation) are discovered dynamically and added as extra sensors when OpenAI reports them.
+Additional per-feature limits (for example image generation), code-review limits, and unknown main-limit durations are discovered dynamically and added as extra sensors when OpenAI reports them. Dynamic windows are labelled by their actual duration rather than by their backend `primary` or `secondary` position.
+
+The integration only reads usage data. It does not redeem available resets or perform any other account-changing API action.
 
 ## Dashboard
 
@@ -125,7 +131,7 @@ The implementation follows the official open-source Codex client:
 - OAuth refresh: `auth.openai.com/oauth/token`
 - Usage: `chatgpt.com/backend-api/wham/usage`
 
-The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_components/codex_usage/api.py). If OpenAI changes the internal response, the Home Assistant entity code should not need to change.
+The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_components/codex_usage/api.py). Rate-limit windows are classified from `limit_window_seconds`, matching the current official Codex client's behavior, so their meaning does not depend on whether OpenAI places them in `primary_window` or `secondary_window`.
 
 `chatgpt.com/backend-api/wham/usage` is undocumented and not a published, stable API, and authorization reuses the Codex CLI's public OAuth `client_id` rather than one issued specifically to this project — the same pattern other community Codex tools use, and something OpenAI neither documents nor explicitly prohibits for third parties. OpenAI could change or restrict this at any time without notice; there's no official endorsement or guarantee of long-term stability.
 
@@ -136,7 +142,7 @@ The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_
 | "Device-code login is disabled" during setup | Device login disabled for the account/workspace | Enable it in ChatGPT security settings, or ask a workspace administrator |
 | "Unable to connect to OpenAI" | Outbound HTTPS blocked, or OpenAI temporarily unreachable | Check firewall/DNS to `auth.openai.com` and `chatgpt.com`, retry later |
 | Integration shows "Reauthenticate" | The refresh token was revoked or expired | Click the notification and repeat the device-code flow |
-| Some sensors are `unavailable` | OpenAI did not return that field for your plan | Expected; not every plan reports credits or spend controls |
+| Some sensors are `unavailable` | OpenAI did not return that field or rate-limit window for your plan | Expected; not every plan reports a five-hour window, credits, or spend controls |
 
 Diagnostics (**Settings → Devices & services → Codex Usage → Download diagnostics**) redact all tokens, account IDs, user IDs, and email addresses before download — safe to attach to a bug report.
 

@@ -45,10 +45,16 @@ def _fake_usage() -> CodexUsageData:
             secondary=RateLimitWindow(used_percent=40.0, window_minutes=10080, resets_at=None),
         ),
         additional_limits=(),
-        credits=CreditStatus(has_credits=True, unlimited=False, balance=None),
+        credits=CreditStatus(
+            has_credits=True,
+            unlimited=False,
+            balance=None,
+            overage_limit_reached=False,
+        ),
         spend_limit=None,
         spend_limit_reached=False,
         rate_limit_reached_type=None,
+        available_reset_credits=2,
     )
 
 
@@ -98,7 +104,7 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
 
     registry = er.async_get(hass)
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 18
+    assert len(entities) == 20
 
     def _state_for(suffix: str) -> str:
         entity = next(e for e in entities if e.unique_id.endswith(suffix))
@@ -107,8 +113,10 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
     assert _state_for("_plan") == "plus"
     assert _state_for("_five_hour_usage") == "25.0"
     assert _state_for("_weekly_usage") == "40.0"
+    assert _state_for("_available_reset_credits") == "2"
     assert _state_for("_limit_reached") == "off"
     assert _state_for("_credits_available") == "on"
+    assert _state_for("_credits_overage_limit_reached") == "off"
     assert _state_for("_spend_used") == "unavailable"
 
     assert await hass.config_entries.async_unload(entry.entry_id)

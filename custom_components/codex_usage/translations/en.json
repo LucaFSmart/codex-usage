@@ -11,8 +11,7 @@
   },
   "options": {"step": {"init": {"title": "Codex Usage options", "description": "OpenAI may rate-limit excessive polling. The recommended interval is 300 seconds.", "data": {"update_interval": "Update interval (seconds)"}}}},
   "entity": {
-    "sensor": {"plan": {"name": "Plan"}, "five_hour_usage": {"name": "5-hour usage"}, "five_hour_remaining": {"name": "5-hour remaining"}, "five_hour_reset": {"name": "5-hour reset"}, "weekly_usage": {"name": "Weekly usage"}, "weekly_remaining": {"name": "Weekly remaining"}, "weekly_reset": {"name": "Weekly reset"}, "weekly_pace": {"name": "Weekly usage pace"}, "credit_balance": {"name": "Credit balance"}, "spend_used": {"name": "Spend used"}, "spend_limit": {"name": "Spend limit"}, "spend_remaining": {"name": "Spend remaining"}, "spend_usage": {"name": "Spend usage"}, "spend_reset": {"name": "Spend reset"}},
-    "binary_sensor": {"limit_reached": {"name": "Rate limit reached"}, "credits_available": {"name": "Credits available"}, "credits_unlimited": {"name": "Unlimited credits"}, "spend_limit_reached": {"name": "Spend limit reached"}}
+    "sensor": {"plan": {"name": "Plan"}, "five_hour_usage": {"name": "5-hour usage"}, "five_hour_remaining": {"name": "5-hour remaining"}, "five_hour_reset": {"name": "5-hour reset"}, "weekly_usage": {"name": "Weekly usage"}, "weekly_remaining": {"name": "Weekly remaining"}, "weekly_reset": {"name": "Weekly reset"}, "weekly_pace": {"name": "Weekly usage pace"}, "available_reset_credits": {"name": "Available usage resets"}, "credit_balance": {"name": "Credit balance"}, "spend_used": {"name": "Spend used"}, "spend_limit": {"name": "Spend limit"}, "spend_remaining": {"name": "Spend remaining"}, "spend_usage": {"name": "Spend usage"}, "spend_reset": {"name": "Spend reset"}},
+    "binary_sensor": {"limit_reached": {"name": "Rate limit reached"}, "credits_available": {"name": "Credits available"}, "credits_unlimited": {"name": "Unlimited credits"}, "credits_overage_limit_reached": {"name": "Credit overage limit reached"}, "spend_limit_reached": {"name": "Spend limit reached"}}
   }
 }
-

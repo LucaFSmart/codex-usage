@@ -29,7 +29,7 @@ from .const import (
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.2.0"
+USER_AGENT = "HomeAssistant-CodexUsage/0.3.0"
 
 
 class CodexApiError(Exception):
@@ -90,6 +90,34 @@ class RateLimitWindow:
         """Return the remaining percentage, clamped to 0..100."""
         return max(0.0, min(100.0, 100.0 - self.used_percent))
 
+    @property
+    def duration_key(self) -> str:
+        """Return a stable identifier derived from the actual window duration."""
+        if self.window_minutes is None:
+            return "unknown"
+        if _approximately(self.window_minutes, 5 * 60):
+            return "five_hour"
+        if _approximately(self.window_minutes, 7 * 24 * 60):
+            return "weekly"
+        return f"{self.window_minutes}m"
+
+    @property
+    def duration_label(self) -> str:
+        """Return a concise human-readable label for this duration."""
+        if self.duration_key == "five_hour":
+            return "5-hour"
+        if self.duration_key == "weekly":
+            return "Weekly"
+        if self.window_minutes is None:
+            return "Unknown window"
+        if self.window_minutes == 24 * 60:
+            return "Daily"
+        if self.window_minutes % (24 * 60) == 0:
+            return f"{self.window_minutes // (24 * 60)}-day"
+        if self.window_minutes % 60 == 0:
+            return f"{self.window_minutes // 60}-hour"
+        return f"{self.window_minutes}-minute"
+
 
 @dataclass(frozen=True, slots=True)
 class RateLimit:
@@ -102,6 +130,18 @@ class RateLimit:
     primary: RateLimitWindow | None
     secondary: RateLimitWindow | None
 
+    @property
+    def windows(self) -> tuple[tuple[str, RateLimitWindow], ...]:
+        """Return available backend windows in their original order."""
+        return tuple(
+            (position, window)
+            for position, window in (
+                ("primary", self.primary),
+                ("secondary", self.secondary),
+            )
+            if window is not None
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class CreditStatus:
@@ -110,6 +150,7 @@ class CreditStatus:
     has_credits: bool
     unlimited: bool
     balance: Decimal | None
+    overage_limit_reached: bool | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +177,27 @@ class CodexUsageData:
     spend_limit: SpendLimit | None
     spend_limit_reached: bool | None
     rate_limit_reached_type: str | None
+    available_reset_credits: int | None
+
+    def _main_window(self, duration_key: str) -> RateLimitWindow | None:
+        return next(
+            (
+                window
+                for _, window in self.main_limit.windows
+                if window.duration_key == duration_key
+            ),
+            None,
+        )
+
+    @property
+    def five_hour_window(self) -> RateLimitWindow | None:
+        """Return the five-hour window regardless of backend position."""
+        return self._main_window("five_hour")
+
+    @property
+    def weekly_window(self) -> RateLimitWindow | None:
+        """Return the weekly window regardless of backend position."""
+        return self._main_window("weekly")
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
@@ -229,6 +291,16 @@ def _float(value: Any) -> float | None:
     return result if result is None or math.isfinite(result) else None
 
 
+def _approximately(value: int, expected: int) -> bool:
+    """Match the official Codex client's five-percent duration tolerance."""
+    return expected * 0.95 <= value <= expected * 1.05
+
+
+def _non_negative_int(value: Any) -> int | None:
+    """Return a backend integer count without accepting booleans or coercions."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
 def _window(payload: Any) -> RateLimitWindow | None:
     if not isinstance(payload, dict) or payload.get("used_percent") is None:
         return None
@@ -268,12 +340,32 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     """Normalize the Codex usage response."""
     main = _rate_limit("codex", "Codex", payload.get("rate_limit"))
     additional: list[RateLimit] = []
+
+    for position, window in main.windows:
+        if window.duration_key in ("five_hour", "weekly", "unknown"):
+            continue
+        additional.append(
+            RateLimit(
+                limit_id=f"codex_{window.duration_key}",
+                name="Codex",
+                allowed=main.allowed,
+                limit_reached=main.limit_reached,
+                primary=window if position == "primary" else None,
+                secondary=window if position == "secondary" else None,
+            )
+        )
+
     for item in payload.get("additional_rate_limits") or []:
         if not isinstance(item, dict):
             continue
         limit_id = str(item.get("metered_feature") or item.get("limit_name") or "additional")
         name = str(item.get("limit_name") or limit_id.replace("_", " ").title())
         additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
+
+    code_review_payload = payload.get("code_review_rate_limit")
+    if isinstance(code_review_payload, dict):
+        details = code_review_payload.get("rate_limit", code_review_payload)
+        additional.append(_rate_limit("code_review", "Code review", details))
 
     credits_payload = payload.get("credits")
     credits = None
@@ -282,6 +374,11 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
             has_credits=bool(credits_payload.get("has_credits", False)),
             unlimited=bool(credits_payload.get("unlimited", False)),
             balance=_decimal(credits_payload.get("balance")),
+            overage_limit_reached=(
+                credits_payload.get("overage_limit_reached")
+                if isinstance(credits_payload.get("overage_limit_reached"), bool)
+                else None
+            ),
         )
 
     spend_payload = payload.get("spend_control")
@@ -305,6 +402,12 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
 
     reached = payload.get("rate_limit_reached_type")
     reached_type = reached.get("type") if isinstance(reached, dict) else None
+    reset_credits_payload = payload.get("rate_limit_reset_credits")
+    available_reset_credits = (
+        _non_negative_int(reset_credits_payload.get("available_count"))
+        if isinstance(reset_credits_payload, dict)
+        else None
+    )
     return CodexUsageData(
         plan_type=str(payload.get("plan_type") or "unknown"),
         main_limit=main,
@@ -313,6 +416,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         spend_limit=spend_limit,
         spend_limit_reached=spend_reached,
         rate_limit_reached_type=str(reached_type) if reached_type else None,
+        available_reset_credits=available_reset_credits,
     )
 
 

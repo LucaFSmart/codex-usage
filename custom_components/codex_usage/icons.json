@@ -9,6 +9,7 @@
       "weekly_remaining": {"default": "mdi:calendar-clock-outline"},
       "weekly_reset": {"default": "mdi:calendar-refresh"},
       "weekly_pace": {"default": "mdi:speedometer"},
+      "available_reset_credits": {"default": "mdi:backup-restore"},
       "credit_balance": {"default": "mdi:credit-card-outline"},
       "spend_used": {"default": "mdi:cash-minus"},
       "spend_limit": {"default": "mdi:credit-card-settings-outline"},
@@ -20,8 +21,8 @@
       "limit_reached": {"default": "mdi:speedometer-slow"},
       "credits_available": {"default": "mdi:credit-card-check-outline"},
       "credits_unlimited": {"default": "mdi:infinity"},
+      "credits_overage_limit_reached": {"default": "mdi:credit-card-off-outline"},
       "spend_limit_reached": {"default": "mdi:credit-card-off-outline"}
     }
   }
 }
-

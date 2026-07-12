@@ -32,8 +32,8 @@ class CodexSensorDescription(SensorEntityDescription):
     value_fn: Callable[[CodexUsageData], Any]
 
 
-def _secondary_pace(data: CodexUsageData) -> float | None:
-    window = data.main_limit.secondary
+def _weekly_pace(data: CodexUsageData) -> float | None:
+    window = data.weekly_window
     if window is None or window.resets_at is None or window.window_minutes is None:
         return None
     total = timedelta(minutes=window.window_minutes).total_seconds()
@@ -52,9 +52,7 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda data: (
-            data.main_limit.primary.used_percent if data.main_limit.primary else None
-        ),
+        value_fn=lambda data: data.five_hour_window.used_percent if data.five_hour_window else None,
     ),
     CodexSensorDescription(
         key="five_hour_remaining",
@@ -63,16 +61,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         value_fn=lambda data: (
-            data.main_limit.primary.remaining_percent if data.main_limit.primary else None
+            data.five_hour_window.remaining_percent if data.five_hour_window else None
         ),
     ),
     CodexSensorDescription(
         key="five_hour_reset",
         translation_key="five_hour_reset",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: (
-            data.main_limit.primary.resets_at if data.main_limit.primary else None
-        ),
+        value_fn=lambda data: data.five_hour_window.resets_at if data.five_hour_window else None,
     ),
     CodexSensorDescription(
         key="weekly_usage",
@@ -80,9 +76,7 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda data: (
-            data.main_limit.secondary.used_percent if data.main_limit.secondary else None
-        ),
+        value_fn=lambda data: data.weekly_window.used_percent if data.weekly_window else None,
     ),
     CodexSensorDescription(
         key="weekly_remaining",
@@ -90,17 +84,13 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda data: (
-            data.main_limit.secondary.remaining_percent if data.main_limit.secondary else None
-        ),
+        value_fn=lambda data: data.weekly_window.remaining_percent if data.weekly_window else None,
     ),
     CodexSensorDescription(
         key="weekly_reset",
         translation_key="weekly_reset",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: (
-            data.main_limit.secondary.resets_at if data.main_limit.secondary else None
-        ),
+        value_fn=lambda data: data.weekly_window.resets_at if data.weekly_window else None,
     ),
     CodexSensorDescription(
         key="weekly_pace",
@@ -108,7 +98,13 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
-        value_fn=_secondary_pace,
+        value_fn=_weekly_pace,
+    ),
+    CodexSensorDescription(
+        key="available_reset_credits",
+        translation_key="available_reset_credits",
+        native_unit_of_measurement="resets",
+        value_fn=lambda data: data.available_reset_credits,
     ),
     CodexSensorDescription(
         key="credit_balance",
@@ -224,7 +220,8 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         self._limit_id = limit_id
         self._window_name = window_name
         self._metric = metric
-        window_label = "Short window" if window_name == "primary" else "Long window"
+        window = self._window()
+        window_label = window.duration_label if window else "Usage window"
         metric_label = {"usage": "usage", "remaining": "remaining", "reset": "reset"}[metric]
         self._attr_name = f"{limit_name} {window_label} {metric_label}"
         identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]

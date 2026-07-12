@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## 0.3.0 - 2026-07-12
+
+- Restore correct weekly usage reporting for the new response shape where a
+  weekly-only limit is returned as `primary_window` and `secondary_window` is
+  absent. Windows are now classified by their actual duration instead of their
+  `primary`/`secondary` position, while existing entity IDs remain unchanged.
+- Keep the five-hour entities unavailable when OpenAI does not return a
+  five-hour window, rather than showing weekly data under the wrong name.
+- Add a read-only sensor for available usage-limit reset credits and an
+  optional binary sensor for the credit overage-limit state.
+- Discover code-review limits and previously unknown main-limit durations as
+  dynamic read-only sensors when OpenAI returns them, and include those limits
+  in the overall "Rate limit reached" binary sensor.
+- Name dynamic limit windows by duration and add regression coverage for old,
+  reversed, rounded, weekly-only, malformed, and newly extended API responses.
+- Update the README and example dashboard for the expanded read-only data.
+
 ## 0.2.0 - 2026-07-02
 
 - **Privacy fix:** stop using the ChatGPT account email as the device, entity,
