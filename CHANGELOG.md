@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## 0.3.1 - 2026-07-12
+
+- Add a new neutral, brand-independent integration icon designed for clear
+  display at Home Assistant icon sizes.
+- Refine the README and acknowledgements for HACS publishing while preserving
+  the API stability, authentication, trademark, and attribution disclosures.
+- Streamline the public repository to integration, user, contributor, and
+  maintenance documentation relevant to the project.
+- Update GitHub Actions to current Node 24-based action releases and validate
+  against Home Assistant 2026.7.2 while retaining the 2026.3.0 minimum test.
+- No runtime behavior changes from 0.3.0.
+
 ## 0.3.0 - 2026-07-12
 
 - Restore correct weekly usage reporting for the new response shape where a

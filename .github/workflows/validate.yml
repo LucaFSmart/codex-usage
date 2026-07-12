@@ -8,7 +8,7 @@ jobs:
   hacs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hacs/action@main
         with:
           category: integration
@@ -16,17 +16,17 @@ jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
 
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: pip install homeassistant==2026.6.4 pytest ruff
+      - run: pip install homeassistant==2026.7.2 pytest ruff
       - run: ruff format --check .
       - run: ruff check .
       - run: pytest
@@ -34,18 +34,18 @@ jobs:
   integration-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-      - run: pip install homeassistant==2026.6.4 pytest pytest-homeassistant-custom-component
+      - run: pip install homeassistant==2026.7.2 pytest pytest-homeassistant-custom-component
       - run: pytest tests_integration/test_integration_smoke.py -v -o asyncio_mode=auto
 
   tests-min-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
       - run: pip install homeassistant==2026.3.0 pytest ruff

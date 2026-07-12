@@ -17,7 +17,7 @@ body:
     id: home_assistant
     attributes:
       label: Home Assistant version
-      placeholder: 2026.6.4
+      placeholder: 2026.7.2
     validations:
       required: true
   - type: dropdown
@@ -45,4 +45,3 @@ body:
     attributes:
       label: Sanitized logs
       render: text
-
