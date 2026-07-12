@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+- Add compact and detailed `custom:button-card` 7.0+ examples with generic,
+  single-edit entity variables, responsive layouts, and explicit handling for
+  plan-specific unavailable usage, credit, and spending data.
+- Display weekly pace as a signed difference from elapsed weekly time instead
+  of presenting it as a second 0–100 percent usage bar.
+
 ## 0.3.1 - 2026-07-12
 
 - Add a new neutral, brand-independent integration icon designed for clear

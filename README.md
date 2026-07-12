@@ -107,7 +107,17 @@ The integration only reads usage data. It does not redeem available resets or pe
 
 ## Dashboard
 
-An example dashboard is available at [`dashboards/codex_usage.yaml`](dashboards/codex_usage.yaml). Entity IDs can include an account-specific suffix when more than one workspace is configured. Adjust the example IDs to match **Developer Tools → States** before importing it through the dashboard raw configuration editor.
+Three dashboard examples are included:
+
+- [`dashboards/codex_usage_compact.yaml`](dashboards/codex_usage_compact.yaml) is a compact usage summary.
+- [`dashboards/codex_usage_detailed.yaml`](dashboards/codex_usage_detailed.yaml) adds remaining allowances, reset times, weekly pace, credits, and spending.
+- [`dashboards/codex_usage.yaml`](dashboards/codex_usage.yaml) is a complete dashboard made only from native Home Assistant cards.
+
+The compact and detailed examples each contain one self-contained [`custom:button-card`](https://github.com/custom-cards/button-card) and require version 7.0 or newer, installed separately through HACS. Add a **Manual** card to a dashboard and paste the contents of the chosen file.
+
+Before saving either custom card, replace every example entity ID under `variables` with the corresponding ID from **Developer Tools → States**. Home Assistant derives entity IDs from the device and translated entity names, so IDs can differ by language and can include an account-specific suffix when multiple workspaces are configured. Current `button-card` versions automatically track the entities used by the JavaScript templates, so every ID only needs to be replaced once.
+
+Some plans do not report a five-hour window, credits, or spend controls. The custom cards handle those entities being `unavailable` and label the missing values as not reported.
 
 ## Security
 
