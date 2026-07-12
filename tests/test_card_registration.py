@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from custom_components.codex_usage import async_setup_entry, async_unload_entry
 from custom_components.codex_usage.card_registration import CodexUsageCardRegistration
@@ -14,6 +14,7 @@ from custom_components.codex_usage.const import CARD_URL, CARD_VERSION, DOMAIN
 
 def _resources(*items: dict[str, str]) -> MagicMock:
     resources = MagicMock()
+    resources.async_get_info = AsyncMock()
     resources.async_items.return_value = list(items)
     resources.async_create_item = AsyncMock()
     resources.async_update_item = AsyncMock()
@@ -73,6 +74,35 @@ def test_updates_stale_resource_version_without_creating_duplicate() -> None:
     resources.async_create_item.assert_not_awaited()
 
 
+def test_register_loads_stored_resources_before_inspection() -> None:
+    resources = _resources()
+    registration = CodexUsageCardRegistration(_hass(resources=resources))
+
+    asyncio.run(registration.async_register())
+
+    resources.async_get_info.assert_awaited_once_with()
+    assert resources.method_calls.index(call.async_get_info()) < resources.method_calls.index(
+        call.async_items()
+    )
+
+
+def test_register_consolidates_all_matching_resources() -> None:
+    resources = _resources(
+        {"id": "canonical", "url": f"{CARD_URL}?v=0.4.0", "res_type": "module"},
+        {"id": "duplicate", "url": f"{CARD_URL}?v={CARD_VERSION}", "res_type": "module"},
+        {"id": "other", "url": "/local/other-card.js", "res_type": "module"},
+    )
+    registration = CodexUsageCardRegistration(_hass(resources=resources))
+
+    asyncio.run(registration.async_register())
+
+    resources.async_update_item.assert_awaited_once_with(
+        "canonical", {"res_type": "module", "url": f"{CARD_URL}?v={CARD_VERSION}"}
+    )
+    resources.async_delete_item.assert_awaited_once_with("duplicate")
+    resources.async_create_item.assert_not_awaited()
+
+
 def test_current_resource_is_a_noop_and_duplicates_are_not_created() -> None:
     resources = _resources(
         {"id": "codex", "url": f"{CARD_URL}?v={CARD_VERSION}", "res_type": "module"}
@@ -98,6 +128,32 @@ def test_repeated_registration_registers_static_path_only_once() -> None:
 
     hass.http.async_register_static_paths.assert_awaited_once()
     resources.async_create_item.assert_awaited_once()
+
+
+def test_concurrent_registration_serializes_static_path_setup() -> None:
+    hass = _hass(resource_mode="yaml")
+    static_path_started = asyncio.Event()
+    release_static_path = asyncio.Event()
+
+    async def _async_register_static_paths(*_args: object) -> None:
+        static_path_started.set()
+        await release_static_path.wait()
+
+    hass.http.async_register_static_paths.side_effect = _async_register_static_paths
+    registration = CodexUsageCardRegistration(hass)
+
+    async def _async_register_twice() -> None:
+        first = asyncio.create_task(registration.async_register())
+        await static_path_started.wait()
+        second = asyncio.create_task(registration.async_register())
+        await asyncio.sleep(0)
+        assert hass.http.async_register_static_paths.await_count == 1
+        release_static_path.set()
+        await asyncio.gather(first, second)
+
+    asyncio.run(_async_register_twice())
+
+    hass.http.async_register_static_paths.assert_awaited_once()
 
 
 def test_yaml_resource_mode_skips_resource_mutation() -> None:
@@ -149,6 +205,7 @@ def test_unregister_deletes_only_resources_matching_card_path() -> None:
 
     asyncio.run(registration.async_unregister())
 
+    resources.async_get_info.assert_awaited_once_with()
     assert resources.async_delete_item.await_count == 2
     resources.async_delete_item.assert_any_await("current")
     resources.async_delete_item.assert_any_await("stale")
@@ -189,12 +246,12 @@ def test_two_entries_share_registration_until_final_unload() -> None:
     assert first_unload is True
     assert final_unload is True
     registration_cls.assert_called_once_with(hass)
-    registration.async_register.assert_awaited_once()
+    assert registration.async_register.await_count == 2
     registration.async_unregister.assert_awaited_once()
     assert hass.data[DOMAIN]["loaded_entry_ids"] == set()
 
 
-def test_concurrent_entry_setup_registers_card_only_once() -> None:
+def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> None:
     hass = SimpleNamespace(
         data={},
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
@@ -235,23 +292,26 @@ def test_concurrent_entry_setup_registers_card_only_once() -> None:
         coordinator_cls.return_value.async_config_entry_first_refresh = AsyncMock()
         asyncio.run(_async_setup_both())
 
-    registration.async_register.assert_awaited_once()
+    assert registration.async_register.await_count == 2
     assert hass.data[DOMAIN]["loaded_entry_ids"] == {"one", "two"}
 
 
-def test_registration_error_does_not_block_entry_setup() -> None:
+def test_registration_error_does_not_block_setup_and_next_entry_retries() -> None:
     hass = SimpleNamespace(
         data={},
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
-    entry = SimpleNamespace(
-        entry_id="one",
-        runtime_data=None,
-        async_on_unload=MagicMock(),
-        add_update_listener=MagicMock(return_value=MagicMock()),
-    )
+    entries = [
+        SimpleNamespace(
+            entry_id=entry_id,
+            runtime_data=None,
+            async_on_unload=MagicMock(),
+            add_update_listener=MagicMock(return_value=MagicMock()),
+        )
+        for entry_id in ("one", "two")
+    ]
     registration = MagicMock(
-        async_register=AsyncMock(side_effect=RuntimeError("frontend unavailable"))
+        async_register=AsyncMock(side_effect=[RuntimeError("frontend unavailable"), None])
     )
 
     with (
@@ -263,8 +323,11 @@ def test_registration_error_does_not_block_entry_setup() -> None:
         ),
     ):
         coordinator_cls.return_value.async_config_entry_first_refresh = AsyncMock()
-        result = asyncio.run(async_setup_entry(hass, entry))
+        first_result = asyncio.run(async_setup_entry(hass, entries[0]))
+        second_result = asyncio.run(async_setup_entry(hass, entries[1]))
 
-    assert result is True
-    hass.config_entries.async_forward_entry_setups.assert_awaited_once()
-    assert hass.data[DOMAIN]["loaded_entry_ids"] == {"one"}
+    assert first_result is True
+    assert second_result is True
+    assert hass.config_entries.async_forward_entry_setups.await_count == 2
+    assert registration.async_register.await_count == 2
+    assert hass.data[DOMAIN]["loaded_entry_ids"] == {"one", "two"}

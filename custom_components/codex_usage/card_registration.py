@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
@@ -21,18 +22,21 @@ class CodexUsageCardRegistration:
         self.hass = hass
         self.lovelace = hass.data.get("lovelace")
         self._static_path_registered = False
+        self._registration_lock = asyncio.Lock()
 
     async def async_register(self) -> None:
         """Register the static path and upsert the storage resource."""
-        await self._async_register_static_path()
-        if not self._storage_resources_supported():
-            return
-        await self._async_upsert_resource()
+        async with self._registration_lock:
+            await self._async_register_static_path()
+            if not self._storage_resources_supported():
+                return
+            await self._async_upsert_resource()
 
     async def async_unregister(self) -> None:
         """Remove all resources that point to the bundled card."""
         if not self._storage_resources_supported():
             return
+        await self.lovelace.resources.async_get_info()
         for item in list(self.lovelace.resources.async_items()):
             if self._path(item["url"]) == CARD_URL:
                 await self.lovelace.resources.async_delete_item(item["id"])
@@ -60,14 +64,22 @@ class CodexUsageCardRegistration:
 
     async def _async_upsert_resource(self) -> None:
         """Create the card resource or update its version in place."""
+        await self.lovelace.resources.async_get_info()
         resource = {"res_type": "module", "url": f"{CARD_URL}?v={CARD_VERSION}"}
-        for item in self.lovelace.resources.async_items():
-            if self._path(item["url"]) != CARD_URL:
-                continue
-            if item.get("url") != resource["url"] or item.get("res_type") != "module":
-                await self.lovelace.resources.async_update_item(item["id"], resource)
+        matches = [
+            item
+            for item in self.lovelace.resources.async_items()
+            if self._path(item["url"]) == CARD_URL
+        ]
+        if not matches:
+            await self.lovelace.resources.async_create_item(resource)
             return
-        await self.lovelace.resources.async_create_item(resource)
+
+        canonical, *duplicates = matches
+        if canonical.get("url") != resource["url"] or canonical.get("res_type") != "module":
+            await self.lovelace.resources.async_update_item(canonical["id"], resource)
+        for duplicate in duplicates:
+            await self.lovelace.resources.async_delete_item(duplicate["id"])
 
     @staticmethod
     def _path(url: str) -> str:

@@ -35,11 +35,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     if registration is None:
         registration = domain_data["registration"] = CodexUsageCardRegistration(hass)
     loaded_entry_ids.add(entry.entry_id)
-    if len(loaded_entry_ids) == 1:
-        try:
-            await registration.async_register()
-        except Exception:  # noqa: BLE001
-            _LOGGER.warning("Unable to register the Codex Usage Lovelace card", exc_info=True)
+    try:
+        await registration.async_register()
+    except Exception:  # noqa: BLE001
+        _LOGGER.warning("Unable to register the Codex Usage Lovelace card", exc_info=True)
     return True
 
 
