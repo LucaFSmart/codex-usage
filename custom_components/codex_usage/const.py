@@ -7,6 +7,9 @@ from homeassistant.const import Platform
 DOMAIN: Final = "codex_usage"
 PLATFORMS: Final = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
+CARD_VERSION: Final = "0.5.0"
+CARD_URL: Final = "/codex_usage/frontend/codex-usage-card.js"
+
 OAUTH_CLIENT_ID: Final = "app_EMoamEEZ73f0CkXaXp7hrann"
 OAUTH_ISSUER: Final = "https://auth.openai.com"
 DEVICE_CODE_URL: Final = f"{OAUTH_ISSUER}/api/accounts/deviceauth/usercode"

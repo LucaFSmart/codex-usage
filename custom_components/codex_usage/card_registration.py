@@ -1,0 +1,75 @@
+"""Register the bundled Codex Usage Lovelace card."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.lovelace import MODE_STORAGE
+from homeassistant.core import HomeAssistant
+
+from .const import CARD_URL, CARD_VERSION
+
+_BUNDLE_PATH = Path(__file__).parent / "frontend" / "codex-usage-card.js"
+
+
+class CodexUsageCardRegistration:
+    """Manage the bundled card's static path and Lovelace resource."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize card registration."""
+        self.hass = hass
+        self.lovelace = hass.data.get("lovelace")
+        self._static_path_registered = False
+
+    async def async_register(self) -> None:
+        """Register the static path and upsert the storage resource."""
+        await self._async_register_static_path()
+        if not self._storage_resources_supported():
+            return
+        await self._async_upsert_resource()
+
+    async def async_unregister(self) -> None:
+        """Remove all resources that point to the bundled card."""
+        if not self._storage_resources_supported():
+            return
+        for item in list(self.lovelace.resources.async_items()):
+            if self._path(item["url"]) == CARD_URL:
+                await self.lovelace.resources.async_delete_item(item["id"])
+
+    async def _async_register_static_path(self) -> None:
+        """Expose the bundled JavaScript through Home Assistant HTTP."""
+        http = getattr(self.hass, "http", None)
+        if http is None or self._static_path_registered:
+            return
+        await http.async_register_static_paths(
+            [StaticPathConfig(CARD_URL, str(_BUNDLE_PATH), cache_headers=False)]
+        )
+        self._static_path_registered = True
+
+    def _storage_resources_supported(self) -> bool:
+        """Return whether Lovelace resources can be changed through storage."""
+        if self.lovelace is None or getattr(self.lovelace, "resources", None) is None:
+            return False
+        mode = getattr(
+            self.lovelace,
+            "resource_mode",
+            getattr(self.lovelace, "mode", None),
+        )
+        return mode == MODE_STORAGE
+
+    async def _async_upsert_resource(self) -> None:
+        """Create the card resource or update its version in place."""
+        resource = {"res_type": "module", "url": f"{CARD_URL}?v={CARD_VERSION}"}
+        for item in self.lovelace.resources.async_items():
+            if self._path(item["url"]) != CARD_URL:
+                continue
+            if item.get("url") != resource["url"] or item.get("res_type") != "module":
+                await self.lovelace.resources.async_update_item(item["id"], resource)
+            return
+        await self.lovelace.resources.async_create_item(resource)
+
+    @staticmethod
+    def _path(url: str) -> str:
+        """Return a resource URL without its query string."""
+        return url.split("?", maxsplit=1)[0]
