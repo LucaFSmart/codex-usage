@@ -7,3 +7,6 @@ __pycache__/
 htmlcov/
 config/
 tmp/
+frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
