@@ -23,23 +23,32 @@ class CodexUsageCardRegistration:
         self.lovelace = hass.data.get("lovelace")
         self._static_path_registered = False
         self._registration_lock = asyncio.Lock()
+        self._registered = False
+
+    @property
+    def is_registered(self) -> bool:
+        """Return whether registration completed successfully."""
+        return self._registered
 
     async def async_register(self) -> None:
         """Register the static path and upsert the storage resource."""
         async with self._registration_lock:
-            await self._async_register_static_path()
-            if not self._storage_resources_supported():
+            if self._registered:
                 return
-            await self._async_upsert_resource()
+            await self._async_register_static_path()
+            if self._storage_resources_supported():
+                await self._async_upsert_resource()
+            self._registered = True
 
     async def async_unregister(self) -> None:
         """Remove all resources that point to the bundled card."""
-        if not self._storage_resources_supported():
-            return
-        await self.lovelace.resources.async_get_info()
-        for item in list(self.lovelace.resources.async_items()):
-            if self._path(item["url"]) == CARD_URL:
-                await self.lovelace.resources.async_delete_item(item["id"])
+        async with self._registration_lock:
+            if self._storage_resources_supported():
+                await self.lovelace.resources.async_get_info()
+                for item in list(self.lovelace.resources.async_items()):
+                    if self._path(item["url"]) == CARD_URL:
+                        await self.lovelace.resources.async_delete_item(item["id"])
+            self._registered = False
 
     async def _async_register_static_path(self) -> None:
         """Expose the bundled JavaScript through Home Assistant HTTP."""

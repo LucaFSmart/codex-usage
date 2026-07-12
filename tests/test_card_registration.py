@@ -130,6 +130,21 @@ def test_repeated_registration_registers_static_path_only_once() -> None:
     resources.async_create_item.assert_awaited_once()
 
 
+def test_successful_registration_skips_all_work_on_next_call() -> None:
+    resources = _resources()
+    registration = CodexUsageCardRegistration(_hass(resources=resources))
+
+    async def _async_register_twice() -> None:
+        await registration.async_register()
+        await registration.async_register()
+
+    asyncio.run(_async_register_twice())
+
+    assert registration.is_registered is True
+    resources.async_get_info.assert_awaited_once()
+    resources.async_create_item.assert_awaited_once()
+
+
 def test_concurrent_registration_serializes_static_path_setup() -> None:
     hass = _hass(resource_mode="yaml")
     static_path_started = asyncio.Event()
@@ -228,7 +243,16 @@ def test_two_entries_share_registration_until_final_unload() -> None:
         )
         for entry_id in ("one", "two")
     ]
-    registration = MagicMock(async_register=AsyncMock(), async_unregister=AsyncMock())
+    registration = MagicMock(
+        is_registered=False,
+        async_register=AsyncMock(),
+        async_unregister=AsyncMock(),
+    )
+
+    async def _async_register() -> None:
+        registration.is_registered = True
+
+    registration.async_register.side_effect = _async_register
 
     with (
         patch("custom_components.codex_usage.aiohttp_client.async_get_clientsession"),
@@ -246,7 +270,7 @@ def test_two_entries_share_registration_until_final_unload() -> None:
     assert first_unload is True
     assert final_unload is True
     registration_cls.assert_called_once_with(hass)
-    assert registration.async_register.await_count == 2
+    registration.async_register.assert_awaited_once()
     registration.async_unregister.assert_awaited_once()
     assert hass.data[DOMAIN]["loaded_entry_ids"] == set()
 
@@ -271,8 +295,12 @@ def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> Non
     async def _async_register() -> None:
         register_started.set()
         await release_registration.wait()
+        registration.is_registered = True
 
-    registration = MagicMock(async_register=AsyncMock(side_effect=_async_register))
+    registration = MagicMock(
+        is_registered=False,
+        async_register=AsyncMock(side_effect=_async_register),
+    )
 
     async def _async_setup_both() -> None:
         first_setup = asyncio.create_task(async_setup_entry(hass, entries[0]))
@@ -292,7 +320,7 @@ def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> Non
         coordinator_cls.return_value.async_config_entry_first_refresh = AsyncMock()
         asyncio.run(_async_setup_both())
 
-    assert registration.async_register.await_count == 2
+    registration.async_register.assert_awaited_once()
     assert hass.data[DOMAIN]["loaded_entry_ids"] == {"one", "two"}
 
 
@@ -310,9 +338,14 @@ def test_registration_error_does_not_block_setup_and_next_entry_retries() -> Non
         )
         for entry_id in ("one", "two")
     ]
-    registration = MagicMock(
-        async_register=AsyncMock(side_effect=[RuntimeError("frontend unavailable"), None])
-    )
+    registration = MagicMock(is_registered=False)
+
+    async def _async_register() -> None:
+        if registration.async_register.await_count == 1:
+            raise RuntimeError("frontend unavailable")
+        registration.is_registered = True
+
+    registration.async_register = AsyncMock(side_effect=_async_register)
 
     with (
         patch("custom_components.codex_usage.aiohttp_client.async_get_clientsession"),
@@ -331,3 +364,61 @@ def test_registration_error_does_not_block_setup_and_next_entry_retries() -> Non
     assert hass.config_entries.async_forward_entry_setups.await_count == 2
     assert registration.async_register.await_count == 2
     assert hass.data[DOMAIN]["loaded_entry_ids"] == {"one", "two"}
+
+
+def test_register_unregister_race_preserves_resource_for_new_entry() -> None:
+    items = [{"id": "codex", "url": f"{CARD_URL}?v={CARD_VERSION}", "res_type": "module"}]
+    resources = _resources()
+    resources.async_items.side_effect = lambda: list(items)
+    delete_started = asyncio.Event()
+    release_delete = asyncio.Event()
+
+    async def _async_delete_item(item_id: str) -> None:
+        delete_started.set()
+        await release_delete.wait()
+        items[:] = [item for item in items if item["id"] != item_id]
+
+    async def _async_create_item(item: dict[str, str]) -> None:
+        items.append({"id": "recreated", **item})
+
+    resources.async_delete_item.side_effect = _async_delete_item
+    resources.async_create_item.side_effect = _async_create_item
+    hass = _hass(resources=resources)
+    hass.config_entries = SimpleNamespace(
+        async_forward_entry_setups=AsyncMock(),
+        async_unload_platforms=AsyncMock(return_value=True),
+    )
+    registration = CodexUsageCardRegistration(hass)
+    old_entry, new_entry = [
+        SimpleNamespace(
+            entry_id=entry_id,
+            runtime_data=None,
+            async_on_unload=MagicMock(),
+            add_update_listener=MagicMock(return_value=MagicMock()),
+        )
+        for entry_id in ("old", "new")
+    ]
+
+    async def _async_race() -> None:
+        await registration.async_register()
+        hass.data[DOMAIN] = {
+            "registration": registration,
+            "loaded_entry_ids": {"old"},
+        }
+        unload = asyncio.create_task(async_unload_entry(hass, old_entry))
+        await delete_started.wait()
+        setup = asyncio.create_task(async_setup_entry(hass, new_entry))
+        await asyncio.sleep(0)
+        release_delete.set()
+        await asyncio.gather(unload, setup)
+
+    with (
+        patch("custom_components.codex_usage.aiohttp_client.async_get_clientsession"),
+        patch("custom_components.codex_usage.CodexUsageCoordinator") as coordinator_cls,
+    ):
+        coordinator_cls.return_value.async_config_entry_first_refresh = AsyncMock()
+        asyncio.run(_async_race())
+
+    assert hass.data[DOMAIN]["loaded_entry_ids"] == {"new"}
+    assert registration.is_registered is True
+    assert any(CodexUsageCardRegistration._path(item["url"]) == CARD_URL for item in items)

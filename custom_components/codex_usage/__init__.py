@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -30,15 +31,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
-    loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())
-    registration = domain_data.get("registration")
-    if registration is None:
-        registration = domain_data["registration"] = CodexUsageCardRegistration(hass)
-    loaded_entry_ids.add(entry.entry_id)
-    try:
-        await registration.async_register()
-    except Exception:  # noqa: BLE001
-        _LOGGER.warning("Unable to register the Codex Usage Lovelace card", exc_info=True)
+    lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
+    async with lifecycle_lock:
+        loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())
+        registration = domain_data.get("registration")
+        if registration is None:
+            registration = domain_data["registration"] = CodexUsageCardRegistration(hass)
+        loaded_entry_ids.add(entry.entry_id)
+        if not registration.is_registered:
+            try:
+                await registration.async_register()
+            except Exception:  # noqa: BLE001
+                _LOGGER.warning("Unable to register the Codex Usage Lovelace card", exc_info=True)
     return True
 
 
@@ -48,15 +52,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
     if not unloaded:
         return False
 
-    domain_data = hass.data.get(DOMAIN, {})
-    loaded_entry_ids = domain_data.get("loaded_entry_ids", set())
-    loaded_entry_ids.discard(entry.entry_id)
-    registration = domain_data.get("registration")
-    if not loaded_entry_ids and registration is not None:
-        try:
-            await registration.async_unregister()
-        except Exception:  # noqa: BLE001
-            _LOGGER.warning("Unable to unregister the Codex Usage Lovelace card", exc_info=True)
+    domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
+    lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
+    async with lifecycle_lock:
+        loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())
+        loaded_entry_ids.discard(entry.entry_id)
+        registration = domain_data.get("registration")
+        if not loaded_entry_ids and registration is not None:
+            try:
+                await registration.async_unregister()
+            except Exception:  # noqa: BLE001
+                _LOGGER.warning("Unable to unregister the Codex Usage Lovelace card", exc_info=True)
     return True
 
 
