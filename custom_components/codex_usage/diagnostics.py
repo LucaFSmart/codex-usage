@@ -29,5 +29,8 @@ async def async_get_config_entry_diagnostics(
         "entry": async_redact_data(dict(entry.data), TO_REDACT),
         "options": dict(entry.options),
         "last_update_success": entry.runtime_data.last_update_success,
+        "profile_available": entry.runtime_data.profile_available,
+        "profile_last_success": entry.runtime_data.profile_last_success,
+        "profile_last_error": entry.runtime_data.profile_last_error,
         "data": asdict(entry.runtime_data.data) if entry.runtime_data.data else None,
     }

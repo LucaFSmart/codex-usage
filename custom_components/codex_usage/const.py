@@ -15,6 +15,7 @@ DEVICE_VERIFICATION_URL: Final = f"{OAUTH_ISSUER}/codex/device"
 OAUTH_TOKEN_URL: Final = f"{OAUTH_ISSUER}/oauth/token"
 OAUTH_DEVICE_REDIRECT_URI: Final = f"{OAUTH_ISSUER}/deviceauth/callback"
 USAGE_API_URL: Final = "https://chatgpt.com/backend-api/wham/usage"
+PROFILE_API_URL: Final = "https://chatgpt.com/backend-api/wham/profiles/me"
 
 DEFAULT_UPDATE_INTERVAL: Final = 300
 MIN_UPDATE_INTERVAL: Final = 60

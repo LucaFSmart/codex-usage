@@ -93,7 +93,7 @@ class CodexUsageBinarySensor(CodexUsageEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        return self.entity_description.value_fn(self.coordinator.data)
+        return self.entity_description.value_fn(self.coordinator.data.usage)
 
     @property
     def available(self) -> bool:

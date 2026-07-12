@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import time
+from dataclasses import fields
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -13,7 +14,9 @@ from custom_components.codex_usage.api import (
     CodexApiClient,
     CodexAuthenticationError,
     CodexCredentials,
+    CodexProfileUnavailable,
     credentials_from_token_response,
+    parse_profile,
     parse_usage,
 )
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS, _limit_reached
@@ -376,6 +379,120 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.3.2",
+        "User-Agent": "HomeAssistant-CodexUsage/0.4.0",
         "X-OpenAI-Fedramp": "true",
     }
+
+
+def test_parse_profile_keeps_only_supported_aggregate_statistics() -> None:
+    data = parse_profile(
+        {
+            "profile": {
+                "display_name": "Private name",
+                "username": "private-user",
+                "profile_picture_url": "https://example.invalid/private.png",
+            },
+            "stats": {
+                "lifetime_tokens": 2_863_467_305,
+                "peak_daily_tokens": 138_574_029,
+                "current_streak_days": 1,
+                "longest_streak_days": 9,
+                "total_threads": 340,
+                "longest_running_turn_sec": 4_235,
+                "fast_mode_usage_percentage": 12.5,
+                "total_skills_used": 558,
+                "unique_skills_used": 42,
+                "most_used_reasoning_effort": "high",
+                "most_used_reasoning_effort_percentage": 84.7,
+                "daily_usage_buckets": [{"date": "private"}],
+                "weekly_usage_buckets": [{"week": "private"}],
+                "top_invocations": [{"name": "private invocation"}],
+            },
+        }
+    )
+
+    assert data.lifetime_tokens == 2_863_467_305
+    assert data.peak_daily_tokens == 138_574_029
+    assert data.current_streak_days == 1
+    assert data.longest_streak_days == 9
+    assert data.total_threads == 340
+    assert data.longest_running_turn_sec == 4_235
+    assert data.fast_mode_usage_percentage == 12.5
+    assert data.total_skills_used == 558
+    assert data.unique_skills_used == 42
+    assert data.most_used_reasoning_effort == "high"
+    assert data.most_used_reasoning_effort_percentage == 84.7
+    assert set(data.__dataclass_fields__) == {
+        "lifetime_tokens",
+        "peak_daily_tokens",
+        "current_streak_days",
+        "longest_streak_days",
+        "total_threads",
+        "longest_running_turn_sec",
+        "fast_mode_usage_percentage",
+        "total_skills_used",
+        "unique_skills_used",
+        "most_used_reasoning_effort",
+        "most_used_reasoning_effort_percentage",
+    }
+
+
+def test_parse_profile_rejects_malformed_optional_statistics() -> None:
+    data = parse_profile(
+        {
+            "stats": {
+                "lifetime_tokens": -1,
+                "peak_daily_tokens": True,
+                "current_streak_days": 1.5,
+                "longest_streak_days": "9",
+                "total_threads": None,
+                "longest_running_turn_sec": -10,
+                "fast_mode_usage_percentage": "NaN",
+                "total_skills_used": -2,
+                "unique_skills_used": False,
+                "most_used_reasoning_effort": "",
+                "most_used_reasoning_effort_percentage": 101,
+            }
+        }
+    )
+
+    assert all(getattr(data, field.name) is None for field in fields(data))
+
+
+def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
+    session = _FakeSession(_FakeResponse(200, {"stats": {"total_threads": 10}}))
+    credentials = CodexCredentials(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="id-token",
+        expires_at=time.time() + 3600,
+        account_id="workspace-1",
+        fedramp=True,
+    )
+
+    data = asyncio.run(CodexApiClient(session).async_get_profile(credentials))  # type: ignore[arg-type]
+
+    assert data.total_threads == 10
+    assert session.last_url == "https://chatgpt.com/backend-api/wham/profiles/me"
+    assert session.last_headers == {
+        "Authorization": "Bearer access-token",
+        "ChatGPT-Account-Id": "workspace-1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.4.0",
+        "X-OpenAI-Fedramp": "true",
+        "Cache-Control": "no-store",
+    }
+
+
+@pytest.mark.parametrize("status", [403, 404])
+def test_profile_request_reports_unavailable_endpoint(status: int) -> None:
+    session = _FakeSession(_FakeResponse(status, {"detail": "disabled"}))
+    credentials = CodexCredentials(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="id-token",
+        expires_at=time.time() + 3600,
+        account_id="workspace-1",
+    )
+
+    with pytest.raises(CodexProfileUnavailable):
+        asyncio.run(CodexApiClient(session).async_get_profile(credentials))  # type: ignore[arg-type]

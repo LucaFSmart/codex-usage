@@ -45,3 +45,17 @@ views:
           - binary_sensor.codex_usage_unlimited_credits
           - binary_sensor.codex_usage_credit_overage_limit_reached
           - binary_sensor.codex_usage_spend_limit_reached
+      - type: entities
+        title: Aggregate profile statistics
+        entities:
+          - sensor.codex_usage_lifetime_tokens
+          - sensor.codex_usage_peak_daily_tokens
+          - sensor.codex_usage_current_streak
+          - sensor.codex_usage_longest_streak
+          - sensor.codex_usage_total_threads
+          - sensor.codex_usage_longest_running_turn
+          - sensor.codex_usage_fast_mode_usage
+          - sensor.codex_usage_total_skill_uses
+          - sensor.codex_usage_unique_skills_used
+          - sensor.codex_usage_most_used_reasoning_effort
+          - sensor.codex_usage_most_used_reasoning_effort_share

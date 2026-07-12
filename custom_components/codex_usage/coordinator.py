@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
-from datetime import timedelta
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
+from time import monotonic
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -17,6 +18,8 @@ from .api import (
     CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
+    CodexProfileStats,
+    CodexProfileUnavailable,
     CodexUsageData,
 )
 from .const import (
@@ -35,6 +38,17 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+PROFILE_UPDATE_SECONDS = 60 * 60
+PROFILE_RETRY_SECONDS = 15 * 60
+
+
+@dataclass(frozen=True, slots=True)
+class CodexCoordinatorData:
+    """Combined data from the usage and optional profile endpoints."""
+
+    usage: CodexUsageData
+    profile: CodexProfileStats | None
 
 
 def credentials_from_entry(entry: ConfigEntry) -> CodexCredentials:
@@ -68,7 +82,7 @@ def credentials_to_entry_data(credentials: CodexCredentials) -> dict[str, object
     }
 
 
-class CodexUsageCoordinator(DataUpdateCoordinator[CodexUsageData]):
+class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
     """Fetch and normalize Codex usage data."""
 
     config_entry: ConfigEntry
@@ -81,6 +95,11 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexUsageData]):
     ) -> None:
         self.client = client
         self.credentials = credentials_from_entry(entry)
+        self._profile_data: CodexProfileStats | None = None
+        self._profile_next_attempt = 0.0
+        self._profile_last_success: datetime | None = None
+        self._profile_available: bool | None = None
+        self._profile_last_error: str | None = None
         interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         super().__init__(
             hass,
@@ -91,7 +110,22 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexUsageData]):
             always_update=False,
         )
 
-    async def _async_update_data(self) -> CodexUsageData:
+    @property
+    def profile_available(self) -> bool | None:
+        """Return whether the optional profile endpoint has succeeded."""
+        return self._profile_available
+
+    @property
+    def profile_last_success(self) -> datetime | None:
+        """Return the last successful profile update time."""
+        return self._profile_last_success
+
+    @property
+    def profile_last_error(self) -> str | None:
+        """Return the last profile error class without exposing response data."""
+        return self._profile_last_error
+
+    async def _async_update_data(self) -> CodexCoordinatorData:
         try:
             data, credentials = await self.client.async_get_usage(self.credentials)
         except CodexAuthenticationError as err:
@@ -104,4 +138,23 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexUsageData]):
                 self.config_entry,
                 data={**self.config_entry.data, **credentials_to_entry_data(credentials)},
             )
-        return data
+        now = monotonic()
+        if now >= self._profile_next_attempt:
+            try:
+                self._profile_data = await self.client.async_get_profile(self.credentials)
+            except CodexProfileUnavailable as err:
+                self._profile_available = False
+                self._profile_last_error = type(err).__name__
+                self._profile_next_attempt = now + PROFILE_UPDATE_SECONDS
+            except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
+                # Profile statistics are optional. A temporary failure must not make
+                # the independently fetched limit sensors unavailable.
+                self._profile_last_error = type(err).__name__
+                self._profile_next_attempt = now + PROFILE_RETRY_SECONDS
+            else:
+                self._profile_available = True
+                self._profile_last_success = datetime.now(UTC)
+                self._profile_last_error = None
+                self._profile_next_attempt = now + PROFILE_UPDATE_SECONDS
+
+        return CodexCoordinatorData(usage=data, profile=self._profile_data)

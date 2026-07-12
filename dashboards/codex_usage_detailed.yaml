@@ -16,6 +16,12 @@ variables:
   spend_remaining_entity: sensor.codex_usage_spend_remaining
   spend_usage_entity: sensor.codex_usage_spend_usage
   spend_reset_entity: sensor.codex_usage_spend_reset
+  lifetime_tokens_entity: sensor.codex_usage_lifetime_tokens
+  total_threads_entity: sensor.codex_usage_total_threads
+  current_streak_entity: sensor.codex_usage_current_streak
+  fast_mode_usage_entity: sensor.codex_usage_fast_mode_usage
+  reasoning_effort_entity: sensor.codex_usage_most_used_reasoning_effort
+  reasoning_effort_share_entity: sensor.codex_usage_most_used_reasoning_effort_share
   rate_limit_entity: binary_sensor.codex_usage_rate_limit_reached
   credits_available_entity: binary_sensor.codex_usage_credits_available
   unlimited_credits_entity: binary_sensor.codex_usage_unlimited_credits
@@ -82,7 +88,7 @@ custom_fields:
         const usage = number(usageId);
         const remaining = number(remainingId);
         if (usage === null) return panel(title, `
-          <div style="margin-top:10px;font-size:15px;font-weight:700;color:var(--secondary-text-color);">Not reported by this plan</div>
+          <div style="margin-top:10px;font-size:15px;font-weight:700;color:var(--secondary-text-color);">Currently not reported by OpenAI</div>
           <div style="margin-top:12px;font-size:11px;color:var(--secondary-text-color);">Reset: ${formatDate(resetId)}</div>`);
         const color = usageColor(usage);
         return panel(title, `
@@ -146,7 +152,7 @@ custom_fields:
       const creditsAvailable = binary(variables.credits_available_entity);
       const unlimitedCredits = binary(variables.unlimited_credits_entity);
       const creditDataReported = creditBalance !== null || creditsAvailable !== null || unlimitedCredits !== null || overageReached;
-      let creditBody = '<div style="margin-top:10px;font-size:13px;color:var(--secondary-text-color);">Not reported by this plan</div>';
+      let creditBody = '<div style="margin-top:10px;font-size:13px;color:var(--secondary-text-color);">Currently not reported by OpenAI</div>';
       if (creditDataReported || resetCredits !== null) {
         const creditState = unlimitedCredits === true ? 'Unlimited' : creditsAvailable === true ? 'Available' : overageReached ? 'Overage limit reached' : 'No extra credits';
         creditBody = `
@@ -162,7 +168,7 @@ custom_fields:
       const spendRemaining = number(variables.spend_remaining_entity);
       const spendUsage = number(variables.spend_usage_entity);
       const spendReported = [spendUsed, spendLimit, spendRemaining, spendUsage].some((value) => value !== null) || spendLimitReached;
-      let spendBody = '<div style="margin-top:10px;font-size:13px;color:var(--secondary-text-color);">Not reported by this plan</div>';
+      let spendBody = '<div style="margin-top:10px;font-size:13px;color:var(--secondary-text-color);">Currently not reported by OpenAI</div>';
       if (spendReported) {
         const spendColor = spendLimitReached ? '#ef4444' : spendUsage !== null ? usageColor(spendUsage) : 'var(--primary-text-color)';
         spendBody = `
@@ -171,6 +177,27 @@ custom_fields:
             <b style="color:var(--primary-text-color);">Used:</b> ${spendUsed === null ? '—' : spendUsed}<br>
             <b style="color:var(--primary-text-color);">Remaining:</b> ${spendRemaining === null ? '—' : spendRemaining}<br>
             <b style="color:var(--primary-text-color);">Limit:</b> ${spendLimit === null ? '—' : spendLimit}
+          </div>`;
+      }
+
+      const lifetimeTokens = number(variables.lifetime_tokens_entity);
+      const totalThreads = number(variables.total_threads_entity);
+      const currentStreak = number(variables.current_streak_entity);
+      const fastMode = number(variables.fast_mode_usage_entity);
+      const reasoningRaw = raw(variables.reasoning_effort_entity);
+      const reasoning = present(reasoningRaw) ? escapeHtml(reasoningRaw) : null;
+      const reasoningShare = number(variables.reasoning_effort_share_entity);
+      const profileReported = [lifetimeTokens, totalThreads, currentStreak, fastMode, reasoningShare]
+        .some((value) => value !== null) || reasoning !== null;
+      let profileBody = '<div style="margin-top:10px;font-size:13px;color:var(--secondary-text-color);">Currently not reported by OpenAI</div>';
+      if (profileReported) {
+        profileBody = `
+          <div style="margin-top:9px;font-size:12px;line-height:1.65;color:var(--secondary-text-color);">
+            <b style="color:var(--primary-text-color);">Lifetime tokens:</b> ${lifetimeTokens === null ? '—' : lifetimeTokens.toLocaleString(locale)}<br>
+            <b style="color:var(--primary-text-color);">Threads:</b> ${totalThreads === null ? '—' : totalThreads.toLocaleString(locale)}<br>
+            <b style="color:var(--primary-text-color);">Current streak:</b> ${currentStreak === null ? '—' : `${currentStreak} days`}<br>
+            <b style="color:var(--primary-text-color);">Fast mode:</b> ${fastMode === null ? '—' : `${formatNumber(fastMode, 0)}%`}<br>
+            <b style="color:var(--primary-text-color);">Top reasoning:</b> ${reasoning ?? '—'}${reasoningShare === null ? '' : ` (${formatNumber(reasoningShare, 0)}%)`}
           </div>`;
       }
 
@@ -190,6 +217,7 @@ custom_fields:
             ${panel('RESET TIMES', resetsBody)}
             ${panel('CREDITS', creditBody)}
             ${panel('SPENDING', spendBody)}
+            ${panel('PROFILE STATISTICS', profileBody)}
           </div>
         </div>`;
     ]]]

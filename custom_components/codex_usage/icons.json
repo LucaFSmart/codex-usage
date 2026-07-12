@@ -15,7 +15,18 @@
       "spend_limit": {"default": "mdi:credit-card-settings-outline"},
       "spend_remaining": {"default": "mdi:cash-check"},
       "spend_usage": {"default": "mdi:chart-donut"},
-      "spend_reset": {"default": "mdi:calendar-refresh-outline"}
+      "spend_reset": {"default": "mdi:calendar-refresh-outline"},
+      "lifetime_tokens": {"default": "mdi:counter"},
+      "peak_daily_tokens": {"default": "mdi:chart-line-variant"},
+      "current_streak_days": {"default": "mdi:fire"},
+      "longest_streak_days": {"default": "mdi:trophy-outline"},
+      "total_threads": {"default": "mdi:message-text-outline"},
+      "longest_running_turn": {"default": "mdi:timer-outline"},
+      "fast_mode_usage": {"default": "mdi:speedometer"},
+      "total_skills_used": {"default": "mdi:tools"},
+      "unique_skills_used": {"default": "mdi:toolbox-outline"},
+      "most_used_reasoning_effort": {"default": "mdi:head-cog-outline"},
+      "most_used_reasoning_effort_percentage": {"default": "mdi:chart-donut"}
     },
     "binary_sensor": {
       "limit_reached": {"default": "mdi:speedometer-slow"},

@@ -14,12 +14,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CodexUsageConfigEntry
-from .api import CodexUsageData, RateLimit, RateLimitWindow
+from .api import CodexProfileStats, CodexUsageData, RateLimit, RateLimitWindow
 from .const import CONF_ACCOUNT_ID
 from .coordinator import CodexUsageCoordinator
 from .entity import CodexUsageEntity
@@ -30,6 +30,13 @@ class CodexSensorDescription(SensorEntityDescription):
     """Describe a Codex Usage sensor."""
 
     value_fn: Callable[[CodexUsageData], Any]
+
+
+@dataclass(frozen=True, kw_only=True)
+class CodexProfileSensorDescription(SensorEntityDescription):
+    """Describe an optional aggregate profile statistics sensor."""
+
+    value_fn: Callable[[CodexProfileStats], Any]
 
 
 def _weekly_pace(data: CodexUsageData) -> float | None:
@@ -145,6 +152,87 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
     ),
 )
 
+PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
+    CodexProfileSensorDescription(
+        key="lifetime_tokens",
+        translation_key="lifetime_tokens",
+        native_unit_of_measurement="tokens",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda data: data.lifetime_tokens,
+    ),
+    CodexProfileSensorDescription(
+        key="peak_daily_tokens",
+        translation_key="peak_daily_tokens",
+        native_unit_of_measurement="tokens",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.peak_daily_tokens,
+    ),
+    CodexProfileSensorDescription(
+        key="current_streak_days",
+        translation_key="current_streak_days",
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.current_streak_days,
+    ),
+    CodexProfileSensorDescription(
+        key="longest_streak_days",
+        translation_key="longest_streak_days",
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.longest_streak_days,
+    ),
+    CodexProfileSensorDescription(
+        key="total_threads",
+        translation_key="total_threads",
+        native_unit_of_measurement="threads",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda data: data.total_threads,
+    ),
+    CodexProfileSensorDescription(
+        key="longest_running_turn",
+        translation_key="longest_running_turn",
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.longest_running_turn_sec,
+    ),
+    CodexProfileSensorDescription(
+        key="fast_mode_usage",
+        translation_key="fast_mode_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.fast_mode_usage_percentage,
+    ),
+    CodexProfileSensorDescription(
+        key="total_skills_used",
+        translation_key="total_skills_used",
+        native_unit_of_measurement="uses",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda data: data.total_skills_used,
+    ),
+    CodexProfileSensorDescription(
+        key="unique_skills_used",
+        translation_key="unique_skills_used",
+        native_unit_of_measurement="skills",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.unique_skills_used,
+    ),
+    CodexProfileSensorDescription(
+        key="most_used_reasoning_effort",
+        translation_key="most_used_reasoning_effort",
+        value_fn=lambda data: data.most_used_reasoning_effort,
+    ),
+    CodexProfileSensorDescription(
+        key="most_used_reasoning_effort_percentage",
+        translation_key="most_used_reasoning_effort_percentage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.most_used_reasoning_effort_percentage,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -154,12 +242,13 @@ async def async_setup_entry(
     """Set up Codex Usage sensors."""
     coordinator = entry.runtime_data
     async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in SENSORS)
+    async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
 
     known: set[tuple[str, str, str]] = set()
 
     def discover_additional_limits() -> None:
         entities: list[CodexAdditionalLimitSensor] = []
-        for limit in coordinator.data.additional_limits:
+        for limit in coordinator.data.usage.additional_limits:
             for window_name, window in (("primary", limit.primary), ("secondary", limit.secondary)):
                 if window is None:
                     continue
@@ -197,7 +286,7 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        return self.entity_description.value_fn(self.coordinator.data)
+        return self.entity_description.value_fn(self.coordinator.data.usage)
 
     @property
     def available(self) -> bool:
@@ -237,7 +326,7 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         limit: RateLimit | None = next(
             (
                 item
-                for item in self.coordinator.data.additional_limits
+                for item in self.coordinator.data.usage.additional_limits
                 if item.limit_id == self._limit_id
             ),
             None,
@@ -254,6 +343,32 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         if self._metric == "remaining":
             return window.remaining_percent
         return window.resets_at
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.native_value is not None
+
+
+class CodexProfileSensor(CodexUsageEntity, SensorEntity):
+    """An aggregate profile statistic fetched independently from usage limits."""
+
+    entity_description: CodexProfileSensorDescription
+
+    def __init__(
+        self,
+        coordinator: CodexUsageCoordinator,
+        entry: CodexUsageConfigEntry,
+        description: CodexProfileSensorDescription,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self.entity_description = description
+        identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
+        self._attr_unique_id = f"{identity}_{description.key}"
+
+    @property
+    def native_value(self) -> Any:
+        profile = self.coordinator.data.profile
+        return self.entity_description.value_fn(profile) if profile else None
 
     @property
     def available(self) -> bool:

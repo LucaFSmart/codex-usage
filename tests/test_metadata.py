@@ -7,7 +7,7 @@ from typing import Any
 from PIL import Image
 
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
-from custom_components.codex_usage.sensor import SENSORS
+from custom_components.codex_usage.sensor import PROFILE_SENSORS, SENSORS
 
 ROOT = Path(__file__).parents[1]
 COMPONENT = ROOT / "custom_components" / "codex_usage"
@@ -35,7 +35,7 @@ def test_translations_match_canonical_strings() -> None:
 def test_entity_icons_cover_static_entities() -> None:
     icons = _load_json(COMPONENT / "icons.json")["entity"]
 
-    assert set(icons["sensor"]) == {item.translation_key for item in SENSORS}
+    assert set(icons["sensor"]) == {item.translation_key for item in (*SENSORS, *PROFILE_SENSORS)}
     assert set(icons["binary_sensor"]) == {item.translation_key for item in BINARY_SENSORS}
 
 
@@ -46,7 +46,7 @@ def test_hacs_and_manifest_metadata() -> None:
     assert manifest["domain"] == "codex_usage"
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
-    assert manifest["version"] == "0.3.2"
+    assert manifest["version"] == "0.4.0"
     assert hacs["homeassistant"] == "2026.3.0"
     assert set(hacs) == {"homeassistant", "name"}
 

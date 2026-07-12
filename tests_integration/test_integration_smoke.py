@@ -11,6 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.codex_usage.api import (
     CodexCredentials,
+    CodexProfileStats,
     CodexUsageData,
     CreditStatus,
     RateLimit,
@@ -72,6 +73,22 @@ def _fake_credentials() -> CodexCredentials:
     )
 
 
+def _fake_profile() -> CodexProfileStats:
+    return CodexProfileStats(
+        lifetime_tokens=123_456,
+        peak_daily_tokens=12_345,
+        current_streak_days=3,
+        longest_streak_days=7,
+        total_threads=42,
+        longest_running_turn_sec=90,
+        fast_mode_usage_percentage=25,
+        total_skills_used=20,
+        unique_skills_used=5,
+        most_used_reasoning_effort="high",
+        most_used_reasoning_effort_percentage=75,
+    )
+
+
 async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integrations):
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -91,9 +108,15 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
     )
     entry.add_to_hass(hass)
 
-    with patch(
-        "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
-        return_value=(_fake_usage(), _fake_credentials()),
+    with (
+        patch(
+            "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
+            return_value=(_fake_usage(), _fake_credentials()),
+        ),
+        patch(
+            "custom_components.codex_usage.api.CodexApiClient.async_get_profile",
+            return_value=_fake_profile(),
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -104,7 +127,7 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
 
     registry = er.async_get(hass)
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 20
+    assert len(entities) == 31
 
     def _state_for(suffix: str) -> str:
         entity = next(e for e in entities if e.unique_id.endswith(suffix))
@@ -118,6 +141,9 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
     assert _state_for("_credits_available") == "on"
     assert _state_for("_credits_overage_limit_reached") == "off"
     assert _state_for("_spend_used") == "unavailable"
+    assert _state_for("_lifetime_tokens") == "123456"
+    assert _state_for("_total_threads") == "42"
+    assert _state_for("_most_used_reasoning_effort") == "high"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

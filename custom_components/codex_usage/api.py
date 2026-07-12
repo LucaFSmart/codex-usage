@@ -25,11 +25,12 @@ from .const import (
     OAUTH_CLIENT_ID,
     OAUTH_DEVICE_REDIRECT_URI,
     OAUTH_TOKEN_URL,
+    PROFILE_API_URL,
     USAGE_API_URL,
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.3.2"
+USER_AGENT = "HomeAssistant-CodexUsage/0.4.0"
 
 
 class CodexApiError(Exception):
@@ -42,6 +43,10 @@ class CodexAuthenticationError(CodexApiError):
 
 class CodexConnectionError(CodexApiError):
     """The OpenAI service could not be reached."""
+
+
+class CodexProfileUnavailable(CodexApiError):
+    """The optional profile statistics endpoint is unavailable."""
 
 
 class DeviceAuthorizationPending(CodexApiError):
@@ -200,6 +205,23 @@ class CodexUsageData:
         return self._main_window("weekly")
 
 
+@dataclass(frozen=True, slots=True)
+class CodexProfileStats:
+    """Privacy-safe aggregate statistics from the Codex profile endpoint."""
+
+    lifetime_tokens: int | None
+    peak_daily_tokens: int | None
+    current_streak_days: int | None
+    longest_streak_days: int | None
+    total_threads: int | None
+    longest_running_turn_sec: int | None
+    fast_mode_usage_percentage: float | None
+    total_skills_used: int | None
+    unique_skills_used: int | None
+    most_used_reasoning_effort: str | None
+    most_used_reasoning_effort_percentage: float | None
+
+
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
     """Decode JWT claims without treating them as independently trusted input."""
     try:
@@ -299,6 +321,12 @@ def _approximately(value: int, expected: int) -> bool:
 def _non_negative_int(value: Any) -> int | None:
     """Return a backend integer count without accepting booleans or coercions."""
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _percentage(value: Any) -> float | None:
+    """Return a finite percentage in the inclusive 0..100 range."""
+    result = _float(value)
+    return result if result is not None and 0 <= result <= 100 else None
 
 
 def _window(payload: Any) -> RateLimitWindow | None:
@@ -417,6 +445,28 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         spend_limit_reached=spend_reached,
         rate_limit_reached_type=str(reached_type) if reached_type else None,
         available_reset_credits=available_reset_credits,
+    )
+
+
+def parse_profile(payload: dict[str, Any]) -> CodexProfileStats:
+    """Normalize privacy-safe aggregate Codex profile statistics."""
+    stats = payload.get("stats")
+    values = stats if isinstance(stats, dict) else {}
+    effort = values.get("most_used_reasoning_effort")
+    return CodexProfileStats(
+        lifetime_tokens=_non_negative_int(values.get("lifetime_tokens")),
+        peak_daily_tokens=_non_negative_int(values.get("peak_daily_tokens")),
+        current_streak_days=_non_negative_int(values.get("current_streak_days")),
+        longest_streak_days=_non_negative_int(values.get("longest_streak_days")),
+        total_threads=_non_negative_int(values.get("total_threads")),
+        longest_running_turn_sec=_non_negative_int(values.get("longest_running_turn_sec")),
+        fast_mode_usage_percentage=_percentage(values.get("fast_mode_usage_percentage")),
+        total_skills_used=_non_negative_int(values.get("total_skills_used")),
+        unique_skills_used=_non_negative_int(values.get("unique_skills_used")),
+        most_used_reasoning_effort=(effort if isinstance(effort, str) and effort else None),
+        most_used_reasoning_effort_percentage=_percentage(
+            values.get("most_used_reasoning_effort_percentage")
+        ),
     )
 
 
@@ -547,6 +597,37 @@ class CodexApiClient:
         if not isinstance(payload, dict):
             raise CodexApiError("OpenAI returned an invalid usage response")
         return parse_usage(payload), current
+
+    async def async_get_profile(self, credentials: CodexCredentials) -> CodexProfileStats:
+        """Fetch privacy-safe aggregate profile statistics without mutating account state."""
+        headers = {
+            "Authorization": f"Bearer {credentials.access_token}",
+            "ChatGPT-Account-Id": credentials.account_id,
+            "User-Agent": USER_AGENT,
+            "Cache-Control": "no-store",
+        }
+        if credentials.fedramp:
+            headers["X-OpenAI-Fedramp"] = "true"
+        try:
+            async with self._session.get(
+                PROFILE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
+            ) as response:
+                if response.status in (403, 404):
+                    raise CodexProfileUnavailable
+                if response.status == 401:
+                    raise CodexAuthenticationError("OpenAI rejected the profile request")
+                if response.status == 429:
+                    raise CodexApiError("OpenAI rate-limited the profile request")
+                if response.status >= 400:
+                    raise CodexApiError(f"Codex profile request failed ({response.status})")
+                payload = await self._async_decode_json(response)
+        except CodexProfileUnavailable, CodexAuthenticationError, CodexApiError:
+            raise
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise CodexConnectionError from err
+        if not isinstance(payload, dict):
+            raise CodexApiError("OpenAI returned an invalid profile response")
+        return parse_profile(payload)
 
     async def _async_usage_request(self, credentials: CodexCredentials) -> tuple[int, Any]:
         headers = {

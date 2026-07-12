@@ -57,7 +57,18 @@
       "spend_limit": {"name": "Spend limit"},
       "spend_remaining": {"name": "Spend remaining"},
       "spend_usage": {"name": "Spend usage"},
-      "spend_reset": {"name": "Spend reset"}
+      "spend_reset": {"name": "Spend reset"},
+      "lifetime_tokens": {"name": "Lifetime tokens"},
+      "peak_daily_tokens": {"name": "Peak daily tokens"},
+      "current_streak_days": {"name": "Current streak"},
+      "longest_streak_days": {"name": "Longest streak"},
+      "total_threads": {"name": "Total threads"},
+      "longest_running_turn": {"name": "Longest running turn"},
+      "fast_mode_usage": {"name": "Fast mode usage"},
+      "total_skills_used": {"name": "Total skill uses"},
+      "unique_skills_used": {"name": "Unique skills used"},
+      "most_used_reasoning_effort": {"name": "Most used reasoning effort"},
+      "most_used_reasoning_effort_percentage": {"name": "Most used reasoning effort share"}
     },
     "binary_sensor": {
       "limit_reached": {"name": "Rate limit reached"},

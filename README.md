@@ -37,12 +37,14 @@ Codex Usage is an independent implementation. Its initial product concept was in
 - Duration-based window detection that supports weekly-only and reordered responses
 - ChatGPT plan, credit balance, and spend controls when returned by OpenAI
 - Available usage-limit reset credits (read-only; this integration never redeems them)
+- Aggregate Codex profile statistics such as lifetime tokens, activity streaks,
+  threads, Fast mode share, skill usage, and reasoning-effort distribution
 - Dynamically discovered model-, code-review-, feature-, and duration-specific limits
 - English and German UI translations
 - Configurable polling interval from 60 to 3,600 seconds
 - Multiple accounts/workspaces
 
-Entities unavailable for a particular plan are automatically marked unavailable. OpenAI does not return every rate-limit window, credit, or spending field for every plan. In particular, some plans currently return a weekly window without a separate five-hour window.
+Entities that OpenAI does not currently report are automatically marked unavailable. OpenAI does not return every rate-limit window, profile statistic, credit, or spending field for every account. In particular, some accounts currently return a weekly window without a separate five-hour window. This matches the current Codex app display and does not indicate a polling failure.
 
 ## Requirements
 
@@ -68,6 +70,11 @@ This repository is not yet in the HACS default catalog, so add it as a custom re
 5. Search for **Codex Usage** and install it.
 6. Restart Home Assistant.
 
+The repository has been submitted for the HACS default catalog. Until it
+appears in the normal HACS search, use the custom-repository installation
+above. Once it appears, existing installations continue to update normally;
+the repository does not need to be removed or reconfigured.
+
 ### Manual installation
 
 Copy `custom_components/codex_usage` into the `custom_components` directory of your Home Assistant configuration, then restart Home Assistant.
@@ -82,7 +89,7 @@ Copy `custom_components/codex_usage` into the `custom_components` directory of y
 
 If device login is disabled, enable it in ChatGPT security settings. Business, Enterprise, and Edu workspaces may require an administrator to enable it.
 
-The default polling interval is five minutes. Lower intervals provide little practical benefit and increase the chance of server-side rate limiting. Change it any time under the integration's **Configure** option.
+The default usage polling interval is five minutes. Lower intervals provide little practical benefit and increase the chance of server-side rate limiting. Change it any time under the integration's **Configure** option. Aggregate profile statistics are fetched independently at most once per hour. A temporary profile-endpoint failure does not interrupt usage-limit updates; the last successful statistics remain available and are retried automatically.
 
 ## Entities
 
@@ -101,6 +108,23 @@ Each configured ChatGPT workspace creates one device with the following entities
 | Credit overage limit reached | Binary sensor | Whether OpenAI explicitly reports that the credit overage limit was reached |
 | Spend limit reached | Binary sensor | Spend control currently blocking requests |
 
+The optional aggregate profile endpoint adds these sensors when OpenAI returns
+the corresponding values:
+
+| Entity | Description |
+| --- | --- |
+| Lifetime tokens / peak daily tokens | Aggregate token activity and highest reported daily value |
+| Current streak / longest streak | Consecutive activity days |
+| Total threads | Aggregate number of Codex threads |
+| Longest running turn | Longest reported turn duration |
+| Fast mode usage | Share of activity using Fast mode |
+| Total skill uses / unique skills used | Aggregate skill activity |
+| Most used reasoning effort / share | Most frequent reasoning-effort level and its percentage |
+
+These are account-level activity statistics, not API billing meters. They may
+cover activity from several Codex clients connected to the same ChatGPT
+workspace and can differ from values shown by API-key billing dashboards.
+
 Additional per-feature limits (for example image generation), code-review limits, and unknown main-limit durations are discovered dynamically and added as extra sensors when OpenAI reports them. Dynamic windows are labelled by their actual duration rather than by their backend `primary` or `secondary` position.
 
 The integration only reads usage data. It does not redeem available resets or perform any other account-changing API action.
@@ -117,7 +141,7 @@ The compact and detailed examples each contain one self-contained [`custom:butto
 
 Before saving either custom card, replace every example entity ID under `variables` with the corresponding ID from **Developer Tools → States**. Home Assistant derives entity IDs from the device and translated entity names, so IDs can differ by language and can include an account-specific suffix when multiple workspaces are configured. Current `button-card` versions automatically track the entities used by the JavaScript templates, so every ID only needs to be replaced once.
 
-Some plans do not report a five-hour window, credits, or spend controls. The custom cards handle those entities being `unavailable` and label the missing values as not reported.
+OpenAI may omit the five-hour window, profile statistics, credits, or spend controls. The custom cards handle those entities being `unavailable` and label the missing values as currently not reported. The detailed example includes a compact selection of the new profile statistics; the native-card example lists all of them.
 
 ## Security
 
@@ -140,10 +164,11 @@ The implementation follows the official open-source Codex client:
 - Device authorization: `auth.openai.com/api/accounts/deviceauth/*`
 - OAuth refresh: `auth.openai.com/oauth/token`
 - Usage: `chatgpt.com/backend-api/wham/usage`
+- Aggregate profile statistics: `chatgpt.com/backend-api/wham/profiles/me`
 
 The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_components/codex_usage/api.py). Rate-limit windows are classified from `limit_window_seconds`, matching the current official Codex client's behavior, so their meaning does not depend on whether OpenAI places them in `primary_window` or `secondary_window`.
 
-`chatgpt.com/backend-api/wham/usage` is undocumented and not a published, stable API, and authorization reuses the Codex CLI's public OAuth `client_id` rather than one issued specifically to this project — the same pattern other community Codex tools use, and something OpenAI neither documents nor explicitly prohibits for third parties. OpenAI could change or restrict this at any time without notice; there's no official endorsement or guarantee of long-term stability.
+The ChatGPT backend endpoints used here are undocumented and are not published, stable APIs. Authorization also reuses the Codex CLI's public OAuth `client_id` rather than one issued specifically to this project — the same pattern other community Codex tools use, and something OpenAI neither documents nor explicitly prohibits for third parties. OpenAI could change or restrict this at any time without notice; there's no official endorsement or guarantee of long-term stability.
 
 ## Troubleshooting
 
@@ -152,7 +177,9 @@ The API contract is isolated in [`custom_components/codex_usage/api.py`](custom_
 | "Device-code login is disabled" during setup | Device login disabled for the account/workspace | Enable it in ChatGPT security settings, or ask a workspace administrator |
 | "Unable to connect to OpenAI" | Outbound HTTPS blocked, or OpenAI temporarily unreachable | Check firewall/DNS to `auth.openai.com` and `chatgpt.com`, retry later |
 | Integration shows "Reauthenticate" | The refresh token was revoked or expired | Click the notification and repeat the device-code flow |
-| Some sensors are `unavailable` | OpenAI did not return that field or rate-limit window for your plan | Expected; not every plan reports a five-hour window, credits, or spend controls |
+| 5-hour sensors are `unavailable`, but weekly usage works | OpenAI currently returned only the weekly rate-limit window | Expected; the integration never substitutes weekly values into 5-hour entities |
+| Profile-statistic sensors are `unavailable` | OpenAI did not return the profile endpoint or that individual statistic | Usage limits continue independently; retry occurs automatically |
+| Credit or spending sensors are `unavailable` | OpenAI did not return those optional fields | Expected for accounts without these features |
 
 Diagnostics (**Settings → Devices & services → Codex Usage → Download diagnostics**) redact all tokens, account IDs, user IDs, and email addresses before download — safe to attach to a bug report.
 

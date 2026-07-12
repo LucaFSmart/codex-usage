@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## 0.4.0 - 2026-07-13
+
+- Add 11 optional, read-only aggregate profile-statistic sensors for lifetime
+  and peak token activity, streaks, threads, longest turn duration, Fast mode,
+  skill usage, and reasoning-effort distribution.
+- Fetch aggregate profile statistics independently at most once per hour while
+  preserving the configurable usage polling interval.
+- Isolate optional profile-endpoint failures from rate-limit updates, retain
+  the last successful profile values, and retry temporary failures after 15
+  minutes.
+- Extend redacted diagnostics with profile availability, last-success time,
+  and an error class that contains no response or identity data.
+- Update the detailed and native dashboard examples, English and German entity
+  names, icons, README, troubleshooting guidance, and integration smoke test.
+- Preserve compatibility with current weekly-only rate-limit responses while
+  adding the newly available profile aggregates; no missing five-hour values
+  are inferred or copied from the weekly window.
+
+This is a backward-compatible feature release. Update through HACS or replace
+the integration files manually, then restart Home Assistant.
+
 ## 0.3.2 - 2026-07-12
 
 - Add compact and detailed `custom:button-card` 7.0+ examples with generic,
