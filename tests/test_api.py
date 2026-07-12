@@ -376,6 +376,6 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.3.1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.3.2",
         "X-OpenAI-Fedramp": "true",
     }
