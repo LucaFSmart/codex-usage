@@ -3,11 +3,11 @@
   "name": "Codex Usage",
   "codeowners": ["@LucaFSmart"],
   "config_flow": true,
-  "dependencies": ["http", "lovelace"],
+  "dependencies": ["http", "lovelace", "websocket_api"],
   "documentation": "https://github.com/LucaFSmart/codex-usage",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/LucaFSmart/codex-usage/issues",
   "requirements": [],
-  "version": "0.4.0"
+  "version": "0.5.0"
 }

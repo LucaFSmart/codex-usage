@@ -3,7 +3,9 @@ import "./codex-usage-card";
 const metadata = {
   type: "codex-usage-card",
   name: "Codex Usage Card",
-  description: "Displays Codex usage data.",
+  description: "Adaptive multi-account Codex usage overview.",
+  preview: true,
+  documentationURL: "https://github.com/lucasscoded/Codex-Usage#dashboard-card",
 };
 
 window.customCards ??= [];

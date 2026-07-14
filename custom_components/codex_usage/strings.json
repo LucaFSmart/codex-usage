@@ -15,6 +15,11 @@
         "title": "Reconnect OpenAI Codex",
         "description": "1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit.",
         "data": {"confirm": "I completed authorization"}
+      },
+      "workspace": {
+        "title": "Select a ChatGPT workspace",
+        "description": "Choose the workspace this Home Assistant entry should monitor.",
+        "data": {"account_id": "Workspace"}
       }
     },
     "error": {

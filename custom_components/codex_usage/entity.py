@@ -21,7 +21,7 @@ class CodexUsageEntity(CoordinatorEntity[CodexUsageCoordinator]):
         identity = entry.unique_id or account_id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, identity)},
-            name=f"Codex Usage ({account_id})",
+            name=entry.title or "Codex Usage",
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="OpenAI",
         )

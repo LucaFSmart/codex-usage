@@ -19,6 +19,7 @@ from typing import Any
 import aiohttp
 
 from .const import (
+    ACCOUNTS_API_URL,
     DEVICE_CODE_URL,
     DEVICE_TOKEN_URL,
     DEVICE_VERIFICATION_URL,
@@ -26,11 +27,12 @@ from .const import (
     OAUTH_DEVICE_REDIRECT_URI,
     OAUTH_TOKEN_URL,
     PROFILE_API_URL,
+    RESET_CREDITS_API_URL,
     USAGE_API_URL,
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.4.0"
+USER_AGENT = "HomeAssistant-CodexUsage/0.5.0"
 
 
 class CodexApiError(Exception):
@@ -47,6 +49,10 @@ class CodexConnectionError(CodexApiError):
 
 class CodexProfileUnavailable(CodexApiError):
     """The optional profile statistics endpoint is unavailable."""
+
+
+class CodexOptionalEndpointUnavailable(CodexApiError):
+    """An optional read-only Codex endpoint is unavailable."""
 
 
 class DeviceAuthorizationPending(CodexApiError):
@@ -181,7 +187,7 @@ class CodexUsageData:
     credits: CreditStatus | None
     spend_limit: SpendLimit | None
     spend_limit_reached: bool | None
-    rate_limit_reached_type: str | None
+    blocker_reason: str | None
     available_reset_credits: int | None
 
     def _main_window(self, duration_key: str) -> RateLimitWindow | None:
@@ -220,6 +226,34 @@ class CodexProfileStats:
     unique_skills_used: int | None
     most_used_reasoning_effort: str | None
     most_used_reasoning_effort_percentage: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class AvailableAccount:
+    """One ChatGPT workspace available to the authenticated user."""
+
+    account_id: str
+    name: str | None
+    structure: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResetCredit:
+    """Privacy-safe read-only reset-credit metadata."""
+
+    reset_type: str
+    status: str
+    granted_at: datetime | None
+    expires_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResetCredits:
+    """Aggregated reset-credit status."""
+
+    available_count: int
+    total_earned_count: int | None
+    credits: tuple[ResetCredit, ...]
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
@@ -282,8 +316,12 @@ def credentials_from_token_response(
         refresh_token=refresh_token,
         id_token=id_token,
         expires_at=claims["expires_at"],
-        account_id=claims["account_id"],
-        user_id=str(claims["user_id"]) if claims["user_id"] else None,
+        account_id=previous.account_id if previous else claims["account_id"],
+        user_id=(
+            str(claims["user_id"])
+            if claims["user_id"]
+            else (previous.user_id if previous else None)
+        ),
         email=str(claims["email"]) if claims["email"] else None,
         plan_type=str(claims["plan_type"]) if claims["plan_type"] else None,
         fedramp=claims["fedramp"],
@@ -295,6 +333,16 @@ def _timestamp(value: Any) -> datetime | None:
         return datetime.fromtimestamp(float(value), tz=UTC) if value is not None else None
     except ValueError, TypeError, OSError:
         return None
+
+
+def _date_time(value: Any) -> datetime | None:
+    """Parse an epoch or ISO timestamp without raising."""
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
+        except ValueError:
+            return None
+    return _timestamp(value)
 
 
 def _decimal(value: Any) -> Decimal | None:
@@ -323,8 +371,15 @@ def _non_negative_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
+def _positive_int(value: Any) -> int | None:
+    """Return a positive backend integer without coercing booleans or strings."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
 def _percentage(value: Any) -> float | None:
     """Return a finite percentage in the inclusive 0..100 range."""
+    if isinstance(value, bool):
+        return None
     result = _float(value)
     return result if result is not None and 0 <= result <= 100 else None
 
@@ -333,11 +388,10 @@ def _window(payload: Any) -> RateLimitWindow | None:
     if not isinstance(payload, dict) or payload.get("used_percent") is None:
         return None
     seconds = payload.get("limit_window_seconds")
-    try:
-        seconds_value = int(seconds) if seconds is not None else None
-    except TypeError, ValueError:
+    seconds_value = _positive_int(seconds) if seconds is not None else None
+    if seconds is not None and seconds_value is None:
         return None
-    used_percent = _float(payload["used_percent"])
+    used_percent = _percentage(payload["used_percent"])
     if used_percent is None:
         return None
     minutes = (
@@ -352,13 +406,15 @@ def _window(payload: Any) -> RateLimitWindow | None:
 
 def _rate_limit(limit_id: str, name: str, payload: Any) -> RateLimit:
     details = payload if isinstance(payload, dict) else {}
+    allowed = details.get("allowed") if isinstance(details.get("allowed"), bool) else None
+    reported_reached = (
+        details.get("limit_reached") if isinstance(details.get("limit_reached"), bool) else None
+    )
     return RateLimit(
         limit_id=limit_id,
         name=name,
-        allowed=details.get("allowed") if isinstance(details.get("allowed"), bool) else None,
-        limit_reached=(
-            details.get("limit_reached") if isinstance(details.get("limit_reached"), bool) else None
-        ),
+        allowed=allowed,
+        limit_reached=True if allowed is False else reported_reached,
         primary=_window(details.get("primary_window")),
         secondary=_window(details.get("secondary_window")),
     )
@@ -370,11 +426,14 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     additional: list[RateLimit] = []
 
     for position, window in main.windows:
-        if window.duration_key in ("five_hour", "weekly", "unknown"):
+        if window.duration_key in ("five_hour", "weekly"):
             continue
+        duration_id = (
+            f"unknown_{position}" if window.duration_key == "unknown" else window.duration_key
+        )
         additional.append(
             RateLimit(
-                limit_id=f"codex_{window.duration_key}",
+                limit_id=f"codex_{duration_id}",
                 name="Codex",
                 allowed=main.allowed,
                 limit_reached=main.limit_reached,
@@ -423,13 +482,16 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 limit=_decimal(item.get("limit")),
                 used=_decimal(item.get("used")),
                 remaining=_decimal(item.get("remaining")),
-                used_percent=_float(item.get("used_percent")),
-                remaining_percent=_float(item.get("remaining_percent")),
+                used_percent=_percentage(item.get("used_percent")),
+                remaining_percent=_percentage(item.get("remaining_percent")),
                 resets_at=_timestamp(item.get("reset_at")),
             )
 
     reached = payload.get("rate_limit_reached_type")
     reached_type = reached.get("type") if isinstance(reached, dict) else None
+    blocker_reason = _blocker_reason(reached_type)
+    if blocker_reason is None and main.limit_reached is True:
+        blocker_reason = "usage_limit"
     reset_credits_payload = payload.get("rate_limit_reset_credits")
     available_reset_credits = (
         _non_negative_int(reset_credits_payload.get("available_count"))
@@ -443,9 +505,78 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         credits=credits,
         spend_limit=spend_limit,
         spend_limit_reached=spend_reached,
-        rate_limit_reached_type=str(reached_type) if reached_type else None,
+        blocker_reason=blocker_reason,
         available_reset_credits=available_reset_credits,
     )
+
+
+def _blocker_reason(value: Any) -> str | None:
+    """Map raw backend blocker strings to a safe stable enum."""
+    if not isinstance(value, str) or not value:
+        return None
+    normalized = value.casefold()
+    if "spend" in normalized:
+        return "spend"
+    if "credit" in normalized:
+        return "credits"
+    if "usage" in normalized or "rate_limit" in normalized or "rate-limit" in normalized:
+        return "usage_limit"
+    return "unknown"
+
+
+def parse_accounts(payload: dict[str, Any]) -> tuple[AvailableAccount, ...]:
+    """Normalize supported account-check response shapes."""
+    raw_accounts = payload.get("accounts")
+    candidates: list[tuple[str | None, Any]] = []
+    if isinstance(raw_accounts, list):
+        candidates.extend((None, item) for item in raw_accounts)
+    elif isinstance(raw_accounts, dict):
+        candidates.extend((str(account_id), item) for account_id, item in raw_accounts.items())
+
+    accounts: list[AvailableAccount] = []
+    seen: set[str] = set()
+    for fallback_id, item in candidates:
+        if not isinstance(item, dict):
+            continue
+        account_id = item.get("id") or item.get("account_id") or fallback_id
+        if not isinstance(account_id, str) or not account_id or account_id in seen:
+            continue
+        seen.add(account_id)
+        name = item.get("name")
+        structure = item.get("structure")
+        accounts.append(
+            AvailableAccount(
+                account_id=account_id,
+                name=name if isinstance(name, str) and name else None,
+                structure=structure if isinstance(structure, str) and structure else None,
+            )
+        )
+    return tuple(accounts)
+
+
+def parse_reset_credits(payload: dict[str, Any]) -> ResetCredits:
+    """Normalize reset-credit metadata and discard private descriptions and IDs."""
+    available_count = _non_negative_int(payload.get("available_count")) or 0
+    total_earned_count = _non_negative_int(payload.get("total_earned_count"))
+    credits: list[ResetCredit] = []
+    raw_credits = payload.get("credits")
+    if isinstance(raw_credits, list):
+        for item in raw_credits:
+            if not isinstance(item, dict):
+                continue
+            reset_type = item.get("reset_type")
+            status = item.get("status")
+            if not isinstance(reset_type, str) or not isinstance(status, str):
+                continue
+            credits.append(
+                ResetCredit(
+                    reset_type=reset_type,
+                    status=status,
+                    granted_at=_date_time(item.get("granted_at")),
+                    expires_at=_date_time(item.get("expires_at")),
+                )
+            )
+    return ResetCredits(available_count, total_earned_count, tuple(credits))
 
 
 def parse_profile(payload: dict[str, Any]) -> CodexProfileStats:
@@ -485,7 +616,7 @@ class CodexApiClient:
                 headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
             ) as response:
-                if response.status == 404:
+                if response.status in (403, 404):
                     raise DeviceAuthorizationUnavailable
                 if response.status >= 400:
                     raise CodexApiError(f"Device authorization failed ({response.status})")
@@ -628,6 +759,48 @@ class CodexApiClient:
         if not isinstance(payload, dict):
             raise CodexApiError("OpenAI returned an invalid profile response")
         return parse_profile(payload)
+
+    async def async_get_accounts(
+        self, credentials: CodexCredentials
+    ) -> tuple[AvailableAccount, ...]:
+        """Fetch the workspaces available to the authenticated user."""
+        payload = await self._async_readonly_request(ACCOUNTS_API_URL, credentials)
+        return parse_accounts(payload)
+
+    async def async_get_reset_credits(self, credentials: CodexCredentials) -> ResetCredits:
+        """Fetch read-only reset-credit metadata."""
+        payload = await self._async_readonly_request(RESET_CREDITS_API_URL, credentials)
+        return parse_reset_credits(payload)
+
+    async def _async_readonly_request(
+        self, url: str, credentials: CodexCredentials
+    ) -> dict[str, Any]:
+        headers = {
+            "Authorization": f"Bearer {credentials.access_token}",
+            "ChatGPT-Account-Id": credentials.account_id,
+            "User-Agent": USER_AGENT,
+            "Cache-Control": "no-store",
+        }
+        if credentials.fedramp:
+            headers["X-OpenAI-Fedramp"] = "true"
+        try:
+            async with self._session.get(url, headers=headers, timeout=REQUEST_TIMEOUT) as response:
+                if response.status in (403, 404):
+                    raise CodexOptionalEndpointUnavailable
+                if response.status == 401:
+                    raise CodexAuthenticationError("OpenAI rejected the read-only request")
+                if response.status == 429:
+                    raise CodexApiError("OpenAI rate-limited the read-only request")
+                if response.status >= 400:
+                    raise CodexApiError(f"Codex read-only request failed ({response.status})")
+                payload = await self._async_decode_json(response)
+        except CodexOptionalEndpointUnavailable, CodexAuthenticationError, CodexApiError:
+            raise
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise CodexConnectionError from err
+        if not isinstance(payload, dict):
+            raise CodexApiError("OpenAI returned an invalid read-only response")
+        return payload
 
     async def _async_usage_request(self, credentials: CodexCredentials) -> tuple[int, Any]:
         headers = {

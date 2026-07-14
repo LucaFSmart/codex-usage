@@ -18,9 +18,11 @@ from .api import (
     CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
+    CodexOptionalEndpointUnavailable,
     CodexProfileStats,
     CodexProfileUnavailable,
     CodexUsageData,
+    ResetCredits,
 )
 from .const import (
     CONF_ACCESS_TOKEN,
@@ -49,6 +51,7 @@ class CodexCoordinatorData:
 
     usage: CodexUsageData
     profile: CodexProfileStats | None
+    reset_credits: ResetCredits | None
 
 
 def credentials_from_entry(entry: ConfigEntry) -> CodexCredentials:
@@ -76,8 +79,6 @@ def credentials_to_entry_data(credentials: CodexCredentials) -> dict[str, object
         CONF_EXPIRES_AT: values["expires_at"],
         CONF_ACCOUNT_ID: values["account_id"],
         CONF_USER_ID: values["user_id"],
-        CONF_EMAIL: values["email"],
-        CONF_PLAN_TYPE: values["plan_type"],
         CONF_FEDRAMP: values["fedramp"],
     }
 
@@ -100,6 +101,12 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         self._profile_last_success: datetime | None = None
         self._profile_available: bool | None = None
         self._profile_last_error: str | None = None
+        self._reset_credits: ResetCredits | None = None
+        self._reset_next_attempt = 0.0
+        self._reset_last_success: datetime | None = None
+        self._reset_available: bool | None = None
+        self._reset_last_error: str | None = None
+        self._last_success: datetime | None = None
         interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         super().__init__(
             hass,
@@ -125,6 +132,26 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         """Return the last profile error class without exposing response data."""
         return self._profile_last_error
 
+    @property
+    def reset_available(self) -> bool | None:
+        """Return whether reset-credit metadata is available."""
+        return self._reset_available
+
+    @property
+    def reset_last_success(self) -> datetime | None:
+        """Return the last successful reset-metadata update time."""
+        return self._reset_last_success
+
+    @property
+    def reset_last_error(self) -> str | None:
+        """Return the last safe reset-metadata error class."""
+        return self._reset_last_error
+
+    @property
+    def last_success(self) -> datetime | None:
+        """Return the last successful core usage update."""
+        return self._last_success
+
     async def _async_update_data(self) -> CodexCoordinatorData:
         try:
             data, credentials = await self.client.async_get_usage(self.credentials)
@@ -138,6 +165,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self.config_entry,
                 data={**self.config_entry.data, **credentials_to_entry_data(credentials)},
             )
+        self._last_success = datetime.now(UTC)
         now = monotonic()
         if now >= self._profile_next_attempt:
             try:
@@ -157,4 +185,24 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self._profile_last_error = None
                 self._profile_next_attempt = now + PROFILE_UPDATE_SECONDS
 
-        return CodexCoordinatorData(usage=data, profile=self._profile_data)
+        if now >= self._reset_next_attempt:
+            try:
+                self._reset_credits = await self.client.async_get_reset_credits(self.credentials)
+            except CodexOptionalEndpointUnavailable as err:
+                self._reset_available = False
+                self._reset_last_error = type(err).__name__
+                self._reset_next_attempt = now + PROFILE_UPDATE_SECONDS
+            except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
+                self._reset_last_error = type(err).__name__
+                self._reset_next_attempt = now + PROFILE_RETRY_SECONDS
+            else:
+                self._reset_available = True
+                self._reset_last_success = datetime.now(UTC)
+                self._reset_last_error = None
+                self._reset_next_attempt = now + PROFILE_UPDATE_SECONDS
+
+        return CodexCoordinatorData(
+            usage=data,
+            profile=self._profile_data,
+            reset_credits=self._reset_credits,
+        )

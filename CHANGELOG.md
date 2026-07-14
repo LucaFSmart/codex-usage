@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.0 - 2026-07-15
+
+- Add the bundled `custom:codex-usage-card` with adaptive, compact, and
+  detailed layouts, responsive Home Assistant Sections support, semantic
+  state colors, light/dark themes, keyboard focus, reduced motion, and a
+  native visual editor.
+- Add automatic multi-workspace aggregation and session-only account chips;
+  the most urgent explicitly reported state determines the overview color.
+- Replace entity-registry discovery in the card with a private, authenticated,
+  token-free `codex_usage/card_data` WebSocket snapshot. Credentials, backend
+  identities, email addresses, raw responses, roles, and internal messages are
+  never exposed to the browser.
+- Select the desired workspace during setup and preserve that selection during
+  token refresh and reauthentication.
+- Parse limits by reported capabilities rather than plan names. Preserve
+  unknown and monthly windows, validate percentages, durations, and timestamps
+  defensively, and support current and future plan labels on a best-effort
+  basis.
+- Treat only explicit backend denial or blocker signals as blocked; reaching
+  100 percent alone no longer invents a blocked account state.
+- Read optional account, profile, spending, credit, and reset-credit data on
+  isolated schedules. Temporary optional endpoint failures retain the last
+  successful safe values and do not interrupt usage updates.
+- Keep existing entity unique IDs compatible. Missing optional values now
+  remain `unknown` while the coordinator is reachable, and optional profile,
+  credit, and spend detail entities start disabled for new installations.
+- Restrict diagnostics to an explicit privacy-safe allowlist and remove legacy
+  email and token-derived plan claims during config-entry migration.
+- Remove the former Button Card and native dashboard examples; the bundled
+  card requires no separate frontend repository or card dependency.
+- Add frontend formatting, linting, type checking, unit tests, bundle freshness,
+  and responsive browser checks to CI.
+
+This release keeps the integration read-only. OAuth device authorization and
+token refresh remain the only state-changing HTTP requests.
+
 ## 0.4.0 - 2026-07-13
 
 - Add 11 optional, read-only aggregate profile-statistic sensors for lifetime

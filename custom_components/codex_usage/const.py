@@ -19,6 +19,8 @@ OAUTH_TOKEN_URL: Final = f"{OAUTH_ISSUER}/oauth/token"
 OAUTH_DEVICE_REDIRECT_URI: Final = f"{OAUTH_ISSUER}/deviceauth/callback"
 USAGE_API_URL: Final = "https://chatgpt.com/backend-api/wham/usage"
 PROFILE_API_URL: Final = "https://chatgpt.com/backend-api/wham/profiles/me"
+ACCOUNTS_API_URL: Final = "https://chatgpt.com/backend-api/wham/accounts/check"
+RESET_CREDITS_API_URL: Final = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
 
 DEFAULT_UPDATE_INTERVAL: Final = 300
 MIN_UPDATE_INTERVAL: Final = 60

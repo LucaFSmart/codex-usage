@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import voluptuous as vol
@@ -10,16 +11,19 @@ from homeassistant.core import callback
 from homeassistant.helpers import aiohttp_client
 
 from .api import (
+    AvailableAccount,
     CodexApiClient,
     CodexApiError,
     CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
+    CodexOptionalEndpointUnavailable,
     DeviceAuthorizationPending,
     DeviceAuthorizationUnavailable,
     DeviceCode,
 )
 from .const import (
+    CONF_ACCOUNT_ID,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
@@ -29,14 +33,33 @@ from .const import (
 from .coordinator import credentials_to_entry_data
 
 
+def workspace_choices(accounts: tuple[AvailableAccount, ...]) -> dict[str, str]:
+    """Build private-value, user-friendly workspace selector choices."""
+    choices: dict[str, str] = {}
+    for index, account in enumerate(accounts, start=1):
+        label = account.name or f"Workspace {index}"
+        if account.structure:
+            label = f"{label} · {account.structure}"
+        choices[account.account_id] = label
+    return choices
+
+
+def preserve_reauth_workspace(credentials: CodexCredentials, account_id: str) -> CodexCredentials:
+    """Keep the configured workspace even when account discovery is unavailable."""
+    return replace(credentials, account_id=account_id)
+
+
 class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a Codex Usage config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         self._device_code: DeviceCode | None = None
         self._reauth_entry: ConfigEntry | None = None
+        self._workspace_credentials: CodexCredentials | None = None
+        self._workspace_accounts: tuple[AvailableAccount, ...] = ()
+        self._workspace_reauth = False
 
     @property
     def _client(self) -> CodexApiClient:
@@ -66,13 +89,7 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         """Complete device authorization."""
         result = await self._async_device_form("device", user_input)
         if isinstance(result, CodexCredentials):
-            await self.async_set_unique_id(self._unique_id(result))
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=self._entry_title(result),
-                data=credentials_to_entry_data(result),
-                options={CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL},
-            )
+            return await self._async_prepare_workspace(result, reauth=False)
         return result
 
     async def _async_device_form(
@@ -85,7 +102,6 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 authorization = await self._client.async_poll_device_code(self._device_code)
                 credentials = await self._client.async_exchange_device_code(authorization)
-                _, credentials = await self._client.async_get_usage(credentials)
                 return credentials
             except DeviceAuthorizationPending:
                 errors["base"] = "authorization_pending"
@@ -122,19 +138,95 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         """Finish reauthentication."""
         result = await self._async_device_form("reauth_confirm", user_input)
         if isinstance(result, CodexCredentials):
-            entry = self._reauth_entry or self._get_reauth_entry()
-            await self.async_set_unique_id(self._unique_id(result))
-            self._abort_if_unique_id_mismatch()
-            return self.async_update_reload_and_abort(
-                entry,
-                data_updates=credentials_to_entry_data(result),
-            )
+            return await self._async_prepare_workspace(result, reauth=True)
         return result
 
-    @staticmethod
-    def _entry_title(credentials: CodexCredentials) -> str:
-        plan = f" - {credentials.plan_type}" if credentials.plan_type else ""
-        return f"Codex Usage ({credentials.account_id}{plan})"
+    async def _async_prepare_workspace(
+        self, credentials: CodexCredentials, *, reauth: bool
+    ) -> ConfigFlowResult:
+        """Discover, choose, and validate an accessible workspace."""
+        try:
+            accounts = await self._client.async_get_accounts(credentials)
+        except CodexOptionalEndpointUnavailable, CodexConnectionError, CodexApiError:
+            accounts = ()
+
+        if reauth:
+            entry = self._reauth_entry or self._get_reauth_entry()
+            existing_account = entry.data.get(CONF_ACCOUNT_ID)
+            matching = next(
+                (account for account in accounts if account.account_id == existing_account), None
+            )
+            if isinstance(existing_account, str) and existing_account:
+                return await self._async_finish_workspace(
+                    preserve_reauth_workspace(credentials, existing_account),
+                    matching.name if matching else None,
+                    reauth=True,
+                )
+
+        if len(accounts) <= 1:
+            account = accounts[0] if accounts else None
+            selected = (
+                replace(credentials, account_id=account.account_id) if account else credentials
+            )
+            return await self._async_finish_workspace(
+                selected, account.name if account else None, reauth=reauth
+            )
+
+        self._workspace_credentials = credentials
+        self._workspace_accounts = accounts
+        self._workspace_reauth = reauth
+        return await self.async_step_workspace()
+
+    async def async_step_workspace(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select one of multiple accessible workspaces."""
+        choices = workspace_choices(self._workspace_accounts)
+        if user_input is None:
+            return self.async_show_form(
+                step_id="workspace",
+                data_schema=vol.Schema({vol.Required(CONF_ACCOUNT_ID): vol.In(choices)}),
+            )
+        credentials = self._workspace_credentials
+        selected_id = user_input.get(CONF_ACCOUNT_ID)
+        account = next(
+            (item for item in self._workspace_accounts if item.account_id == selected_id), None
+        )
+        if credentials is None or account is None:
+            return self.async_abort(reason="device_flow_expired")
+        return await self._async_finish_workspace(
+            replace(credentials, account_id=account.account_id),
+            account.name,
+            reauth=self._workspace_reauth,
+        )
+
+    async def _async_finish_workspace(
+        self, credentials: CodexCredentials, name: str | None, *, reauth: bool
+    ) -> ConfigFlowResult:
+        """Validate the selected workspace and create or update the entry."""
+        try:
+            _, credentials = await self._client.async_get_usage(credentials)
+        except CodexConnectionError:
+            return self.async_abort(reason="cannot_connect")
+        except CodexAuthenticationError:
+            return self.async_abort(reason="invalid_auth")
+        except CodexApiError:
+            return self.async_abort(reason="unknown")
+
+        await self.async_set_unique_id(self._unique_id(credentials))
+        if reauth:
+            entry = self._reauth_entry or self._get_reauth_entry()
+            self._abort_if_unique_id_mismatch()
+            return self.async_update_reload_and_abort(
+                entry, data_updates=credentials_to_entry_data(credentials)
+            )
+        self._abort_if_unique_id_configured()
+        title = name or "Codex Usage"
+        return self.async_create_entry(
+            title=title,
+            data=credentials_to_entry_data(credentials),
+            options={CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL},
+        )
 
     @staticmethod
     def _unique_id(credentials: CodexCredentials) -> str:

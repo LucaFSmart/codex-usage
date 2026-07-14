@@ -26,7 +26,7 @@ class CodexBinarySensorDescription(BinarySensorEntityDescription):
 
 def _limit_reached(data: CodexUsageData) -> bool | None:
     """Return an explicit limit state without inventing data when absent."""
-    if data.rate_limit_reached_type:
+    if data.blocker_reason:
         return True
     states = (
         data.main_limit.limit_reached,
@@ -46,21 +46,25 @@ BINARY_SENSORS: tuple[CodexBinarySensorDescription, ...] = (
     CodexBinarySensorDescription(
         key="credits_available",
         translation_key="credits_available",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.credits.has_credits if data.credits else None,
     ),
     CodexBinarySensorDescription(
         key="credits_unlimited",
         translation_key="credits_unlimited",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.credits.unlimited if data.credits else None,
     ),
     CodexBinarySensorDescription(
         key="credits_overage_limit_reached",
         translation_key="credits_overage_limit_reached",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.credits.overage_limit_reached if data.credits else None,
     ),
     CodexBinarySensorDescription(
         key="spend_limit_reached",
         translation_key="spend_limit_reached",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit_reached,
     ),
 )
@@ -97,4 +101,4 @@ class CodexUsageBinarySensor(CodexUsageEntity, BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.is_on is not None
+        return super().available

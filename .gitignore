@@ -8,5 +8,6 @@ htmlcov/
 config/
 tmp/
 frontend/node_modules/
+frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/

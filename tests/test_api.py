@@ -11,12 +11,17 @@ from decimal import Decimal
 import pytest
 
 from custom_components.codex_usage.api import (
+    AvailableAccount,
     CodexApiClient,
     CodexAuthenticationError,
     CodexCredentials,
+    CodexOptionalEndpointUnavailable,
     CodexProfileUnavailable,
+    ResetCredits,
     credentials_from_token_response,
+    parse_accounts,
     parse_profile,
+    parse_reset_credits,
     parse_usage,
 )
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS, _limit_reached
@@ -131,6 +136,28 @@ def test_parse_sparse_usage_response() -> None:
     assert data.additional_limits == ()
     assert data.credits is None
     assert data.spend_limit is None
+
+
+@pytest.mark.parametrize(
+    "plan", ["free", "go", "plus", "pro", "business", "enterprise", "edu", "future-plan"]
+)
+def test_plan_labels_never_control_reported_capabilities(plan: str) -> None:
+    data = parse_usage(
+        {
+            "plan_type": plan,
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 23,
+                    "limit_window_seconds": 2_592_000,
+                }
+            },
+        }
+    )
+
+    assert data.plan_type == plan
+    assert data.main_limit.primary is not None
+    assert data.main_limit.primary.window_minutes == 43_200
+    assert data.additional_limits[0].limit_id == "codex_43200m"
 
 
 def test_weekly_only_primary_window_is_resolved_by_duration() -> None:
@@ -297,6 +324,103 @@ def test_parse_non_finite_numbers_as_unavailable() -> None:
     assert data.main_limit.primary is None
 
 
+@pytest.mark.parametrize("value", [-1, 101, True, "Infinity", "NaN"])
+def test_rate_limit_percentages_are_bounded(value: object) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": value,
+                    "limit_window_seconds": 604_800,
+                }
+            }
+        }
+    )
+
+    assert data.main_limit.primary is None
+
+
+def test_unknown_duration_main_window_is_preserved() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": None,
+                }
+            }
+        }
+    )
+
+    assert data.main_limit.primary is not None
+    assert data.main_limit.primary.duration_key == "unknown"
+    assert any(limit.limit_id == "codex_unknown_primary" for limit in data.additional_limits)
+
+
+def test_allowed_false_sets_safe_blocker_reason() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": False},
+            "rate_limit_reached_type": {"type": "workspace_spend_limit_reached"},
+        }
+    )
+
+    assert _limit_reached(data) is True
+    assert data.blocker_reason == "spend"
+
+
+def test_parse_accounts_accepts_list_and_map_shapes() -> None:
+    list_result = parse_accounts(
+        {
+            "accounts": [
+                {"id": "workspace-a", "name": "Alpha", "structure": "personal"},
+                {"account_id": "workspace-b", "name": "Beta", "structure": "workspace"},
+            ]
+        }
+    )
+    map_result = parse_accounts(
+        {"accounts": {"workspace-c": {"name": "Gamma", "structure": "business"}}}
+    )
+
+    assert list_result == (
+        AvailableAccount("workspace-a", "Alpha", "personal"),
+        AvailableAccount("workspace-b", "Beta", "workspace"),
+    )
+    assert map_result == (AvailableAccount("workspace-c", "Gamma", "business"),)
+
+
+def test_parse_reset_credits_discards_private_fields() -> None:
+    result = parse_reset_credits(
+        {
+            "available_count": 1,
+            "total_earned_count": 2,
+            "credits": [
+                {
+                    "id": "private-credit-id",
+                    "reset_type": "weekly",
+                    "status": "available",
+                    "granted_at": "2026-07-01T00:00:00Z",
+                    "expires_at": "2026-08-01T00:00:00Z",
+                    "title": "Private title",
+                    "description": "Private description",
+                }
+            ],
+        }
+    )
+
+    assert isinstance(result, ResetCredits)
+    assert result.available_count == 1
+    assert result.total_earned_count == 2
+    assert result.credits[0].reset_type == "weekly"
+    assert result.credits[0].expires_at == datetime(2026, 8, 1, tzinfo=UTC)
+    assert set(result.credits[0].__dataclass_fields__) == {
+        "reset_type",
+        "status",
+        "granted_at",
+        "expires_at",
+    }
+
+
 def test_credentials_extract_workspace_and_user() -> None:
     expires_at = int(time.time()) + 3600
     credentials = credentials_from_token_response(
@@ -379,7 +503,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.4.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
         "X-OpenAI-Fedramp": "true",
     }
 
@@ -477,10 +601,65 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.4.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
+
+
+def test_account_request_uses_read_only_endpoint() -> None:
+    session = _FakeSession(
+        _FakeResponse(200, {"accounts": [{"id": "workspace-1", "name": "Alpha"}]})
+    )
+    credentials = CodexCredentials(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="id-token",
+        expires_at=time.time() + 3600,
+        account_id="workspace-1",
+    )
+
+    accounts = asyncio.run(CodexApiClient(session).async_get_accounts(credentials))  # type: ignore[arg-type]
+
+    assert accounts == (AvailableAccount("workspace-1", "Alpha", None),)
+    assert session.last_url == "https://chatgpt.com/backend-api/wham/accounts/check"
+    assert session.last_headers == {
+        "Authorization": "Bearer access-token",
+        "ChatGPT-Account-Id": "workspace-1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
+        "Cache-Control": "no-store",
+    }
+
+
+def test_reset_credit_request_uses_read_only_endpoint() -> None:
+    session = _FakeSession(_FakeResponse(200, {"available_count": 2, "credits": []}))
+    credentials = CodexCredentials(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="id-token",
+        expires_at=time.time() + 3600,
+        account_id="workspace-1",
+    )
+
+    result = asyncio.run(CodexApiClient(session).async_get_reset_credits(credentials))  # type: ignore[arg-type]
+
+    assert result.available_count == 2
+    assert session.last_url.endswith("/wham/rate-limit-reset-credits")
+
+
+@pytest.mark.parametrize("method", ["async_get_accounts", "async_get_reset_credits"])
+def test_optional_read_endpoints_report_unavailable(method: str) -> None:
+    session = _FakeSession(_FakeResponse(404, {"detail": "not available"}))
+    credentials = CodexCredentials(
+        access_token="access-token",
+        refresh_token="refresh-token",
+        id_token="id-token",
+        expires_at=time.time() + 3600,
+        account_id="workspace-1",
+    )
+
+    with pytest.raises(CodexOptionalEndpointUnavailable):
+        asyncio.run(getattr(CodexApiClient(session), method)(credentials))  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("status", [403, 404])

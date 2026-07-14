@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "dev:visual": "vite --host 127.0.0.1 --port 4173 --config vite.visual.config.ts",
     "check:bundle": "npm run build && git diff --exit-code -- ../custom_components/codex_usage/frontend/codex-usage-card.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:visual": "playwright test"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.61.1",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.7.0",
     "happy-dom": "20.10.6",
     "prettier": "3.9.5",

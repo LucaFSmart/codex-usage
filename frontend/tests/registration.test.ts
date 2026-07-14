@@ -10,11 +10,14 @@ describe("card registration", () => {
 
     const matchingCards = window.customCards.filter((card) => card.type === "codex-usage-card");
     expect(matchingCards).toHaveLength(1);
-    expect(matchingCards[0]).toEqual({
-      type: "codex-usage-card",
-      name: "Codex Usage Card",
-      description: expect.any(String),
-    });
+    expect(matchingCards[0]).toEqual(
+      expect.objectContaining({
+        type: "codex-usage-card",
+        name: "Codex Usage Card",
+        description: expect.any(String),
+        documentationURL: expect.any(String),
+      }),
+    );
 
     // @ts-expect-error Vite resolves query-suffixed modules at runtime.
     await import("../src/index?duplicate-registration");

@@ -10,7 +10,7 @@ describe("normalizeConfig", () => {
   it("fills all defaults for a minimal Lovelace config", () => {
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(DEFAULT_CONFIG);
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(
-      expect.objectContaining({ account_mode: "auto", display_mode: "detailed" }),
+      expect.objectContaining({ account_mode: "auto", display_mode: "adaptive" }),
     );
   });
 
@@ -41,7 +41,7 @@ describe("normalizeConfig", () => {
       normalizeConfig({
         type: "custom:codex-usage-card",
         account_mode: "single",
-        device_id: "device-a",
+        selected_entry_id: "entry-a",
         allow_account_switching: false,
         display_mode: "compact",
         title: "Team usage",
@@ -49,7 +49,7 @@ describe("normalizeConfig", () => {
     ).toEqual(
       expect.objectContaining({
         account_mode: "single",
-        device_id: "device-a",
+        selected_entry_id: "entry-a",
         allow_account_switching: false,
         display_mode: "compact",
         title: "Team usage",
@@ -60,7 +60,7 @@ describe("normalizeConfig", () => {
       normalizeConfig({
         type: "custom:codex-usage-card",
         account_mode: "sometimes",
-        device_id: 42,
+        selected_entry_id: 42,
         allow_account_switching: "yes",
         display_mode: "huge",
         title: false,
@@ -68,13 +68,13 @@ describe("normalizeConfig", () => {
     ).toEqual(DEFAULT_CONFIG);
   });
 
-  it("deduplicates valid included device IDs", () => {
+  it("deduplicates valid included entry IDs", () => {
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        included_device_ids: ["device-a", "device-a", 42, "", "device-b"],
-      }).included_device_ids,
-    ).toEqual(["device-a", "device-b"]);
+        included_entry_ids: ["entry-a", "entry-a", 42, "", "entry-b"],
+      }).included_entry_ids,
+    ).toEqual(["entry-a", "entry-b"]);
   });
 
   it.each([
@@ -94,14 +94,14 @@ describe("normalizeConfig", () => {
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 60, critical: 60, blocked: 100 },
+        thresholds: { elevated: 60, critical: 60 },
       }).thresholds,
     ).toEqual(DEFAULT_THRESHOLDS);
 
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 10, critical: Number.POSITIVE_INFINITY, blocked: 90 },
+        thresholds: { elevated: 10, critical: Number.POSITIVE_INFINITY },
       }).thresholds,
     ).toEqual(DEFAULT_THRESHOLDS);
   });
@@ -110,9 +110,9 @@ describe("normalizeConfig", () => {
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 0, critical: 99, blocked: 100 },
+        thresholds: { elevated: 0, critical: 99 },
       }).thresholds,
-    ).toEqual({ elevated: 0, critical: 99, blocked: 100 });
+    ).toEqual({ elevated: 0, critical: 99 });
   });
 
   it("validates every configured color and falls back individually", () => {
@@ -133,17 +133,33 @@ describe("normalizeConfig", () => {
   it("does not mutate or retain nested references from the input", () => {
     const input = {
       type: "custom:codex-usage-card",
-      included_device_ids: ["device-a", "device-a"],
+      included_entry_ids: ["entry-a", "entry-a"],
       sections: { profile: { visible: false, values: { sessions: false } } },
       appearance: { card_radius: 30 },
     };
     const before = structuredClone(input);
 
     const normalized = normalizeConfig(input);
-    normalized.included_device_ids.push("device-b");
+    normalized.included_entry_ids.push("entry-b");
     normalized.sections.profile.values.sessions = true;
     normalized.appearance.card_radius = 1;
 
     expect(input).toEqual(before);
+  });
+
+  it("falls back safely when input cloning or CSS validation throws", () => {
+    expect(
+      normalizeConfig({ type: "custom:codex-usage-card", unsupported: () => undefined }),
+    ).toEqual(DEFAULT_CONFIG);
+
+    vi.stubGlobal("CSS", {
+      supports: vi.fn(() => {
+        throw new Error("unsupported");
+      }),
+    });
+    expect(
+      normalizeConfig({ type: "custom:codex-usage-card", colors: { normal: "broken" } }).colors
+        .normal,
+    ).toBe(DEFAULT_COLORS.normal);
   });
 });

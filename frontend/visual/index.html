@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex Usage Card visual test</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, sans-serif;
+        background: var(--primary-background-color);
+        color: var(--primary-text-color);
+      }
+      body.light {
+        --primary-background-color: #f3f5f7;
+        --secondary-background-color: #e7ebef;
+        --card-background-color: #fff;
+        --ha-card-background: #fff;
+        --primary-text-color: #15202b;
+        --secondary-text-color: #5d6874;
+        --divider-color: #cbd2d9;
+      }
+      body.dark {
+        --primary-background-color: #0d1115;
+        --secondary-background-color: #172129;
+        --card-background-color: #111b22;
+        --ha-card-background: #111b22;
+        --primary-text-color: #f4f7fa;
+        --secondary-text-color: #9eb0bd;
+        --divider-color: #314550;
+      }
+      codex-usage-card {
+        display: block;
+        max-width: 1100px;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module" src="/src/visual-harness.ts"></script>
+  </body>
+</html>

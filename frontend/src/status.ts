@@ -16,7 +16,6 @@ export function evaluateLimit(
 ): Severity {
   if (explicitlyBlocked) return "blocked";
   if (typeof usage !== "number" || !Number.isFinite(usage)) return "missing";
-  if (usage >= thresholds.blocked) return "blocked";
   if (usage >= thresholds.critical) return "critical";
   if (usage >= thresholds.elevated) return "elevated";
   return "normal";

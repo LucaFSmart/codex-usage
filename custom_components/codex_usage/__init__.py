@@ -10,15 +10,42 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
+from homeassistant.helpers.typing import ConfigType
 
 from .api import CodexApiClient
+from .card_data import EVENT_CARD_DATA_UPDATED, async_register_card_data
 from .card_registration import CodexUsageCardRegistration
-from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN, PLATFORMS
+from .const import (
+    CONF_EMAIL,
+    CONF_PLAN_TYPE,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+    PLATFORMS,
+)
 from .coordinator import CodexUsageCoordinator
 
 type CodexUsageConfigEntry = ConfigEntry[CodexUsageCoordinator]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the bundled card's internal read-only data command."""
+    hass.data.setdefault(DOMAIN, {}).setdefault("entries", {})
+    async_register_card_data(hass)
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Remove legacy identity claims while preserving stable entry identity."""
+    if entry.version >= 2:
+        return True
+    data = dict(entry.data)
+    data.pop(CONF_EMAIL, None)
+    data.pop(CONF_PLAN_TYPE, None)
+    hass.config_entries.async_update_entry(entry, data=data, version=2)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> bool:
@@ -28,9 +55,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
+    domain_data.setdefault("entries", {})[entry.entry_id] = (entry, coordinator)
+    entry.async_on_unload(
+        coordinator.async_add_listener(lambda: hass.bus.async_fire(EVENT_CARD_DATA_UPDATED))
+    )
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
-    domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
+    domain_data = hass.data.setdefault(DOMAIN, {})
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
     async with lifecycle_lock:
         loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())
@@ -53,6 +85,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
         return False
 
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
+    domain_data.setdefault("entries", {}).pop(entry.entry_id, None)
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
     async with lifecycle_lock:
         loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())

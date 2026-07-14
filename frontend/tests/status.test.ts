@@ -12,7 +12,7 @@ describe("evaluateLimit", () => {
     [84.9, "elevated"],
     [85, "critical"],
     [99.9, "critical"],
-    [100, "blocked"],
+    [100, "critical"],
   ] as const)("evaluates %s as %s at the exact default boundaries", (usage, expected) => {
     expect(evaluateLimit(usage, false, DEFAULT_THRESHOLDS)).toBe(expected);
   });

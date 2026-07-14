@@ -16,6 +16,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import PERCENTAGE, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CodexUsageConfigEntry
@@ -117,24 +118,28 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         key="credit_balance",
         translation_key="credit_balance",
         native_unit_of_measurement="credits",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.credits.balance if data.credits else None,
     ),
     CodexSensorDescription(
         key="spend_used",
         translation_key="spend_used",
         native_unit_of_measurement="credits",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit.used if data.spend_limit else None,
     ),
     CodexSensorDescription(
         key="spend_limit",
         translation_key="spend_limit",
         native_unit_of_measurement="credits",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit.limit if data.spend_limit else None,
     ),
     CodexSensorDescription(
         key="spend_remaining",
         translation_key="spend_remaining",
         native_unit_of_measurement="credits",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit.remaining if data.spend_limit else None,
     ),
     CodexSensorDescription(
@@ -142,12 +147,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         translation_key="spend_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit.used_percent if data.spend_limit else None,
     ),
     CodexSensorDescription(
         key="spend_reset",
         translation_key="spend_reset",
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.spend_limit.resets_at if data.spend_limit else None,
     ),
 )
@@ -158,6 +165,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="lifetime_tokens",
         native_unit_of_measurement="tokens",
         state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.lifetime_tokens,
     ),
     CodexProfileSensorDescription(
@@ -165,6 +173,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="peak_daily_tokens",
         native_unit_of_measurement="tokens",
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.peak_daily_tokens,
     ),
     CodexProfileSensorDescription(
@@ -172,6 +181,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="current_streak_days",
         native_unit_of_measurement=UnitOfTime.DAYS,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.current_streak_days,
     ),
     CodexProfileSensorDescription(
@@ -179,6 +189,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="longest_streak_days",
         native_unit_of_measurement=UnitOfTime.DAYS,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.longest_streak_days,
     ),
     CodexProfileSensorDescription(
@@ -186,6 +197,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="total_threads",
         native_unit_of_measurement="threads",
         state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.total_threads,
     ),
     CodexProfileSensorDescription(
@@ -194,6 +206,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.SECONDS,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.longest_running_turn_sec,
     ),
     CodexProfileSensorDescription(
@@ -202,6 +215,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.fast_mode_usage_percentage,
     ),
     CodexProfileSensorDescription(
@@ -209,6 +223,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="total_skills_used",
         native_unit_of_measurement="uses",
         state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.total_skills_used,
     ),
     CodexProfileSensorDescription(
@@ -216,11 +231,13 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="unique_skills_used",
         native_unit_of_measurement="skills",
         state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.unique_skills_used,
     ),
     CodexProfileSensorDescription(
         key="most_used_reasoning_effort",
         translation_key="most_used_reasoning_effort",
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.most_used_reasoning_effort,
     ),
     CodexProfileSensorDescription(
@@ -229,9 +246,48 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.most_used_reasoning_effort_percentage,
     ),
 )
+
+
+def _static_sensor_descriptions(
+    data: CodexUsageData, existing_unique_ids: set[str], identity: str
+) -> tuple[CodexSensorDescription, ...]:
+    """Keep legacy window entities but omit unreported windows for new entries."""
+    result: list[CodexSensorDescription] = []
+    for description in SENSORS:
+        if description.key.startswith("five_hour_"):
+            reported = data.five_hour_window is not None
+        elif description.key.startswith("weekly_"):
+            reported = data.weekly_window is not None
+        else:
+            reported = True
+        if reported or f"{identity}_{description.key}" in existing_unique_ids:
+            result.append(description)
+    return tuple(result)
+
+
+def _existing_additional_keys(
+    existing_unique_ids: set[str], identity: str
+) -> set[tuple[str, str, str]]:
+    """Recover dynamic limit entity keys from the stable legacy unique-ID shape."""
+    prefix = f"{identity}_"
+    result: set[tuple[str, str, str]] = set()
+    for unique_id in existing_unique_ids:
+        if not unique_id.startswith(prefix):
+            continue
+        remainder = unique_id.removeprefix(prefix)
+        for window_name in ("primary", "secondary"):
+            marker = f"_{window_name}_"
+            if marker not in remainder:
+                continue
+            limit_id, metric = remainder.rsplit(marker, maxsplit=1)
+            if limit_id and metric in ("usage", "remaining", "reset"):
+                result.add((limit_id, window_name, metric))
+            break
+    return result
 
 
 async def async_setup_entry(
@@ -241,10 +297,33 @@ async def async_setup_entry(
 ) -> None:
     """Set up Codex Usage sensors."""
     coordinator = entry.runtime_data
-    async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in SENSORS)
+    identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
+    registry = er.async_get(hass)
+    existing_unique_ids = {
+        item.unique_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+    descriptions = _static_sensor_descriptions(
+        coordinator.data.usage, existing_unique_ids, identity
+    )
+    async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in descriptions)
     async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
 
-    known: set[tuple[str, str, str]] = set()
+    known = _existing_additional_keys(existing_unique_ids, identity)
+    if known:
+        limit_names = {
+            limit.limit_id: limit.name for limit in coordinator.data.usage.additional_limits
+        }
+        async_add_entities(
+            CodexAdditionalLimitSensor(
+                coordinator,
+                entry,
+                limit_id,
+                limit_names.get(limit_id, limit_id.replace("_", " ").title()),
+                window_name,
+                metric,
+            )
+            for limit_id, window_name, metric in sorted(known)
+        )
 
     def discover_additional_limits() -> None:
         entities: list[CodexAdditionalLimitSensor] = []
@@ -290,7 +369,7 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.native_value is not None
+        return super().available
 
 
 class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
@@ -346,7 +425,7 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.native_value is not None
+        return super().available
 
 
 class CodexProfileSensor(CodexUsageEntity, SensorEntity):
@@ -372,4 +451,4 @@ class CodexProfileSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.native_value is not None
+        return super().available

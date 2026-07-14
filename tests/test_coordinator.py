@@ -8,6 +8,7 @@ from custom_components.codex_usage.api import (
     CodexConnectionError,
     CodexCredentials,
     CodexProfileStats,
+    ResetCredits,
     parse_usage,
 )
 from custom_components.codex_usage.coordinator import CodexUsageCoordinator
@@ -43,6 +44,8 @@ class _FakeClient:
     def __init__(self) -> None:
         self.profile_calls = 0
         self.profile_result: CodexProfileStats | Exception = _profile(10)
+        self.reset_calls = 0
+        self.reset_result: ResetCredits | Exception = ResetCredits(1, 2, ())
 
     async def async_get_usage(self, credentials: CodexCredentials):
         return parse_usage({"plan_type": "plus", "rate_limit": None}), credentials
@@ -52,6 +55,12 @@ class _FakeClient:
         if isinstance(self.profile_result, Exception):
             raise self.profile_result
         return self.profile_result
+
+    async def async_get_reset_credits(self, credentials: CodexCredentials) -> ResetCredits:
+        self.reset_calls += 1
+        if isinstance(self.reset_result, Exception):
+            raise self.reset_result
+        return self.reset_result
 
 
 def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
@@ -67,6 +76,11 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator._profile_last_success = None
     coordinator._profile_available = None
     coordinator._profile_last_error = None
+    coordinator._reset_credits = None
+    coordinator._reset_next_attempt = 0.0
+    coordinator._reset_last_success = None
+    coordinator._reset_available = None
+    coordinator._reset_last_error = None
     return coordinator
 
 
@@ -104,3 +118,37 @@ def test_profile_failure_keeps_usage_and_last_successful_profile() -> None:
     assert coordinator.profile_available is True
     assert coordinator.profile_last_error == "CodexConnectionError"
     assert coordinator._profile_next_attempt == 4_601.0
+
+
+def test_reset_metadata_is_fetched_at_start_and_then_hourly() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        first = asyncio.run(coordinator._async_update_data())
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=200.0):
+        second = asyncio.run(coordinator._async_update_data())
+    client.reset_result = ResetCredits(3, 4, ())
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=3_701.0):
+        third = asyncio.run(coordinator._async_update_data())
+
+    assert first.reset_credits is not None and first.reset_credits.available_count == 1
+    assert second.reset_credits is first.reset_credits
+    assert third.reset_credits is not None and third.reset_credits.available_count == 3
+    assert client.reset_calls == 2
+
+
+def test_reset_failure_keeps_usage_and_last_successful_metadata() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        first = asyncio.run(coordinator._async_update_data())
+    client.reset_result = CodexConnectionError()
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=3_701.0):
+        second = asyncio.run(coordinator._async_update_data())
+
+    assert second.reset_credits is first.reset_credits
+    assert coordinator.reset_available is True
+    assert coordinator.reset_last_error == "CodexConnectionError"
+    assert coordinator._reset_next_attempt == 4_601.0

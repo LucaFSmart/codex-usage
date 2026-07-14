@@ -54,7 +54,7 @@ def _fake_usage() -> CodexUsageData:
         ),
         spend_limit=None,
         spend_limit_reached=False,
-        rate_limit_reached_type=None,
+        blocker_reason=None,
         available_reset_credits=2,
     )
 
@@ -117,6 +117,10 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
             "custom_components.codex_usage.api.CodexApiClient.async_get_profile",
             return_value=_fake_profile(),
         ),
+        patch(
+            "custom_components.codex_usage.api.CodexApiClient.async_get_reset_credits",
+            return_value=None,
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -129,21 +133,22 @@ async def test_full_setup_creates_entities_and_unloads(hass, enable_custom_integ
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
     assert len(entities) == 31
 
-    def _state_for(suffix: str) -> str:
+    def _state_for(suffix: str) -> str | None:
         entity = next(e for e in entities if e.unique_id.endswith(suffix))
-        return hass.states.get(entity.entity_id).state
+        state = hass.states.get(entity.entity_id)
+        return state.state if state else None
 
     assert _state_for("_plan") == "plus"
     assert _state_for("_five_hour_usage") == "25.0"
     assert _state_for("_weekly_usage") == "40.0"
     assert _state_for("_available_reset_credits") == "2"
     assert _state_for("_limit_reached") == "off"
-    assert _state_for("_credits_available") == "on"
-    assert _state_for("_credits_overage_limit_reached") == "off"
-    assert _state_for("_spend_used") == "unavailable"
-    assert _state_for("_lifetime_tokens") == "123456"
-    assert _state_for("_total_threads") == "42"
-    assert _state_for("_most_used_reasoning_effort") == "high"
+    assert _state_for("_credits_available") is None
+    assert _state_for("_credits_overage_limit_reached") is None
+    assert _state_for("_spend_used") is None
+    assert _state_for("_lifetime_tokens") is None
+    assert _state_for("_total_threads") is None
+    assert _state_for("_most_used_reasoning_effort") is None
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
