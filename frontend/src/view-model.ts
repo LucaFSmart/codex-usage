@@ -26,8 +26,8 @@ function pace(limit: CardAccount["limits"][number], now: Date): number | null {
   if (!reset) return null;
   const started = reset.getTime() - limit.duration_seconds * 1000;
   const elapsed = ((now.getTime() - started) / (limit.duration_seconds * 1000)) * 100;
-  if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > 110) return null;
-  return limit.used_percent - Math.min(100, elapsed);
+  if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > 100) return null;
+  return limit.used_percent - elapsed;
 }
 
 function accountModel(

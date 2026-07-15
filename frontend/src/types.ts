@@ -76,6 +76,20 @@ export interface CardSpend {
   reached: boolean | null;
 }
 
+export interface CardProfile {
+  lifetime_tokens?: number | null;
+  peak_daily_tokens?: number | null;
+  current_streak_days?: number | null;
+  longest_streak_days?: number | null;
+  total_threads?: number | null;
+  longest_running_turn_sec?: number | null;
+  fast_mode_usage_percentage?: number | null;
+  total_skills_used?: number | null;
+  unique_skills_used?: number | null;
+  most_used_reasoning_effort?: string | null;
+  most_used_reasoning_effort_percentage?: number | null;
+}
+
 export interface CardAccount {
   id: string;
   name: string;
@@ -91,7 +105,7 @@ export interface CardAccount {
     total_earned: number | null;
     next_expiry: string | null;
   } | null;
-  profile: Record<string, string | number | null> | null;
+  profile: CardProfile | null;
 }
 
 export interface CardSnapshot {

@@ -14,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .api import RateLimit, RateLimitWindow
 from .const import CARD_VERSION, DOMAIN
+from .entry_title import safe_entry_title
 
 CARD_DATA_COMMAND = f"{DOMAIN}/card_data"
 EVENT_CARD_DATA_UPDATED = f"{DOMAIN}_card_data_updated"
@@ -124,7 +125,7 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
     )
     return {
         "id": entry.entry_id,
-        "name": entry.title or "Codex Usage",
+        "name": safe_entry_title(entry),
         "plan": usage.plan_type,
         "available": bool(coordinator.last_update_success),
         "updated_at": _iso(getattr(coordinator, "last_success", None)),

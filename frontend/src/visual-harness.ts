@@ -5,6 +5,7 @@ import type { CardSnapshot, HomeAssistant } from "./types";
 const query = new URLSearchParams(location.search);
 const requestedState = query.get("state") ?? "normal";
 const accountCount = Number(query.get("accounts") ?? "1");
+const displayMode = query.get("mode") ?? "detailed";
 document.body.className = query.get("theme") === "light" ? "light" : "dark";
 
 const usage =
@@ -18,7 +19,7 @@ const usage =
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.5.0",
+  integration_version: "0.5.1",
   generated_at: new Date().toISOString(),
   accounts: Array.from({ length: accountCount }, (_, index) => ({
     id: `entry-${index}`,
@@ -67,7 +68,19 @@ const snapshot: CardSnapshot = {
       reached: false,
     },
     reset_credits: { available_count: 1, total_earned: 3, next_expiry: null },
-    profile: { lifetime_tokens: 2860000000, total_threads: 340, current_streak_days: 12 },
+    profile: {
+      lifetime_tokens: 2860000000,
+      peak_daily_tokens: 184000000,
+      total_threads: 340,
+      current_streak_days: 12,
+      longest_streak_days: 29,
+      longest_running_turn_sec: 480,
+      fast_mode_usage_percentage: 12.5,
+      total_skills_used: 84,
+      unique_skills_used: 11,
+      most_used_reasoning_effort: "high",
+      most_used_reasoning_effort_percentage: 72,
+    },
   })),
 };
 
@@ -89,6 +102,6 @@ const card = document.createElement("codex-usage-card") as HTMLElement & {
   hass: HomeAssistant;
   setConfig(config: Record<string, unknown>): void;
 };
-card.setConfig({ type: "custom:codex-usage-card", display_mode: "detailed" });
+card.setConfig({ type: "custom:codex-usage-card", display_mode: displayMode });
 card.hass = hass;
 document.body.append(card);

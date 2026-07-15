@@ -2,6 +2,7 @@ import type {
   CardAccount,
   CardCredits,
   CardLimit,
+  CardProfile,
   CardSnapshot,
   CardSpend,
   HomeAssistant,
@@ -9,6 +10,23 @@ import type {
 } from "./types";
 
 const BLOCKERS: readonly SafeBlocker[] = ["spend", "credits", "usage_limit", "unknown", null];
+const PROFILE_KEYS = [
+  "lifetime_tokens",
+  "peak_daily_tokens",
+  "current_streak_days",
+  "longest_streak_days",
+  "total_threads",
+  "longest_running_turn_sec",
+  "fast_mode_usage_percentage",
+  "total_skills_used",
+  "unique_skills_used",
+  "most_used_reasoning_effort",
+  "most_used_reasoning_effort_percentage",
+] as const satisfies readonly (keyof CardProfile)[];
+const PROFILE_PERCENT_KEYS = new Set<keyof CardProfile>([
+  "fast_mode_usage_percentage",
+  "most_used_reasoning_effort_percentage",
+]);
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -31,8 +49,8 @@ function percent(value: unknown): number | null {
     : null;
 }
 
-function finite(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+function count(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
 function nullableBoolean(value: unknown): boolean | null {
@@ -52,7 +70,6 @@ function limit(value: unknown): CardLimit | null {
   if (!id || !name || (source.source !== "main" && source.source !== "additional")) return null;
   const used = percent(source.used_percent);
   const remaining = percent(source.remaining_percent);
-  if (used === null && remaining === null && nullableBoolean(source.reached) !== true) return null;
   return {
     id,
     name,
@@ -99,6 +116,28 @@ function spend(value: unknown): CardSpend | null {
     : null;
 }
 
+function profile(value: unknown): CardProfile | null {
+  const source = record(value);
+  if (!source) return null;
+  const entries: Array<readonly [keyof CardProfile, string | number | null]> = [];
+  for (const key of PROFILE_KEYS) {
+    if (!Object.hasOwn(source, key)) continue;
+    const item = source[key];
+    if (item === null) {
+      entries.push([key, null]);
+      continue;
+    }
+    if (key === "most_used_reasoning_effort") {
+      const value = text(item);
+      if (value !== null) entries.push([key, value]);
+      continue;
+    }
+    const value = PROFILE_PERCENT_KEYS.has(key) ? percent(item) : count(item);
+    if (value !== null) entries.push([key, value]);
+  }
+  return Object.fromEntries(entries) as CardProfile;
+}
+
 function account(value: unknown): CardAccount | null {
   const source = record(value);
   if (!source) return null;
@@ -109,7 +148,6 @@ function account(value: unknown): CardAccount | null {
     ? (source.blocker as SafeBlocker)
     : "unknown";
   const reset = record(source.reset_credits);
-  const profile = record(source.profile);
   return {
     id,
     name,
@@ -122,21 +160,12 @@ function account(value: unknown): CardAccount | null {
     spend: spend(source.spend),
     reset_credits: reset
       ? {
-          available_count: finite(reset.available_count),
-          total_earned: finite(reset.total_earned),
+          available_count: count(reset.available_count),
+          total_earned: count(reset.total_earned),
           next_expiry: date(reset.next_expiry),
         }
       : null,
-    profile: profile
-      ? (Object.fromEntries(
-          Object.entries(profile).filter(
-            ([, item]) =>
-              item === null ||
-              typeof item === "string" ||
-              (typeof item === "number" && Number.isFinite(item)),
-          ),
-        ) as Record<string, string | number | null>)
-      : null,
+    profile: profile(source.profile),
   };
 }
 

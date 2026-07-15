@@ -13,7 +13,7 @@ describe("normalizeCardSnapshot", () => {
     const sourceLimit = sourceAccount.limits[0]!;
     const result = normalizeCardSnapshot({
       schema_version: 1,
-      integration_version: "0.5.0",
+      integration_version: "0.5.1",
       generated_at: "2026-07-15T10:00:00Z",
       accounts: [
         {
@@ -65,14 +65,17 @@ describe("normalizeCardSnapshot", () => {
             reached: false,
           },
           reset_credits: {
-            available_count: 2,
+            available_count: 1.5,
             total_earned: Number.POSITIVE_INFINITY,
             next_expiry: "2026-07-20T10:00:00Z",
           },
           profile: {
             lifetime_tokens: 123,
-            effort: "high",
-            nullable: null,
+            most_used_reasoning_effort: "high",
+            current_streak_days: null,
+            longest_streak_days: -2,
+            fast_mode_usage_percentage: 120,
+            private_text: "must not pass",
             invalid_number: Number.NaN,
             private_object: { hidden: true },
           },
@@ -90,8 +93,41 @@ describe("normalizeCardSnapshot", () => {
       overage_reached: null,
     });
     expect(account.spend?.resets_at).toBeNull();
+    expect(account.reset_credits?.available_count).toBeNull();
     expect(account.reset_credits?.total_earned).toBeNull();
-    expect(account.profile).toEqual({ lifetime_tokens: 123, effort: "high", nullable: null });
+    expect(account.profile).toEqual({
+      lifetime_tokens: 123,
+      current_streak_days: null,
+      most_used_reasoning_effort: "high",
+    });
+  });
+
+  it("keeps explicitly reported unavailable limit placeholders", () => {
+    const sourceAccount = SNAPSHOT.accounts[0]!;
+    const result = normalizeCardSnapshot({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...sourceAccount,
+          limits: [
+            {
+              id: "future:primary:unknown",
+              name: "Future feature",
+              source: "additional",
+              duration_seconds: null,
+              used_percent: null,
+              remaining_percent: null,
+              resets_at: null,
+              reached: false,
+              entity_id: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.accounts[0]?.limits).toHaveLength(1);
+    expect(result.accounts[0]?.limits[0]?.used_percent).toBeNull();
   });
 
   it("rejects unsupported and incomplete snapshot envelopes", () => {

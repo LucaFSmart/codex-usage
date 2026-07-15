@@ -73,7 +73,7 @@ Usage is refreshed every five minutes by default. Profile and reset-credit metad
 
 The card bundle and Lovelace resource are registered automatically when the integration loads. In dashboard edit mode select **Add card**, search for **Codex Usage Card**, and configure it in the visual editor.
 
-For dashboards managed entirely in YAML, add `/codex_usage/frontend/codex-usage-card.js?v=0.5.0` as a JavaScript module resource manually; Home Assistant only permits automatic resource management in storage mode.
+For dashboards managed entirely in YAML, add `/codex_usage/frontend/codex-usage-card.js?v=0.5.1` as a JavaScript module resource manually; Home Assistant only permits automatic resource management in storage mode.
 
 Minimal YAML:
 
@@ -103,6 +103,13 @@ sections:
 thresholds:
   elevated: 60
   critical: 85
+colors:
+  normal: "var(--codex-usage-normal-color, #25b7f3)"
+  elevated: "var(--codex-usage-elevated-color, #ffb74d)"
+  critical: "var(--codex-usage-critical-color, #ff5f6d)"
+  blocked: "var(--codex-usage-blocked-color, #d32f49)"
+  stale: "var(--codex-usage-stale-color, #78909c)"
+  missing: "var(--codex-usage-missing-color, #9e9e9e)"
 stale_after_minutes: 15
 appearance:
   card_radius: 20
@@ -117,9 +124,11 @@ Only fields actually reported for the selected workspace are shown by default. U
 ### Sections and layouts
 
 - `adaptive` is the recommended default and changes density with available width.
-- `compact` shows the status and limit essentials.
-- `detailed` also exposes reported credits, spending, and profile aggregates.
-- Every content group can be hidden independently in the visual editor.
+- `compact` shows the status and limit essentials without detail panels.
+- `adaptive` adds concise credit, reset-credit, spending, and profile summaries when reported.
+- `detailed` expands spending, reset-credit, and every supported profile aggregate.
+- Every content group and its individual values can be hidden independently in the visual editor.
+- The editor also controls included accounts, the fixed account, freshness threshold, semantic colors, and card dimensions.
 - Home Assistant `view_layout`, `layout_options`, `grid_options`, and `visibility` fields are preserved.
 
 For Sections dashboards the card requests 6 columns by default, supports a minimum of 3 and maximum of 12, and lets content determine its height.
@@ -159,7 +168,7 @@ There is intentionally no free-form CSS or JavaScript configuration field. card-
 
 ## Plans and limit windows
 
-Runtime behavior is based on fields actually returned by the account, never a hard-coded plan matrix. Known labels such as Free, Go, Plus, Pro, Business, Enterprise, and Edu are displayed but do not enable or disable features.
+Runtime behavior is based on fields actually returned by the account, never a hard-coded plan matrix. Current labels including Guest, Free, Go, Plus, Pro, Pro Lite, Team, Business, Enterprise, Education, Edu, K-12, Quorum, workspace and usage-based variants are formatted for display but do not enable or disable features.
 
 - Plus has been verified against a current live response.
 - Other known plan shapes are covered with sanitized contract fixtures.
@@ -177,6 +186,7 @@ Home Assistant stores OAuth tokens in `.storage/core.config_entries`; backups co
 - never logs tokens or raw API response bodies;
 - sends credentials only to OpenAI HTTPS endpoints;
 - uses the selected workspace name for the Home Assistant device instead of exposing the backend account ID;
+- migrates the exact legacy generated `Codex Usage (<workspace ID> - <plan>)` title to `Codex Usage` while preserving user-defined names;
 - does not expose tokens, account/user IDs, email, roles, profile images, reset-credit IDs, or raw blocker messages to the card;
 - provides diagnostics from an explicit safe allowlist only.
 
@@ -204,7 +214,7 @@ Accounts check is used during setup or reauthentication. Profile and reset-credi
 | Reauthentication requested | Repeat the device-code flow; the workspace selection is retained. |
 | A former 5-hour entity is `unknown` | The current response does not report that window. Weekly data is never relabeled as five-hour data. |
 | Optional data is absent | The account did not report that capability, or its isolated endpoint failed temporarily. Limits continue updating. |
-| Card is missing from the picker | Restart Home Assistant, hard-refresh the browser, and confirm `/codex_usage/frontend/codex-usage-card.js?v=0.5.0` exists under dashboard resources. |
+| Card is missing from the picker | Restart Home Assistant, hard-refresh the browser, and confirm `/codex_usage/frontend/codex-usage-card.js?v=0.5.1` exists under dashboard resources. |
 | Card says data is stale | Confirm the integration itself updates successfully and compare `stale_after_minutes` with the configured polling interval. |
 
 Diagnostics can be downloaded from **Settings → Devices & services → Codex Usage**. They exclude credentials and backend identities.

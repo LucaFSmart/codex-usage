@@ -8,6 +8,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import CodexUsageConfigEntry
 from .const import CONF_ACCOUNT_ID, DOMAIN
 from .coordinator import CodexUsageCoordinator
+from .entry_title import safe_entry_title
 
 
 class CodexUsageEntity(CoordinatorEntity[CodexUsageCoordinator]):
@@ -21,7 +22,7 @@ class CodexUsageEntity(CoordinatorEntity[CodexUsageCoordinator]):
         identity = entry.unique_id or account_id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, identity)},
-            name=entry.title or "Codex Usage",
+            name=safe_entry_title(entry),
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="OpenAI",
         )

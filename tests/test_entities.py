@@ -1,6 +1,8 @@
 """Tests for entity availability and defaults."""
 
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from custom_components.codex_usage.api import parse_usage
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
@@ -10,6 +12,7 @@ from custom_components.codex_usage.sensor import (
     CodexUsageSensor,
     _existing_additional_keys,
     _static_sensor_descriptions,
+    _weekly_pace,
 )
 
 
@@ -91,3 +94,22 @@ def test_existing_dynamic_limit_entities_are_recovered_from_unique_ids() -> None
         ("code_review", "primary", "usage"),
         ("image_generation", "secondary", "reset"),
     }
+
+
+def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:
+    now = datetime(2026, 7, 15, 8, 0, tzinfo=UTC)
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 20,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (now + timedelta(days=8)).timestamp(),
+                }
+            }
+        }
+    )
+
+    with patch("custom_components.codex_usage.sensor.datetime") as datetime_mock:
+        datetime_mock.now.return_value = now
+        assert _weekly_pace(data) is None

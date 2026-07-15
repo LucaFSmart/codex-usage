@@ -139,7 +139,27 @@ def test_parse_sparse_usage_response() -> None:
 
 
 @pytest.mark.parametrize(
-    "plan", ["free", "go", "plus", "pro", "business", "enterprise", "edu", "future-plan"]
+    "plan",
+    [
+        "guest",
+        "free",
+        "go",
+        "plus",
+        "pro",
+        "prolite",
+        "free_workspace",
+        "team",
+        "self_serve_business_usage_based",
+        "business",
+        "enterprise_cbp_usage_based",
+        "education",
+        "quorum",
+        "k12",
+        "enterprise",
+        "edu",
+        "unknown",
+        "future-plan",
+    ],
 )
 def test_plan_labels_never_control_reported_capabilities(plan: str) -> None:
     data = parse_usage(
@@ -305,6 +325,33 @@ def test_parse_invalid_optional_numbers_as_unavailable() -> None:
     assert data.spend_limit.remaining_percent == 20
 
 
+def test_malformed_display_labels_never_stringify_raw_backend_objects() -> None:
+    data = parse_usage(
+        {
+            "plan_type": {"private": "plan"},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": {"private": "id"},
+                    "limit_name": {"private": "name"},
+                    "rate_limit": {
+                        "primary_window": {
+                            "used_percent": 10,
+                            "limit_window_seconds": 604_800,
+                        }
+                    },
+                }
+            ],
+            "spend_control": {"individual_limit": {"source": {"private": "scope"}, "limit": "10"}},
+        }
+    )
+
+    assert data.plan_type == "unknown"
+    assert data.additional_limits[0].limit_id == "additional"
+    assert data.additional_limits[0].name == "Additional"
+    assert data.spend_limit is not None and data.spend_limit.source is None
+    assert "private" not in repr(data)
+
+
 def test_parse_non_finite_numbers_as_unavailable() -> None:
     data = parse_usage(
         {
@@ -357,6 +404,57 @@ def test_unknown_duration_main_window_is_preserved() -> None:
     assert any(limit.limit_id == "codex_unknown_primary" for limit in data.additional_limits)
 
 
+@pytest.mark.parametrize("duration", [-1, 0, "invalid", float("inf")])
+def test_invalid_window_duration_keeps_valid_usage(duration: object) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": duration,
+                }
+            }
+        }
+    )
+
+    assert data.main_limit.primary is not None
+    assert data.main_limit.primary.used_percent == 42
+    assert data.main_limit.primary.window_minutes is None
+
+
+def test_integral_float_window_duration_is_accepted() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": 604_800.0,
+                }
+            }
+        }
+    )
+
+    assert data.weekly_window is not None
+
+
+@pytest.mark.parametrize("reset_at", [float("inf"), float("-inf"), 10**100])
+def test_invalid_reset_timestamp_is_ignored(reset_at: object) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": reset_at,
+                }
+            }
+        }
+    )
+
+    assert data.weekly_window is not None
+    assert data.weekly_window.resets_at is None
+
+
 def test_allowed_false_sets_safe_blocker_reason() -> None:
     data = parse_usage(
         {
@@ -367,6 +465,26 @@ def test_allowed_false_sets_safe_blocker_reason() -> None:
 
     assert _limit_reached(data) is True
     assert data.blocker_reason == "spend"
+
+
+def test_explicit_spend_limit_signal_sets_safe_blocker_reason() -> None:
+    data = parse_usage({"spend_control": {"reached": True}})
+
+    assert data.blocker_reason == "spend"
+
+
+def test_explicit_credit_limit_signal_sets_safe_blocker_reason() -> None:
+    data = parse_usage(
+        {
+            "credits": {
+                "has_credits": True,
+                "unlimited": False,
+                "overage_limit_reached": True,
+            }
+        }
+    )
+
+    assert data.blocker_reason == "credits"
 
 
 def test_parse_accounts_accepts_list_and_map_shapes() -> None:
@@ -387,6 +505,37 @@ def test_parse_accounts_accepts_list_and_map_shapes() -> None:
         AvailableAccount("workspace-b", "Beta", "workspace"),
     )
     assert map_result == (AvailableAccount("workspace-c", "Gamma", "business"),)
+
+
+def test_parse_accounts_accepts_nested_map_and_backend_ordering() -> None:
+    result = parse_accounts(
+        {
+            "accounts": {
+                "lookup-a": {
+                    "account": {
+                        "account_id": "workspace-a",
+                        "name": "Alpha",
+                        "structure": "personal",
+                        "profile_picture_url": "https://example.invalid/private.png",
+                    }
+                },
+                "lookup-b": {
+                    "account": {
+                        "account_id": "workspace-b",
+                        "name": "Beta",
+                        "structure": "business",
+                    }
+                },
+            },
+            "account_ordering": ["lookup-b", "lookup-a"],
+        }
+    )
+
+    assert result == (
+        AvailableAccount("workspace-b", "Beta", "business"),
+        AvailableAccount("workspace-a", "Alpha", "personal"),
+    )
+    assert "profile_picture" not in repr(result)
 
 
 def test_parse_reset_credits_discards_private_fields() -> None:
@@ -503,7 +652,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.1",
         "X-OpenAI-Fedramp": "true",
     }
 
@@ -601,7 +750,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.1",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -626,7 +775,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.5.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.5.1",
         "Cache-Control": "no-store",
     }
 
