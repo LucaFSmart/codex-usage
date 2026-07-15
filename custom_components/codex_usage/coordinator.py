@@ -52,6 +52,7 @@ class CodexCoordinatorData:
     usage: CodexUsageData
     profile: CodexProfileStats | None
     reset_credits: ResetCredits | None
+    refreshed_at: datetime
 
 
 def credentials_from_entry(entry: ConfigEntry) -> CodexCredentials:
@@ -165,7 +166,8 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self.config_entry,
                 data={**self.config_entry.data, **credentials_to_entry_data(credentials)},
             )
-        self._last_success = datetime.now(UTC)
+        refreshed_at = datetime.now(UTC)
+        self._last_success = refreshed_at
         now = monotonic()
         if now >= self._profile_next_attempt:
             try:
@@ -205,4 +207,5 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
             usage=data,
             profile=self._profile_data,
             reset_credits=self._reset_credits,
+            refreshed_at=refreshed_at,
         )

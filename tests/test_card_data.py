@@ -41,7 +41,7 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
     snapshot = build_card_snapshot(hass)
 
     assert snapshot["schema_version"] == 1
-    assert snapshot["integration_version"] == "0.5.0"
+    assert snapshot["integration_version"] == "0.5.1"
     assert snapshot["accounts"] == [
         {
             "id": "entry-a",
@@ -156,3 +156,24 @@ def test_card_snapshot_links_only_enabled_loaded_entities() -> None:
         limits = build_card_snapshot(hass)["accounts"][0]["limits"]
 
     assert limits[0]["entity_id"] == "sensor.weekly"
+
+
+def test_card_snapshot_never_exposes_legacy_generated_account_title() -> None:
+    usage = parse_usage({"plan_type": "plus"})
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(usage=usage, profile=None, reset_credits=None),
+        last_update_success=True,
+        last_success=None,
+    )
+    entry = SimpleNamespace(
+        entry_id="entry-a",
+        title="Codex Usage (4657ca9f-b1ec-47d8-b82a-de968c0d5362 - Plus)",
+        unique_id=None,
+        data={"account_id": "4657ca9f-b1ec-47d8-b82a-de968c0d5362"},
+    )
+    hass = SimpleNamespace(data={DOMAIN: {"entries": {"entry-a": (entry, coordinator)}}})
+
+    account = build_card_snapshot(hass)["accounts"][0]
+
+    assert account["name"] == "Codex Usage"
+    assert "4657ca9f" not in repr(account)

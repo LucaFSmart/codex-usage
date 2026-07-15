@@ -47,6 +47,8 @@ def _weekly_pace(data: CodexUsageData) -> float | None:
     total = timedelta(minutes=window.window_minutes).total_seconds()
     remaining = (window.resets_at - datetime.now(UTC)).total_seconds()
     elapsed_percent = ((total - remaining) / total) * 100
+    if not 0 <= elapsed_percent <= 100:
+        return None
     return round(window.used_percent - elapsed_percent, 1)
 
 

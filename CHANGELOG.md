@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.1 - 2026-07-15
+
+- Accept the current nested workspace-discovery response and preserve the
+  backend-provided account ordering during setup and reauthentication.
+- Keep valid usage percentages when a window duration is missing or malformed,
+  accept whole-second JSON numbers, and ignore out-of-range reset timestamps
+  without interrupting the coordinator.
+- Treat explicit spend-control and credit-overage signals as safe blockers and
+  reject weekly pace values when the reported reset lies outside its window.
+- Ensure every successful core refresh produces a fresh card snapshot event,
+  even when all reported usage values are unchanged.
+- Migrate exact legacy generated account titles that contained a workspace ID,
+  preserve user-defined titles, and defensively remove legacy IDs from device
+  and card display data.
+- Fix the card documentation link, Home Assistant form labels, localized mode
+  choices, single-account subtitle, hidden-limit empty state, unavailable-limit
+  placeholders, locale-aware numbers, and immediate connection-error state.
+- Distinguish compact, adaptive, and detailed layouts. Add safe blocker text,
+  reset-credit details, richer spending values, compact profile numbers, and
+  all supported profile aggregates in detailed mode.
+- Clarify aggregate multi-account state and extend the visual editor with
+  account inclusion, freshness, semantic colors, and per-value visibility.
+- Expand contract and regression coverage for all currently known plan labels,
+  nested accounts, malformed durations and timestamps, refresh freshness,
+  legacy-title privacy, card modes, editor labels, and display filtering.
+
+The release remains fully read-only. Reset-credit redemption, purchases,
+workspace messages, raw backend content, and account-changing actions are not
+implemented.
+
 ## 0.5.0 - 2026-07-15
 
 - Add the bundled `custom:codex-usage-card` with adaptive, compact, and

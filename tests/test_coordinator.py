@@ -1,6 +1,7 @@
 """Tests for usage and profile update scheduling."""
 
 import asyncio
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -152,3 +153,24 @@ def test_reset_failure_keeps_usage_and_last_successful_metadata() -> None:
     assert coordinator.reset_available is True
     assert coordinator.reset_last_error == "CodexConnectionError"
     assert coordinator._reset_next_attempt == 4_601.0
+
+
+def test_identical_usage_refreshes_still_produce_fresh_coordinator_data() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+    coordinator._profile_next_attempt = 10_000.0
+    coordinator._reset_next_attempt = 10_000.0
+    first_time = datetime(2026, 7, 15, 8, 0, tzinfo=UTC)
+    second_time = datetime(2026, 7, 15, 8, 5, tzinfo=UTC)
+
+    with (
+        patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0),
+        patch("custom_components.codex_usage.coordinator.datetime") as datetime_mock,
+    ):
+        datetime_mock.now.side_effect = [first_time, second_time]
+        first = asyncio.run(coordinator._async_update_data())
+        second = asyncio.run(coordinator._async_update_data())
+
+    assert first.refreshed_at == first_time
+    assert second.refreshed_at == second_time
+    assert first != second

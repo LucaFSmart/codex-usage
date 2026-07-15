@@ -32,7 +32,7 @@ from .const import (
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.5.0"
+USER_AGENT = "HomeAssistant-CodexUsage/0.5.1"
 
 
 class CodexApiError(Exception):
@@ -331,7 +331,7 @@ def credentials_from_token_response(
 def _timestamp(value: Any) -> datetime | None:
     try:
         return datetime.fromtimestamp(float(value), tz=UTC) if value is not None else None
-    except ValueError, TypeError, OSError:
+    except ValueError, TypeError, OSError, OverflowError:
         return None
 
 
@@ -376,6 +376,24 @@ def _positive_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
 
 
+def _positive_seconds(value: Any) -> int | None:
+    """Return a positive whole-second duration from compatible JSON numbers."""
+    if isinstance(value, bool):
+        return None
+    result = _float(value)
+    if result is None or result <= 0 or not result.is_integer():
+        return None
+    return int(result)
+
+
+def _display_text(value: Any, *, max_length: int = 120) -> str | None:
+    """Return a bounded backend label without coercing structured values."""
+    if not isinstance(value, str):
+        return None
+    result = value.strip()
+    return result if result and len(result) <= max_length else None
+
+
 def _percentage(value: Any) -> float | None:
     """Return a finite percentage in the inclusive 0..100 range."""
     if isinstance(value, bool):
@@ -388,9 +406,7 @@ def _window(payload: Any) -> RateLimitWindow | None:
     if not isinstance(payload, dict) or payload.get("used_percent") is None:
         return None
     seconds = payload.get("limit_window_seconds")
-    seconds_value = _positive_int(seconds) if seconds is not None else None
-    if seconds is not None and seconds_value is None:
-        return None
+    seconds_value = _positive_seconds(seconds) if seconds is not None else None
     used_percent = _percentage(payload["used_percent"])
     if used_percent is None:
         return None
@@ -445,8 +461,12 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     for item in payload.get("additional_rate_limits") or []:
         if not isinstance(item, dict):
             continue
-        limit_id = str(item.get("metered_feature") or item.get("limit_name") or "additional")
-        name = str(item.get("limit_name") or limit_id.replace("_", " ").title())
+        limit_id = (
+            _display_text(item.get("metered_feature"), max_length=80)
+            or _display_text(item.get("limit_name"), max_length=80)
+            or "additional"
+        )
+        name = _display_text(item.get("limit_name")) or limit_id.replace("_", " ").title()
         additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
 
     code_review_payload = payload.get("code_review_rate_limit")
@@ -478,7 +498,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         item = spend_payload.get("individual_limit")
         if isinstance(item, dict):
             spend_limit = SpendLimit(
-                source=str(item["source"]) if item.get("source") is not None else None,
+                source=_display_text(item.get("source"), max_length=80),
                 limit=_decimal(item.get("limit")),
                 used=_decimal(item.get("used")),
                 remaining=_decimal(item.get("remaining")),
@@ -490,6 +510,10 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     reached = payload.get("rate_limit_reached_type")
     reached_type = reached.get("type") if isinstance(reached, dict) else None
     blocker_reason = _blocker_reason(reached_type)
+    if blocker_reason is None and spend_reached is True:
+        blocker_reason = "spend"
+    if blocker_reason is None and credits is not None and credits.overage_limit_reached is True:
+        blocker_reason = "credits"
     if blocker_reason is None and main.limit_reached is True:
         blocker_reason = "usage_limit"
     reset_credits_payload = payload.get("rate_limit_reset_credits")
@@ -499,7 +523,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         else None
     )
     return CodexUsageData(
-        plan_type=str(payload.get("plan_type") or "unknown"),
+        plan_type=_display_text(payload.get("plan_type"), max_length=80) or "unknown",
         main_limit=main,
         additional_limits=tuple(additional),
         credits=credits,
@@ -531,13 +555,23 @@ def parse_accounts(payload: dict[str, Any]) -> tuple[AvailableAccount, ...]:
     if isinstance(raw_accounts, list):
         candidates.extend((None, item) for item in raw_accounts)
     elif isinstance(raw_accounts, dict):
-        candidates.extend((str(account_id), item) for account_id, item in raw_accounts.items())
+        ordering = payload.get("account_ordering")
+        ordered_keys: list[str] = []
+        if isinstance(ordering, list):
+            ordered_keys.extend(
+                key for key in ordering if isinstance(key, str) and key in raw_accounts
+            )
+        ordered_keys.extend(str(key) for key in raw_accounts if str(key) not in ordered_keys)
+        candidates.extend((key, raw_accounts[key]) for key in ordered_keys)
 
     accounts: list[AvailableAccount] = []
     seen: set[str] = set()
     for fallback_id, item in candidates:
         if not isinstance(item, dict):
             continue
+        nested = item.get("account")
+        if isinstance(nested, dict):
+            item = nested
         account_id = item.get("id") or item.get("account_id") or fallback_id
         if not isinstance(account_id, str) or not account_id or account_id in seen:
             continue

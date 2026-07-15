@@ -15,7 +15,7 @@ describe("card registration", () => {
         type: "codex-usage-card",
         name: "Codex Usage Card",
         description: expect.any(String),
-        documentationURL: expect.any(String),
+        documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card",
       }),
     );
 

@@ -52,7 +52,7 @@ def preserve_reauth_workspace(credentials: CodexCredentials, account_id: str) ->
 class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a Codex Usage config flow."""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         self._device_code: DeviceCode | None = None

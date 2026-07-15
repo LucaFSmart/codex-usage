@@ -5,7 +5,7 @@ const metadata = {
   name: "Codex Usage Card",
   description: "Adaptive multi-account Codex usage overview.",
   preview: true,
-  documentationURL: "https://github.com/lucasscoded/Codex-Usage#dashboard-card",
+  documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card",
 };
 
 window.customCards ??= [];

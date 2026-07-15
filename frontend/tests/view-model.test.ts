@@ -89,6 +89,22 @@ describe("buildCardViewModel", () => {
       ],
     };
     expect(buildCardViewModel(unknown, DEFAULT_CONFIG).selectedAccount?.limits[0]?.pace).toBeNull();
+
+    const expired: CardSnapshot = {
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...alpha,
+          limits: [
+            {
+              ...alpha.limits[0]!,
+              resets_at: "2026-07-15T09:59:00Z",
+            },
+          ],
+        },
+      ],
+    };
+    expect(buildCardViewModel(expired, DEFAULT_CONFIG).selectedAccount?.limits[0]?.pace).toBeNull();
   });
 
   it("filters configured accounts and handles unavailable or invalid timestamps", () => {

@@ -113,5 +113,54 @@ def test_migration_removes_legacy_identity_claims() -> None:
     hass.config_entries.async_update_entry.assert_called_once_with(
         entry,
         data={"account_id": "workspace", "access_token": "token"},
+        version=3,
+    )
+
+
+def test_migration_replaces_exact_legacy_generated_title() -> None:
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_update_entry=MagicMock()))
+    entry = SimpleNamespace(
         version=2,
+        title="Codex Usage (4657ca9f-b1ec-47d8-b82a-de968c0d5362 - Plus)",
+        data={"account_id": "4657ca9f-b1ec-47d8-b82a-de968c0d5362"},
+    )
+
+    assert asyncio.run(async_migrate_entry(hass, entry)) is True
+    hass.config_entries.async_update_entry.assert_called_once_with(
+        entry,
+        data={"account_id": "4657ca9f-b1ec-47d8-b82a-de968c0d5362"},
+        title="Codex Usage",
+        version=3,
+    )
+
+
+def test_migration_preserves_user_defined_title() -> None:
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_update_entry=MagicMock()))
+    entry = SimpleNamespace(
+        version=2,
+        title="Luca Arbeit",
+        data={"account_id": "workspace"},
+    )
+
+    assert asyncio.run(async_migrate_entry(hass, entry)) is True
+    hass.config_entries.async_update_entry.assert_called_once_with(
+        entry,
+        data={"account_id": "workspace"},
+        version=3,
+    )
+
+
+def test_migration_preserves_user_title_that_only_resembles_legacy_format() -> None:
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_update_entry=MagicMock()))
+    entry = SimpleNamespace(
+        version=2,
+        title="Codex Usage (Work - Plus)",
+        data={"account_id": "workspace"},
+    )
+
+    assert asyncio.run(async_migrate_entry(hass, entry)) is True
+    hass.config_entries.async_update_entry.assert_called_once_with(
+        entry,
+        data={"account_id": "workspace"},
+        version=3,
     )

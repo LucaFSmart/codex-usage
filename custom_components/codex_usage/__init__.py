@@ -25,6 +25,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import CodexUsageCoordinator
+from .entry_title import has_legacy_generated_title
 
 type CodexUsageConfigEntry = ConfigEntry[CodexUsageCoordinator]
 
@@ -42,12 +43,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Remove legacy identity claims while preserving stable entry identity."""
-    if entry.version >= 2:
+    if entry.version >= 3:
         return True
     data = dict(entry.data)
     data.pop(CONF_EMAIL, None)
     data.pop(CONF_PLAN_TYPE, None)
-    hass.config_entries.async_update_entry(entry, data=data, version=2)
+    changes: dict[str, Any] = {"data": data, "version": 3}
+    if has_legacy_generated_title(entry):
+        changes["title"] = "Codex Usage"
+    hass.config_entries.async_update_entry(entry, **changes)
     return True
 
 
