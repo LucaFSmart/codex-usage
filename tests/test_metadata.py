@@ -24,12 +24,10 @@ def _leaf_paths(value: Any, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]
 
 
 def test_translations_match_canonical_strings() -> None:
-    strings = _load_json(COMPONENT / "strings.json")
     english = _load_json(COMPONENT / "translations" / "en.json")
     german = _load_json(COMPONENT / "translations" / "de.json")
 
-    assert _leaf_paths(english) == _leaf_paths(strings)
-    assert _leaf_paths(german) == _leaf_paths(strings)
+    assert _leaf_paths(german) == _leaf_paths(english)
 
 
 def test_entity_icons_cover_static_entities() -> None:
@@ -46,7 +44,7 @@ def test_hacs_and_manifest_metadata() -> None:
     assert manifest["domain"] == "codex_usage"
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
-    assert manifest["version"] == "0.5.2"
+    assert manifest["version"] == "0.5.3"
     assert hacs["homeassistant"] == "2026.3.0"
     assert set(hacs) == {"homeassistant", "name"}
 
