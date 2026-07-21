@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../src/codex-usage-card";
 import { CodexUsageCard, CodexUsageCardEditor } from "../src/codex-usage-card";
@@ -11,7 +11,18 @@ async function mount<T extends HTMLElement>(tag: string): Promise<T> {
   return element;
 }
 
-afterEach(() => document.body.replaceChildren());
+// Only Date is faked (not setTimeout/setInterval) so the setTimeout-based
+// snapshot-load waits below keep working; this pins "now" to the fixtures'
+// timestamps the same way view-model.test.ts does.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-07-15T10:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  document.body.replaceChildren();
+});
 
 describe("CodexUsageCard", () => {
   it("exposes Home Assistant card APIs and section grid defaults", async () => {
