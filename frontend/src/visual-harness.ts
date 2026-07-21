@@ -19,7 +19,7 @@ const usage =
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.5.1",
+  integration_version: "0.5.2",
   generated_at: new Date().toISOString(),
   accounts: Array.from({ length: accountCount }, (_, index) => ({
     id: `entry-${index}`,

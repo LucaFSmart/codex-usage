@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.2 - 2026-07-21
+
+- Pin the multi-account aggregate-status frontend test to a fixed system
+  clock instead of comparing fixture timestamps against the real wall clock,
+  so the test stays deterministic regardless of when it runs. Only `Date` is
+  faked; real timers are left untouched so the existing snapshot-load waits
+  keep working.
+
+This release contains no behavior changes to the integration or the bundled
+dashboard card.
+
 ## 0.5.1 - 2026-07-15
 
 - Accept the current nested workspace-discovery response and preserve the
