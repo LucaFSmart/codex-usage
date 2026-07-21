@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.3 - 2026-07-21
+
+- Remove the redundant `custom_components/codex_usage/strings.json`. Home
+  Assistant only loads custom-integration translations from `translations/`
+  at runtime; `translations/en.json` is now the canonical key set that
+  `translations/de.json` is checked against.
+- Allow Prettier to accept either LF or CRLF line endings (`endOfLine:
+  "auto"`) so a Windows checkout with `core.autocrlf=true` no longer fails
+  `format:check` locally, while all other style rules stay strict.
+- Update CI to `actions/setup-python@v7` and `actions/setup-node@v7`,
+  matching the already-current `actions/checkout@v7`.
+- Update the `tests` CI job and the documented local dev setup to Home
+  Assistant `2026.7.3`. The `integration-smoke` job stays on `2026.7.2`
+  because `pytest-homeassistant-custom-component` currently pins that exact
+  Home Assistant release.
+- Update compatible frontend maintenance releases: `happy-dom` to `20.11.0`,
+  Prettier to `3.9.6`, `typescript-eslint` to `8.65.0`, and Vite to `8.1.5`.
+  TypeScript stays at `6.0.2`, since `typescript-eslint@8.65.0` only accepts
+  TypeScript versions below `6.1.0`.
+
+This release contains no behavior changes to the integration or the bundled
+dashboard card.
+
 ## 0.5.2 - 2026-07-21
 
 - Pin the multi-account aggregate-status frontend test to a fixed system

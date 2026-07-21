@@ -2,7 +2,7 @@ import type { CardSnapshot, HomeAssistant } from "../src/types";
 
 export const SNAPSHOT: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.5.2",
+  integration_version: "0.5.3",
   generated_at: "2026-07-15T10:00:00Z",
   accounts: [
     {
