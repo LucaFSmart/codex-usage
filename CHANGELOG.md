@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.4 - 2026-08-18
+
+- Derive a limit's reset time from the backend's `reset_after_seconds` when
+  the absolute `reset_at` timestamp is missing or unparsable. This applies to
+  both rate-limit windows and spend controls, so a reset sensor stays
+  available instead of dropping to unknown. An absolute timestamp still wins
+  whenever the backend sends one.
+- Update the `tests` and `integration-smoke` CI jobs to Home Assistant
+  `2026.8.2`. `pytest-homeassistant-custom-component` now pins that exact
+  release, which removes the split pin `0.5.3` had to carry. The
+  `tests-min-version` job still proves the declared minimum `2026.3.0`.
+- Let Dependabot track the `frontend` npm manifest monthly, next to the
+  existing GitHub Actions updates. Major TypeScript updates are ignored while
+  `typescript-eslint` only accepts TypeScript versions below `6.1.0`.
+- Update compatible frontend maintenance releases: ESLint to `10.8.1`,
+  `happy-dom` to `20.11.2`, `@playwright/test` to `1.62.1`,
+  `typescript-eslint` to `8.67.0`, Vite to `8.2.1`, and Vitest with
+  `@vitest/coverage-v8` to `4.1.11`. TypeScript stays at `6.0.2`.
+- Refresh the transitive `brace-expansion` development dependency that
+  arrived with ESLint `10.8.1`, clearing a high-severity denial-of-service
+  advisory. The published card bundle never depended on it.
+- Re-verify the HTTP contract against the official open-source Codex client
+  (`openai/codex`, `rust-v0.148.0-alpha.22`). The OAuth client ID, the
+  device-authorization routes, the token endpoint, and all four read-only
+  ChatGPT backend endpoints are unchanged, as are the usage payload fields
+  this integration reads. No contract change was required.
+- Record in `api.py` that the dedicated `code_review_rate_limit` key is an
+  older response shape. The current backend schema reports code review
+  through `additional_rate_limits`, and the key is kept only so accounts
+  still served it do not lose the limit.
+
+Apart from the reset-time fallback, this release contains no behavior changes
+to the integration or the bundled dashboard card.
+
 ## 0.5.3 - 2026-07-21
 
 - Remove the redundant `custom_components/codex_usage/strings.json`. Home

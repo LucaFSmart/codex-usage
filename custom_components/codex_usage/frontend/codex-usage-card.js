@@ -128,7 +128,7 @@ var h = class extends HTMLElement {
 	static finalizeStyles(e) {
 		let t = [];
 		if (Array.isArray(e)) {
-			let n = new Set(e.flat(Infinity).reverse());
+			let n = new Set(e.flat(1 / 0).reverse());
 			for (let e of n) t.unshift(c(e));
 		} else e !== void 0 && t.push(c(e));
 		return t;
@@ -307,16 +307,18 @@ var Ce = (e, t) => {
 						i.append(e[t], b());
 					}
 				}
-			} else if (i.nodeType === 8) if (i.data === de) c.push({
-				type: 2,
-				index: a
-			});
-			else {
-				let e = -1;
-				for (; (e = i.data.indexOf(v, e + 1)) !== -1;) c.push({
-					type: 7,
+			} else if (i.nodeType === 8) {
+				if (i.data === de) c.push({
+					type: 2,
 					index: a
-				}), e += v.length - 1;
+				});
+				else {
+					let e = -1;
+					for (; (e = i.data.indexOf(v, e + 1)) !== -1;) c.push({
+						type: 7,
+						index: a
+					}), e += v.length - 1;
+				}
 			}
 			a++;
 		}
@@ -1152,7 +1154,7 @@ function yt(e, t, n, r = /* @__PURE__ */ new Date()) {
 	};
 }
 //#endregion
-//#region \0@oxc-project+runtime@0.139.0/helpers/esm/decorate.js
+//#region \0@oxc-project+runtime@0.144.0/helpers/esm/decorate.js
 function Y(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);

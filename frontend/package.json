@@ -1,7 +1,7 @@
 {
   "name": "codex-usage-card",
   "private": true,
-  "version": "0.5.3",
+  "version": "0.5.4",
   "type": "module",
   "scripts": {
     "build": "vite build",
@@ -20,14 +20,14 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@playwright/test": "1.61.1",
-    "@vitest/coverage-v8": "4.1.10",
-    "eslint": "10.7.0",
-    "happy-dom": "20.11.0",
+    "@playwright/test": "1.62.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.8.1",
+    "happy-dom": "20.11.2",
     "prettier": "3.9.6",
     "typescript": "6.0.2",
-    "typescript-eslint": "8.65.0",
-    "vite": "8.1.5",
-    "vitest": "4.1.10"
+    "typescript-eslint": "8.67.0",
+    "vite": "8.2.1",
+    "vitest": "4.1.11"
   }
 }
