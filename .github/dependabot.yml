@@ -4,4 +4,12 @@ updates:
     directory: /
     schedule:
       interval: monthly
-
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    ignore:
+      # typescript-eslint pins its supported TypeScript range; a major
+      # TypeScript bump has to wait for that peer range to widen.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
