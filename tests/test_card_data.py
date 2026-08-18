@@ -41,7 +41,7 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
     snapshot = build_card_snapshot(hass)
 
     assert snapshot["schema_version"] == 1
-    assert snapshot["integration_version"] == "0.5.3"
+    assert snapshot["integration_version"] == "0.5.4"
     assert snapshot["accounts"] == [
         {
             "id": "entry-a",
