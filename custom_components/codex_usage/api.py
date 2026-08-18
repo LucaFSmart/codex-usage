@@ -12,7 +12,7 @@ import json
 import math
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -402,6 +402,28 @@ def _percentage(value: Any) -> float | None:
     return result if result is not None and 0 <= result <= 100 else None
 
 
+def _relative_seconds(value: Any) -> float | None:
+    """Return a non-negative offset in seconds from a compatible JSON number."""
+    if isinstance(value, bool):
+        return None
+    result = _float(value)
+    return result if result is not None and result >= 0 else None
+
+
+def _reset_time(payload: dict[str, Any]) -> datetime | None:
+    """Return the reset time, preferring the absolute backend timestamp.
+
+    Every reset payload carries `reset_at` next to `reset_after_seconds`. The
+    relative value is the only usable source when the absolute one is missing
+    or unparsable, so it keeps a reset sensor available instead of unknown.
+    """
+    resets_at = _timestamp(payload.get("reset_at"))
+    if resets_at is not None:
+        return resets_at
+    offset = _relative_seconds(payload.get("reset_after_seconds"))
+    return None if offset is None else datetime.now(UTC) + timedelta(seconds=offset)
+
+
 def _window(payload: Any) -> RateLimitWindow | None:
     if not isinstance(payload, dict) or payload.get("used_percent") is None:
         return None
@@ -416,7 +438,7 @@ def _window(payload: Any) -> RateLimitWindow | None:
     return RateLimitWindow(
         used_percent=used_percent,
         window_minutes=minutes,
-        resets_at=_timestamp(payload.get("reset_at")),
+        resets_at=_reset_time(payload),
     )
 
 
@@ -469,6 +491,9 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         name = _display_text(item.get("limit_name")) or limit_id.replace("_", " ").title()
         additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
 
+    # The current backend schema reports code review through
+    # `additional_rate_limits`. This dedicated key is an older response shape
+    # that is kept so accounts still served it do not lose the limit.
     code_review_payload = payload.get("code_review_rate_limit")
     if isinstance(code_review_payload, dict):
         details = code_review_payload.get("rate_limit", code_review_payload)
@@ -504,7 +529,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 remaining=_decimal(item.get("remaining")),
                 used_percent=_percentage(item.get("used_percent")),
                 remaining_percent=_percentage(item.get("remaining_percent")),
-                resets_at=_timestamp(item.get("reset_at")),
+                resets_at=_reset_time(item),
             )
 
     reached = payload.get("rate_limit_reached_type")

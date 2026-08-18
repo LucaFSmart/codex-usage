@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from dataclasses import fields
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -453,6 +453,90 @@ def test_invalid_reset_timestamp_is_ignored(reset_at: object) -> None:
 
     assert data.weekly_window is not None
     assert data.weekly_window.resets_at is None
+
+
+def test_window_reset_falls_back_to_relative_seconds() -> None:
+    before = datetime.now(UTC)
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": 604_800,
+                    "reset_after_seconds": 3_600,
+                }
+            }
+        }
+    )
+
+    assert data.weekly_window is not None
+    assert data.weekly_window.resets_at is not None
+    assert before + timedelta(seconds=3_600) <= data.weekly_window.resets_at
+    assert data.weekly_window.resets_at <= datetime.now(UTC) + timedelta(seconds=3_600)
+
+
+def test_absolute_reset_timestamp_wins_over_relative_seconds() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": 1_800_000_000,
+                    "reset_after_seconds": 3_600,
+                }
+            }
+        }
+    )
+
+    assert data.weekly_window is not None
+    assert data.weekly_window.resets_at == datetime.fromtimestamp(1_800_000_000, tz=UTC)
+
+
+@pytest.mark.parametrize(
+    "reset_after_seconds", [True, -1, None, float("inf"), "not-a-number", {"seconds": 60}]
+)
+def test_invalid_relative_reset_offsets_are_ignored(reset_after_seconds: object) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 42,
+                    "limit_window_seconds": 604_800,
+                    "reset_after_seconds": reset_after_seconds,
+                }
+            }
+        }
+    )
+
+    assert data.weekly_window is not None
+    assert data.weekly_window.resets_at is None
+
+
+def test_spend_limit_reset_falls_back_to_relative_seconds() -> None:
+    before = datetime.now(UTC)
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": True, "limit_reached": False},
+            "spend_control": {
+                "reached": False,
+                "individual_limit": {
+                    "source": "user",
+                    "limit": "100",
+                    "used": "25",
+                    "remaining": "75",
+                    "used_percent": 25,
+                    "remaining_percent": 75,
+                    "reset_after_seconds": 900,
+                },
+            },
+        }
+    )
+
+    assert data.spend_limit is not None
+    assert data.spend_limit.resets_at is not None
+    assert before + timedelta(seconds=900) <= data.spend_limit.resets_at
+    assert data.spend_limit.resets_at <= datetime.now(UTC) + timedelta(seconds=900)
 
 
 def test_allowed_false_sets_safe_blocker_reason() -> None:
