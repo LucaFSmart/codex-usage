@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-      - run: pip install homeassistant==2026.8.2 pytest ruff
+      - run: pip install homeassistant==2026.8.3 pytest ruff
       - run: ruff format --check .
       - run: ruff check .
       - run: pytest
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-      - run: pip install homeassistant==2026.8.2 pytest pytest-homeassistant-custom-component
+      - run: pip install homeassistant==2026.8.3 pytest pytest-homeassistant-custom-component
       - run: pytest tests_integration/test_integration_smoke.py -v -o asyncio_mode=auto
 
   tests-min-version:
