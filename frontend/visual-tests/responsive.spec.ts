@@ -60,9 +60,9 @@ for (const mode of ["compact", "expanded"]) {
     await page.goto(`/visual/?theme=light&state=normal&accounts=1${modeParam}`);
     const card = page.locator("codex-usage-card");
 
-    // Primary limits (and the ring for the first one) always render, regardless
-    // of compact/expanded -- compact only affects the Details area.
-    await expect(card.locator(".ring")).toBeVisible();
+    // Primary limits (each with its own ring) always render, regardless of
+    // compact/expanded -- compact only affects the Details area.
+    await expect(card.locator(".ring").first()).toBeVisible();
 
     if (mode === "compact") {
       await expect(card.locator(".details")).toHaveCount(0);
@@ -95,6 +95,6 @@ test("the details area is one continuous surface, not a nested card", async ({ p
   await card.locator(".details-toggle").click();
   await expect(card.locator("ha-card")).toHaveCount(1);
   await expect(card.locator('[data-detail="credits"]')).toHaveCount(0);
-  await expect(card.locator(".ring")).toBeVisible();
+  await expect(card.locator(".ring").first()).toBeVisible();
   expect(errors).toEqual([]);
 });

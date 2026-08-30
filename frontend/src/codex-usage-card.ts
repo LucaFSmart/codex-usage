@@ -185,13 +185,6 @@ export class CodexUsageCard extends LitElement {
     return this.t(STATUS_LABEL_KEY[severity]);
   }
 
-  private blockerLabel(blocker: AccountViewModel["blocker"]): string {
-    if (blocker === "spend") return this.t("blockerSpend");
-    if (blocker === "credits") return this.t("blockerCredits");
-    if (blocker === "usage_limit") return this.t("blockerUsage");
-    return this.t("blockerUnknown");
-  }
-
   private limitLabel(limit: LimitViewModel): string {
     const closeTo = (expected: number): boolean =>
       limit.duration_seconds !== null &&
@@ -292,13 +285,16 @@ export class CodexUsageCard extends LitElement {
         }
       </div>
       <div class="limit-body">
-        ${
-          ring
-            ? html`<div class="ring" style=${`--progress:${remaining ?? 0}`} aria-hidden="true">
-                <strong>${formatPercent(remaining, this.locale)}</strong>
-              </div>`
-            : html`<strong class="limit-value">${formatPercent(remaining, this.locale)}</strong>`
-        }
+        <div class="limit-metric">
+          ${
+            ring
+              ? html`<div class="ring" style=${`--progress:${remaining ?? 0}`} aria-hidden="true">
+                  <strong>${formatPercent(remaining, this.locale)}</strong>
+                </div>`
+              : html`<strong class="limit-value">${formatPercent(remaining, this.locale)}</strong>`
+          }
+          <span class="limit-remaining-label">${this.t("remaining")}</span>
+        </div>
         <div class="limit-copy">
           <div
             class="bar"
@@ -660,11 +656,6 @@ export class CodexUsageCard extends LitElement {
               </nav>`
             : nothing
         }
-        ${
-          account?.blocker
-            ? html`<p class="blocker-note">${this.blockerLabel(account.blocker)}</p>`
-            : nothing
-        }
         ${account && callout ? html`<p class="callout">${callout}</p>` : nothing}
         ${
           !account
@@ -672,7 +663,7 @@ export class CodexUsageCard extends LitElement {
             : this.config.sections.limits.visible
               ? primaryLimits.length
                 ? html`<main class="limits">
-                    ${primaryLimits.map((item, index) => this.renderLimitRow(item, index === 0))}
+                    ${primaryLimits.map((item) => this.renderLimitRow(item, true))}
                   </main>`
                 : html`<div class="empty">
                     ${this.error ? this.t("unavailable") : this.t("noData")}
@@ -724,7 +715,7 @@ export class CodexUsageCard extends LitElement {
       --codex-space-5: 24px;
       --codex-progress-height: 6px;
       --codex-chip-height: 22px;
-      --codex-icon-size: 14px;
+      --codex-icon-size: 16px;
       --codex-radius: 8px;
       --codex-secondary-opacity: 0.62;
     }
@@ -825,12 +816,6 @@ export class CodexUsageCard extends LitElement {
       border-color: var(--state-color);
       color: var(--state-color);
     }
-    .blocker-note {
-      margin: 0;
-      font-size: 0.8rem;
-      font-weight: 650;
-      color: var(--error-color, #db4437);
-    }
     .limits {
       display: grid;
       gap: var(--codex-space-4);
@@ -864,6 +849,21 @@ export class CodexUsageCard extends LitElement {
       gap: var(--codex-space-3);
       margin-top: var(--codex-space-2);
     }
+    .limit-metric {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--codex-space-1);
+    }
+    .limit-remaining-label {
+      font-size: 0.66rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--secondary-text-color);
+      opacity: var(--codex-secondary-opacity);
+    }
     .ring {
       --progress: 0;
       width: 56px;
@@ -890,6 +890,7 @@ export class CodexUsageCard extends LitElement {
       font-size: 1.6rem;
       font-weight: 650;
       min-width: 60px;
+      text-align: center;
     }
     .limit-copy {
       flex: 1;
@@ -933,6 +934,9 @@ export class CodexUsageCard extends LitElement {
       color: var(--secondary-text-color);
       opacity: var(--codex-secondary-opacity);
     }
+    .section-label:not(:first-child) {
+      margin-top: var(--codex-space-2);
+    }
     .details {
       display: grid;
       gap: var(--codex-space-4);
@@ -959,7 +963,7 @@ export class CodexUsageCard extends LitElement {
     .details-toggle {
       display: inline-flex;
       align-items: center;
-      gap: var(--codex-space-1);
+      gap: var(--codex-space-2);
       justify-self: start;
       cursor: pointer;
       color: var(--primary-color);
@@ -969,8 +973,8 @@ export class CodexUsageCard extends LitElement {
     .chevron {
       width: var(--codex-icon-size);
       height: var(--codex-icon-size);
-      border-right: 2px solid currentColor;
-      border-bottom: 2px solid currentColor;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
       transform: rotate(45deg);
       transition: transform 0.15s ease;
     }

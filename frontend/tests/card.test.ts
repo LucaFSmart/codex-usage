@@ -229,6 +229,78 @@ describe("CodexUsageCard", () => {
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("labels the primary percentage as remaining on every limit row", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const rows = card.shadowRoot?.querySelectorAll(".limit-row");
+    expect(rows?.length).toBeGreaterThan(0);
+    for (const row of rows ?? []) {
+      expect(row.querySelector(".limit-remaining-label")?.textContent?.trim()).toBe("remaining");
+    }
+  });
+
+  it("gives every primary limit a ring, but not additional limits", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      limits: [
+        {
+          id: "codex:primary:five_hour",
+          name: "Codex",
+          source: "main" as const,
+          duration_seconds: 18_000,
+          used_percent: 35,
+          remaining_percent: 65,
+          resets_at: "2026-07-15T12:00:00Z",
+          reached: false,
+          entity_id: null,
+        },
+        SNAPSHOT.accounts[0]!.limits[0]!,
+        {
+          id: "code_review",
+          name: "Code review",
+          source: "additional" as const,
+          duration_seconds: 604_800,
+          used_percent: 20,
+          remaining_percent: 80,
+          resets_at: "2026-07-19T19:34:47Z",
+          reached: false,
+          entity_id: null,
+        },
+      ],
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"] .ring'),
+    ).not.toBeNull();
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"] .ring'),
+    ).not.toBeNull();
+    expect(card.shadowRoot?.querySelector('[data-limit-id="code_review"] .ring')).toBeNull();
+  });
+
+  it("does not duplicate the blocked message in a separate blocker note", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, blocker: "usage_limit" }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".blocker-note")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".callout")?.textContent).toContain("blocked");
+  });
+
   it("collapses details by default and expands only when compact is explicitly false", async () => {
     const account = {
       ...SNAPSHOT.accounts[0]!,

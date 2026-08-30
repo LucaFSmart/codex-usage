@@ -951,10 +951,6 @@ var pt = {
 		tokens: "Tokens",
 		threads: "Threads",
 		overall: "Overall",
-		blockerSpend: "Spending limit reached",
-		blockerCredits: "Credit limit reached",
-		blockerUsage: "Usage limit reached",
-		blockerUnknown: "Access currently blocked",
 		resetCredits: "Reset credits",
 		availableResets: "Available",
 		totalEarned: "Total earned",
@@ -1066,10 +1062,6 @@ var pt = {
 		tokens: "Token",
 		threads: "Unterhaltungen",
 		overall: "Gesamt",
-		blockerSpend: "Ausgabenlimit erreicht",
-		blockerCredits: "Guthabenlimit erreicht",
-		blockerUsage: "Nutzungslimit erreicht",
-		blockerUnknown: "Zugriff derzeit blockiert",
 		resetCredits: "Reset-Guthaben",
 		availableResets: "Verfügbar",
 		totalEarned: "Insgesamt erhalten",
@@ -1436,9 +1428,6 @@ var Q = class extends M {
 	statusLabel(e) {
 		return this.t(Dt[e]);
 	}
-	blockerLabel(e) {
-		return e === "spend" ? this.t("blockerSpend") : e === "credits" ? this.t("blockerCredits") : e === "usage_limit" ? this.t("blockerUsage") : this.t("blockerUnknown");
-	}
 	limitLabel(e) {
 		let t = (t) => e.duration_seconds !== null && e.duration_seconds >= t * .95 && e.duration_seconds <= t * 1.05;
 		return t(18e3) ? this.t("fiveHours") : t(604800) ? this.t("week") : e.duration_seconds && e.duration_seconds % 86400 == 0 ? `${e.duration_seconds / 86400} ${this.t("days")}` : e.name || this.t("unknownWindow");
@@ -1488,9 +1477,12 @@ var Q = class extends M {
         ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? w`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : E}
       </div>
       <div class="limit-body">
-        ${t ? w`<div class="ring" style=${`--progress:${r ?? 0}`} aria-hidden="true">
-                <strong>${Z(r, this.locale)}</strong>
-              </div>` : w`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
+        <div class="limit-metric">
+          ${t ? w`<div class="ring" style=${`--progress:${r ?? 0}`} aria-hidden="true">
+                  <strong>${Z(r, this.locale)}</strong>
+                </div>` : w`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
+          <span class="limit-remaining-label">${this.t("remaining")}</span>
+        </div>
         <div class="limit-copy">
           <div
             class="bar"
@@ -1662,10 +1654,9 @@ var Q = class extends M {
                       >${e.name}
                     </button>`)}
               </nav>` : E}
-        ${t?.blocker ? w`<p class="blocker-note">${this.blockerLabel(t.blocker)}</p>` : E}
         ${t && u ? w`<p class="callout">${u}</p>` : E}
         ${t ? this.config.sections.limits.visible ? s.length ? w`<main class="limits">
-                    ${s.map((e, t) => this.renderLimitRow(e, t === 0))}
+                    ${s.map((e) => this.renderLimitRow(e, !0))}
                   </main>` : w`<div class="empty">
                     ${this.error ? this.t("unavailable") : this.t("noData")}
                   </div>` : E : w`<div class="empty">${this.t("unavailable")}</div>`}
@@ -1697,7 +1688,7 @@ var Q = class extends M {
       --codex-space-5: 24px;
       --codex-progress-height: 6px;
       --codex-chip-height: 22px;
-      --codex-icon-size: 14px;
+      --codex-icon-size: 16px;
       --codex-radius: 8px;
       --codex-secondary-opacity: 0.62;
     }
@@ -1798,12 +1789,6 @@ var Q = class extends M {
       border-color: var(--state-color);
       color: var(--state-color);
     }
-    .blocker-note {
-      margin: 0;
-      font-size: 0.8rem;
-      font-weight: 650;
-      color: var(--error-color, #db4437);
-    }
     .limits {
       display: grid;
       gap: var(--codex-space-4);
@@ -1837,6 +1822,21 @@ var Q = class extends M {
       gap: var(--codex-space-3);
       margin-top: var(--codex-space-2);
     }
+    .limit-metric {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--codex-space-1);
+    }
+    .limit-remaining-label {
+      font-size: 0.66rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--secondary-text-color);
+      opacity: var(--codex-secondary-opacity);
+    }
     .ring {
       --progress: 0;
       width: 56px;
@@ -1863,6 +1863,7 @@ var Q = class extends M {
       font-size: 1.6rem;
       font-weight: 650;
       min-width: 60px;
+      text-align: center;
     }
     .limit-copy {
       flex: 1;
@@ -1906,6 +1907,9 @@ var Q = class extends M {
       color: var(--secondary-text-color);
       opacity: var(--codex-secondary-opacity);
     }
+    .section-label:not(:first-child) {
+      margin-top: var(--codex-space-2);
+    }
     .details {
       display: grid;
       gap: var(--codex-space-4);
@@ -1932,7 +1936,7 @@ var Q = class extends M {
     .details-toggle {
       display: inline-flex;
       align-items: center;
-      gap: var(--codex-space-1);
+      gap: var(--codex-space-2);
       justify-self: start;
       cursor: pointer;
       color: var(--primary-color);
@@ -1942,8 +1946,8 @@ var Q = class extends M {
     .chevron {
       width: var(--codex-icon-size);
       height: var(--codex-icon-size);
-      border-right: 2px solid currentColor;
-      border-bottom: 2px solid currentColor;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
       transform: rotate(45deg);
       transition: transform 0.15s ease;
     }

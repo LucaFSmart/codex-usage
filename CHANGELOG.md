@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.4 - 2026-08-30
+
+Card polish, from a live-screenshot review pass over 0.6.3.
+
+- Add an explicit "remaining" caption under the primary percentage on
+  every limit row, so the big number's meaning is never ambiguous.
+- Give every primary limit (5-hour and weekly) the ring treatment,
+  instead of only the first one. Additional limits stay flat, so the
+  ring keeps meaning "one of your primary limits," not "the single
+  most prominent number on the card."
+- Remove the separate blocker-note line. It duplicated the
+  most-constrained-limit callout's message whenever an account was
+  blocked (e.g. "Usage limit reached" immediately followed by "Codex
+  usage is currently blocked by your 5 hours."); the callout alone
+  already covers every blocker state with equal or better detail.
+- Widen the gap and thin the border on the details-toggle chevron —
+  it read as cramped/dense right next to the "Show details"/"Hide
+  details" text.
+- Add breathing room above each detail-group section label
+  (Credits/Spending/Profile/Account/Additional limits) so they read
+  as group headers instead of blending into the surrounding rows.
+
 ## 0.6.3 - 2026-08-30
 
 Security-focused release.
