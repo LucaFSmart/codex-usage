@@ -55,6 +55,11 @@ export function formatDecimal(value: string | null, locale: string | undefined):
     : value;
 }
 
+export function formatUsd(value: string | null, locale: string | undefined): string {
+  const formatted = formatDecimal(value, locale);
+  return formatted === "—" ? formatted : `$${formatted}`;
+}
+
 export interface RelativeDuration {
   totalMinutes: number;
   days: number;

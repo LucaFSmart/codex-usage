@@ -32,7 +32,6 @@ export interface UsageThresholds {
 
 export interface CardAppearance {
   card_radius: number;
-  panel_radius: number;
   spacing: number;
 }
 

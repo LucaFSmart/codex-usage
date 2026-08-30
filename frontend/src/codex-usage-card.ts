@@ -5,10 +5,10 @@ import { fetchCardSnapshot } from "./card-data";
 import { DEFAULT_CONFIG, normalizeConfig, SECTION_KEYS } from "./config";
 import {
   formatAbsoluteReset,
-  formatDecimal,
   formatMetricLabel,
   formatNumber,
   formatPlanLabel,
+  formatUsd,
   relativeDurationUntil,
 } from "./format";
 import { localize, type TranslationKey } from "./localize";
@@ -208,10 +208,12 @@ export class CodexUsageCard extends LitElement {
   }
 
   private calloutLabel(account: AccountViewModel): string | null {
+    if (account.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
+    if (account.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
+    if (account.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
     const limit = account.mostConstrainedLimit;
     if (!limit) return null;
-    if (account.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
-    if (account.blocker !== null || limit.reached) {
+    if (account.blocker === "usage_limit" || limit.reached) {
       return this.t("mostConstrainedBlockedUsage", { limit: this.limitLabel(limit) });
     }
     if (limit.severity === "warning" || limit.severity === "critical") {
@@ -352,7 +354,7 @@ export class CodexUsageCard extends LitElement {
       : credits.has_credits === false
         ? this.t("unavailable")
         : this.t("creditsAvailableAmount", {
-            amount: formatDecimal(credits.balance, this.locale),
+            amount: formatUsd(credits.balance, this.locale),
           });
     return html`<div class="info-row" data-detail="credits">
       <span class="info-label">${this.t("credits")}</span>
@@ -424,7 +426,7 @@ export class CodexUsageCard extends LitElement {
           >${
             primaryKey === "used_percent"
               ? formatPercent(primaryValue as number | null, this.locale)
-              : formatDecimal(primaryValue as string | null, this.locale)
+              : formatUsd(primaryValue as string | null, this.locale)
           }</span
         >
       </div>`,
@@ -452,7 +454,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
-          <span class="info-value">${formatDecimal(spend.used, this.locale)}</span>
+          <span class="info-value">${formatUsd(spend.used, this.locale)}</span>
         </div>`,
       );
     }
@@ -460,7 +462,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
-          <span class="info-value">${formatDecimal(spend.limit, this.locale)}</span>
+          <span class="info-value">${formatUsd(spend.limit, this.locale)}</span>
         </div>`,
       );
     }
@@ -545,13 +547,30 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderDetails(account: AccountViewModel): TemplateResult | typeof nothing {
+    const creditsRows = this.renderCreditsRows(account);
+    const resetCreditsRows = this.renderResetCreditsRows(account);
+    const spendingRows = this.renderSpendingRows(account);
+    const profileRows = this.renderProfileRows(account);
+    const accountRows = this.renderAccountRows(account);
+
     const sections = [
       this.renderAdditionalLimits(account),
-      this.renderCreditsRows(account),
-      this.renderResetCreditsRows(account),
-      this.renderSpendingRows(account),
-      this.renderProfileRows(account),
-      this.renderAccountRows(account),
+      creditsRows !== nothing || resetCreditsRows !== nothing
+        ? html`<div class="section-label">${this.t("sectionCredits")}</div>
+            ${creditsRows}${resetCreditsRows}`
+        : nothing,
+      spendingRows !== nothing
+        ? html`<div class="section-label">${this.t("sectionSpending")}</div>
+            ${spendingRows}`
+        : nothing,
+      profileRows !== nothing
+        ? html`<div class="section-label">${this.t("sectionProfile")}</div>
+            ${profileRows}`
+        : nothing,
+      accountRows !== nothing
+        ? html`<div class="section-label">${this.t("sectionAccount")}</div>
+            ${accountRows}`
+        : nothing,
     ].filter((section) => section !== nothing);
     return sections.length ? html`<div class="details">${sections}</div>` : nothing;
   }
@@ -576,7 +595,7 @@ export class CodexUsageCard extends LitElement {
     const hasDetails = detailsContent !== nothing;
     const callout = account ? this.calloutLabel(account) : null;
     const color = this.config.colors[severity];
-    const style = `--state-color:${color};--card-radius:${this.config.appearance.card_radius}px;--panel-radius:${this.config.appearance.panel_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
+    const style = `--state-color:${color};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
 
     return html`<ha-card class="${severity}${stale ? " stale" : ""}" style=${style}>
       <div class="surface">
@@ -622,6 +641,7 @@ export class CodexUsageCard extends LitElement {
             ? html`<p class="blocker-note">${this.blockerLabel(account.blocker)}</p>`
             : nothing
         }
+        ${account && callout ? html`<p class="callout">${callout}</p>` : nothing}
         ${
           !account
             ? html`<div class="empty">${this.t("unavailable")}</div>`
@@ -635,7 +655,6 @@ export class CodexUsageCard extends LitElement {
                   </div>`
               : nothing
         }
-        ${account && callout ? html`<p class="callout">${callout}</p>` : nothing}
         ${
           hasDetails
             ? html`<button
@@ -1095,7 +1114,6 @@ export class CodexUsageCardEditor extends LitElement {
       show_unavailable_limits: "showUnavailable",
       stale_after_minutes: "staleAfter",
       card_radius: "cardRadius",
-      panel_radius: "panelRadius",
       spacing: "spacing",
     };
     const label = schema.name ? labels[schema.name] : undefined;
@@ -1311,7 +1329,6 @@ export class CodexUsageCardEditor extends LitElement {
           .data=${this.config.appearance}
           .schema=${[
             { name: "card_radius", selector: { number: { min: 0, max: 48, mode: "box" } } },
-            { name: "panel_radius", selector: { number: { min: 0, max: 36, mode: "box" } } },
             { name: "spacing", selector: { number: { min: 4, max: 32, mode: "box" } } },
           ]}
           .computeLabel=${this.computeLabel}

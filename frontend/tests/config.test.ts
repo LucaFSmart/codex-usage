@@ -10,7 +10,7 @@ describe("normalizeConfig", () => {
   it("fills all defaults for a minimal Lovelace config", () => {
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(DEFAULT_CONFIG);
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(
-      expect.objectContaining({ account_mode: "auto", compact: false }),
+      expect.objectContaining({ account_mode: "auto", compact: true }),
     );
   });
 
@@ -43,7 +43,7 @@ describe("normalizeConfig", () => {
         account_mode: "single",
         selected_entry_id: "entry-a",
         allow_account_switching: false,
-        compact: true,
+        compact: false,
         title: "Team usage",
       }),
     ).toEqual(
@@ -51,7 +51,7 @@ describe("normalizeConfig", () => {
         account_mode: "single",
         selected_entry_id: "entry-a",
         allow_account_switching: false,
-        compact: true,
+        compact: false,
         title: "Team usage",
       }),
     );
@@ -66,6 +66,15 @@ describe("normalizeConfig", () => {
         title: false,
       }),
     ).toEqual(DEFAULT_CONFIG);
+  });
+
+  it("silently ignores a legacy panel_radius appearance field", () => {
+    const normalized = normalizeConfig({
+      type: "custom:codex-usage-card",
+      appearance: { card_radius: 24, panel_radius: 99, spacing: 12 },
+    });
+    expect(normalized.appearance).toEqual({ card_radius: 24, spacing: 12 });
+    expect(normalized.appearance).not.toHaveProperty("panel_radius");
   });
 
   it("deduplicates valid included entry IDs", () => {

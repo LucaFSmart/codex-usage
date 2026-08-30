@@ -73,7 +73,6 @@ export const STRINGS = {
     colorBlocked: "Blocked",
     colorUnknown: "Unavailable",
     cardRadius: "Card radius",
-    panelRadius: "Panel radius",
     spacing: "Spacing",
     resetDefaults: "Reset to defaults",
     sectionLimits: "Limits",
@@ -99,6 +98,8 @@ export const STRINGS = {
     mostConstrainedLowRemaining: "{limit} has only {percent}% remaining.",
     mostConstrainedBlockedUsage: "Codex usage is currently blocked by your {limit}.",
     mostConstrainedBlockedSpend: "Usage is currently blocked by your spending limit.",
+    mostConstrainedBlockedCredits: "Usage is currently blocked by your credit limit.",
+    mostConstrainedBlockedUnknown: "Codex usage is currently unavailable.",
     // relative reset time
     resetsImminently: "Resets shortly",
     resetsInMinutes: "Resets in {minutes} min",
@@ -115,7 +116,7 @@ export const STRINGS = {
     accountId: "Account ID",
     // friendlier credits/spend copy
     unlimitedCredits: "Unlimited credits",
-    creditsAvailableAmount: "${amount} available",
+    creditsAvailableAmount: "{amount} available",
     resetCreditsAvailable: "{count} reset credits available",
     expiresOn: "Expires {date}",
   },
@@ -193,7 +194,6 @@ export const STRINGS = {
     colorBlocked: "Blockiert",
     colorUnknown: "Nicht verfügbar",
     cardRadius: "Kartenradius",
-    panelRadius: "Panelradius",
     spacing: "Abstand",
     resetDefaults: "Auf Standard zurücksetzen",
     sectionLimits: "Limits",
@@ -219,6 +219,8 @@ export const STRINGS = {
     mostConstrainedLowRemaining: "{limit} hat nur noch {percent}% übrig.",
     mostConstrainedBlockedUsage: "Die Codex-Nutzung wird derzeit durch dein {limit} blockiert.",
     mostConstrainedBlockedSpend: "Die Nutzung wird derzeit durch dein Ausgabenlimit blockiert.",
+    mostConstrainedBlockedCredits: "Die Nutzung wird derzeit durch dein Guthabenlimit blockiert.",
+    mostConstrainedBlockedUnknown: "Die Codex-Nutzung ist derzeit nicht verfügbar.",
     // relative reset time
     resetsImminently: "Setzt sich gleich zurück",
     resetsInMinutes: "Setzt sich in {minutes} Min. zurück",
@@ -235,7 +237,7 @@ export const STRINGS = {
     accountId: "Konto-ID",
     // friendlier credits/spend copy
     unlimitedCredits: "Unbegrenztes Guthaben",
-    creditsAvailableAmount: "{amount} $ verfügbar",
+    creditsAvailableAmount: "{amount} verfügbar",
     resetCreditsAvailable: "{count} Reset-Guthaben verfügbar",
     expiresOn: "Läuft ab am {date}",
   },

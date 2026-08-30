@@ -42,11 +42,32 @@ unchanged; every change below is in the bundled dashboard card.
   `normal`/`elevated`/`missing`/`stale` to `ok`/`warning`/`unknown`, with
   `stale` no longer a configurable color (freshness now uses one fixed,
   non-severity CSS variable).
+- Remove `appearance.panel_radius`. It rounded per-item panels that no
+  longer exist after the visual rework above, so it had become dead
+  configuration.
+- Default `compact` to `true`. A fresh install now opens on just the
+  status chip, the most-constrained-limit callout, and the primary
+  limits — matching the original "answer three questions immediately"
+  goal of this redesign — with the details toggle one click away.
+- Fix the most-constrained-limit callout naming the wrong thing when an
+  account is blocked by credits or an unrecognized reason: it previously
+  always said "blocked by your {limit}" even when the real blocker had
+  nothing to do with a specific rate-limit window. It now has dedicated
+  copy for each of the four blocker states (spend, credits, usage limit,
+  unknown), matching the existing blocker-note text.
+- Format spend amounts (remaining/used/limit) as USD, consistent with the
+  credits copy — they previously rendered as bare numbers.
+- Add subtle, uppercase section labels ("Credits", "Spending", "Profile",
+  "Account") above each detail group, matching the treatment "Additional
+  limits" already had. Still no borders, backgrounds, or boxes — just a
+  small heading and spacing, per the single-surface design.
 
 This is a breaking change for anyone with an existing card configuration
-that sets `display_mode`, `thresholds.elevated`, or `colors.normal` /
-`colors.elevated` / `colors.stale` / `colors.missing` — those keys are no
-longer read. Nothing else in the config schema changed.
+that sets `display_mode`, `thresholds.elevated`, `colors.normal` /
+`colors.elevated` / `colors.stale` / `colors.missing`, or
+`appearance.panel_radius` — those keys are no longer read. Anyone relying
+on the previous expanded-by-default behavior should set `compact: false`
+explicitly. Nothing else in the config schema changed.
 
 ## 0.5.4 - 2026-08-18
 

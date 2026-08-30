@@ -89,7 +89,7 @@ account_mode: auto       # auto | single | all
 selected_entry_id: ""    # set through the editor for a fixed account
 included_entry_ids: []
 allow_account_switching: true
-compact: false           # true starts the details panel collapsed
+compact: true            # false starts the details panel expanded
 title: Codex Usage
 show_unavailable_limits: false
 sections:
@@ -114,7 +114,6 @@ colors:
 stale_after_minutes: 15
 appearance:
   card_radius: 20
-  panel_radius: 14
   spacing: 16
 ```
 
@@ -127,7 +126,7 @@ Only fields actually reported for the selected workspace are shown by default. U
 ### Sections and layouts
 
 - The status chip, most-constrained-limit callout, and the primary 5-hour/weekly limits are always visible, regardless of the details panel's state.
-- `compact: false` (default) opens with the details panel expanded; `compact: true` starts it collapsed. Either way, the card's own "Show details"/"Hide details" toggle lets the viewer expand or collapse it at any time, independent of the configured default.
+- `compact: true` (default) starts with the details panel collapsed, so the card opens on just the status chip, the most-constrained-limit callout, and the primary limits; `compact: false` starts it expanded. Either way, the card's own "Show details"/"Hide details" toggle lets the viewer expand or collapse it at any time, independent of the configured default.
 - The details panel holds additional limits, credits, spend control, reset credits, profile stats, and account info. Each of these sections can be hidden entirely (`visible: false`), forced on (`visible: true`), or set to `visible: "auto"` to hide itself automatically when the selected account has no data for it.
 - Every content group and its individual values can be hidden independently in the visual editor.
 - The editor also controls included accounts, the fixed account, freshness threshold, semantic colors, and card dimensions.
@@ -164,10 +163,7 @@ The supported CSS custom properties are:
 
 The freshness banner (data may be outdated) always uses a fixed, non-themable
 color — deliberately decoupled from the severity palette above, since a stale
-but otherwise healthy account should never look alarming. `appearance.panel_radius`
-is still accepted for backward compatibility but currently has no visible effect,
-since the card no longer renders any bordered per-item panels; it is likely to
-be removed in a future release.
+but otherwise healthy account should never look alarming.
 
 There is intentionally no free-form CSS or JavaScript configuration field. card-mod can style the outer `ha-card` without weakening the card's configuration boundary.
 

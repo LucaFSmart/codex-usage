@@ -185,24 +185,57 @@ describe("CodexUsageCard", () => {
     expect(callout).toContain("9%");
   });
 
-  it("keeps details expanded by default and collapses only when compact is set", async () => {
+  it("names the actual blocker in the callout instead of always blaming a rate limit", async () => {
+    const creditsBlocked = {
+      ...SNAPSHOT.accounts[0]!,
+      blocker: "credits" as const,
+    };
+    const creditsCard = await mount<CodexUsageCard>("codex-usage-card");
+    creditsCard.setConfig({ type: "custom:codex-usage-card" });
+    creditsCard.hass = makeFakeHass({ ...SNAPSHOT, accounts: [creditsBlocked] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await creditsCard.updateComplete;
+    const creditsCallout = creditsCard.shadowRoot?.querySelector(".callout")?.textContent;
+    expect(creditsCallout).toContain("credit limit");
+    expect(creditsCallout).not.toContain("Week");
+
+    const unknownBlocked = {
+      ...SNAPSHOT.accounts[0]!,
+      blocker: "unknown" as const,
+    };
+    const unknownCard = await mount<CodexUsageCard>("codex-usage-card");
+    unknownCard.setConfig({ type: "custom:codex-usage-card" });
+    unknownCard.hass = makeFakeHass({ ...SNAPSHOT, accounts: [unknownBlocked] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await unknownCard.updateComplete;
+    const unknownCallout = unknownCard.shadowRoot?.querySelector(".callout")?.textContent;
+    expect(unknownCallout).toContain("unavailable");
+    expect(unknownCallout).not.toContain("Week");
+  });
+
+  it("renders the most-constrained callout before the primary limits", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [SNAPSHOT.accounts[0]!] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const main = card.shadowRoot?.querySelector("main.limits");
+    const callout = card.shadowRoot?.querySelector(".callout");
+    expect(callout).not.toBeNull();
+    expect(main).not.toBeNull();
+    const position = callout!.compareDocumentPosition(main!);
+    // DOCUMENT_POSITION_FOLLOWING (4) means `main` comes after `callout`.
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("collapses details by default and expands only when compact is explicitly false", async () => {
     const account = {
       ...SNAPSHOT.accounts[0]!,
       credits: { balance: "12.50", has_credits: true, unlimited: false, overage_reached: false },
     };
-    const expanded = await mount<CodexUsageCard>("codex-usage-card");
-    expanded.setConfig({ type: "custom:codex-usage-card" });
-    expanded.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await expanded.updateComplete;
-
-    expect(expanded.shadowRoot?.querySelector('[data-detail="credits"]')).not.toBeNull();
-    expect(expanded.shadowRoot?.querySelector(".details-toggle")?.textContent).toContain(
-      "Hide details",
-    );
-
     const compact = await mount<CodexUsageCard>("codex-usage-card");
-    compact.setConfig({ type: "custom:codex-usage-card", compact: true });
+    compact.setConfig({ type: "custom:codex-usage-card" });
     compact.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
     await new Promise((resolve) => setTimeout(resolve, 0));
     await compact.updateComplete;
@@ -210,6 +243,17 @@ describe("CodexUsageCard", () => {
     expect(compact.shadowRoot?.querySelector('[data-detail="credits"]')).toBeNull();
     expect(compact.shadowRoot?.querySelector(".details-toggle")?.textContent).toContain(
       "Show details",
+    );
+
+    const expanded = await mount<CodexUsageCard>("codex-usage-card");
+    expanded.setConfig({ type: "custom:codex-usage-card", compact: false });
+    expanded.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await expanded.updateComplete;
+
+    expect(expanded.shadowRoot?.querySelector('[data-detail="credits"]')).not.toBeNull();
+    expect(expanded.shadowRoot?.querySelector(".details-toggle")?.textContent).toContain(
+      "Hide details",
     );
 
     compact.shadowRoot?.querySelector<HTMLButtonElement>(".details-toggle")?.click();
@@ -234,7 +278,7 @@ describe("CodexUsageCard", () => {
 
   it("auto-hides the credits section when the account has no credits data", async () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
-    card.setConfig({ type: "custom:codex-usage-card" });
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
     card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [SNAPSHOT.accounts[0]!] });
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
@@ -261,7 +305,7 @@ describe("CodexUsageCard", () => {
       ],
     };
     const card = await mount<CodexUsageCard>("codex-usage-card");
-    card.setConfig({ type: "custom:codex-usage-card" });
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
     card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
@@ -269,6 +313,34 @@ describe("CodexUsageCard", () => {
     const row = card.shadowRoot?.querySelector('[data-limit-id="code_review"]');
     expect(row).not.toBeNull();
     expect(row?.classList.contains("limit-row")).toBe(true);
+  });
+
+  it("formats spend amounts as USD, consistent with the credits copy", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      spend: {
+        source: "workspace",
+        limit: "100",
+        used: "18.2",
+        remaining: "81.8",
+        used_percent: 18,
+        remaining_percent: 82,
+        resets_at: null,
+        reached: false,
+      },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const spendingRow = card.shadowRoot?.querySelector('[data-detail="spending"]')?.textContent;
+    expect(spendingRow).toContain("$81.8");
+    const usedRow = card.shadowRoot?.querySelector('[data-spend-key="used"]')?.textContent;
+    expect(usedRow).toContain("$18.2");
+    const limitRow = card.shadowRoot?.querySelector('[data-spend-key="limit"]')?.textContent;
+    expect(limitRow).toContain("$100");
   });
 
   it("does not render individually-boxed sub-cards for credits, spend, or account details", async () => {
@@ -287,7 +359,7 @@ describe("CodexUsageCard", () => {
       },
     };
     const card = await mount<CodexUsageCard>("codex-usage-card");
-    card.setConfig({ type: "custom:codex-usage-card" });
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
     card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
@@ -301,6 +373,46 @@ describe("CodexUsageCard", () => {
       expect(el, `${selector} should exist`).not.toBeNull();
       expect(el?.classList.contains("panel")).toBe(false);
     }
+  });
+
+  it("labels every detail group with a subtle section heading, matching additional limits", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      credits: { balance: "12.50", has_credits: true, unlimited: false, overage_reached: false },
+      spend: {
+        source: "workspace",
+        limit: "100",
+        used: "25",
+        remaining: "75",
+        used_percent: 25,
+        remaining_percent: 75,
+        resets_at: "2026-08-01T10:00:00Z",
+        reached: false,
+      },
+      profile: {
+        lifetime_tokens: 1000,
+        peak_daily_tokens: null,
+        current_streak_days: null,
+        longest_streak_days: null,
+        total_threads: null,
+        longest_running_turn_sec: null,
+        fast_mode_usage_percentage: null,
+        total_skills_used: null,
+        unique_skills_used: null,
+        most_used_reasoning_effort: null,
+        most_used_reasoning_effort_percentage: null,
+      },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const labels = [...(card.shadowRoot?.querySelectorAll(".section-label") ?? [])].map(
+      (el) => el.textContent,
+    );
+    expect(labels).toEqual(["Credits", "Spending", "Profile", "Account"]);
   });
 
   it("labels a multi-account aggregate status unambiguously", async () => {

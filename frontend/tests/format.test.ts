@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatAbsoluteReset, relativeDurationUntil } from "../src/format";
+import { formatAbsoluteReset, formatUsd, relativeDurationUntil } from "../src/format";
 
 describe("relativeDurationUntil", () => {
   const now = new Date("2026-08-30T12:00:00Z");
@@ -51,5 +51,16 @@ describe("formatAbsoluteReset", () => {
     const formatted = formatAbsoluteReset("2026-09-02T15:00:00Z", "en-US");
     expect(formatted).not.toBe("—");
     expect(formatted.length).toBeGreaterThan(0);
+  });
+});
+
+describe("formatUsd", () => {
+  it("prefixes a valid decimal with a dollar sign", () => {
+    expect(formatUsd("18.2", "en-US")).toBe("$18.2");
+    expect(formatUsd("100", "en-US")).toBe("$100");
+  });
+
+  it("returns an em dash without a dollar sign for a missing value", () => {
+    expect(formatUsd(null, "en-US")).toBe("—");
   });
 });

@@ -39,7 +39,7 @@ export const DEFAULT_CONFIG: CodexUsageCardConfig = {
   account_mode: "auto",
   included_entry_ids: [],
   allow_account_switching: true,
-  compact: false,
+  compact: true,
   title: "Codex Usage",
   show_unavailable_limits: false,
   sections: {
@@ -56,7 +56,7 @@ export const DEFAULT_CONFIG: CodexUsageCardConfig = {
   thresholds: { ...DEFAULT_THRESHOLDS },
   colors: { ...DEFAULT_COLORS },
   stale_after_minutes: 15,
-  appearance: { card_radius: 20, panel_radius: 14, spacing: 16 },
+  appearance: { card_radius: 20, spacing: 16 },
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -156,7 +156,6 @@ function normalizeAppearance(value: unknown): CardAppearance {
   const source = isRecord(value) ? value : {};
   return {
     card_radius: dimension(source.card_radius, DEFAULT_CONFIG.appearance.card_radius, 0, 48),
-    panel_radius: dimension(source.panel_radius, DEFAULT_CONFIG.appearance.panel_radius, 0, 36),
     spacing: dimension(source.spacing, DEFAULT_CONFIG.appearance.spacing, 4, 32),
   };
 }

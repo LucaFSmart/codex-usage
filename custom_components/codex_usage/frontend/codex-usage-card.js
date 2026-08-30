@@ -254,86 +254,86 @@ var h = class extends HTMLElement {
 h.elementStyles = [], h.shadowRootOptions = { mode: "open" }, h[p("elementProperties")] = /* @__PURE__ */ new Map(), h[p("finalized")] = /* @__PURE__ */ new Map(), ae?.({ ReactiveElement: h }), (f.reactiveElementVersions ??= []).push("2.1.2");
 //#endregion
 //#region node_modules/lit-html/lit-html.js
-var ce = globalThis, le = (e) => e, g = ce.trustedTypes, ue = g ? g.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, de = "$lit$", _ = `lit$${Math.random().toFixed(9).slice(2)}$`, fe = "?" + _, pe = `<${fe}>`, v = document, y = () => v.createComment(""), b = (e) => e === null || typeof e != "object" && typeof e != "function", me = Array.isArray, he = (e) => me(e) || typeof e?.[Symbol.iterator] == "function", ge = "[ 	\n\f\r]", x = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, _e = /-->/g, ve = />/g, S = RegExp(`>|${ge}(?:([^\\s"'>=/]+)(${ge}*=${ge}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), ye = /'/g, be = /"/g, xe = /^(?:script|style|textarea|title)$/i, C = ((e) => (t, ...n) => ({
+var g = globalThis, ce = (e) => e, _ = g.trustedTypes, le = _ ? _.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ue = "$lit$", v = `lit$${Math.random().toFixed(9).slice(2)}$`, de = "?" + v, fe = `<${de}>`, y = document, b = () => y.createComment(""), x = (e) => e === null || typeof e != "object" && typeof e != "function", S = Array.isArray, pe = (e) => S(e) || typeof e?.[Symbol.iterator] == "function", me = "[ 	\n\f\r]", C = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, ge = />/g, w = RegExp(`>|${me}(?:([^\\s"'>=/]+)(${me}*=${me}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), _e = /'/g, ve = /"/g, ye = /^(?:script|style|textarea|title)$/i, T = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
 	values: n
-}))(1), w = Symbol.for("lit-noChange"), T = Symbol.for("lit-nothing"), Se = /* @__PURE__ */ new WeakMap(), E = v.createTreeWalker(v, 129);
-function Ce(e, t) {
-	if (!me(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-	return ue === void 0 ? t : ue.createHTML(t);
+}))(1), E = Symbol.for("lit-noChange"), D = Symbol.for("lit-nothing"), be = /* @__PURE__ */ new WeakMap(), O = y.createTreeWalker(y, 129);
+function xe(e, t) {
+	if (!S(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+	return le === void 0 ? t : le.createHTML(t);
 }
-var we = (e, t) => {
-	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = x;
+var Se = (e, t) => {
+	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = C;
 	for (let t = 0; t < n; t++) {
 		let n = e[t], s, c, l = -1, u = 0;
-		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === x ? c[1] === "!--" ? o = _e : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = S) : (xe.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = S) : o = ve : o === S ? c[0] === ">" ? (o = i ?? x, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? S : c[3] === "\"" ? be : ye) : o === be || o === ye ? o = S : o === _e || o === ve ? o = x : (o = S, i = void 0);
-		let d = o === S && e[t + 1].startsWith("/>") ? " " : "";
-		a += o === x ? n + pe : l >= 0 ? (r.push(s), n.slice(0, l) + de + n.slice(l) + _ + d) : n + _ + (l === -2 ? t : d);
+		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === C ? c[1] === "!--" ? o = he : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = w) : (ye.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = w) : o = ge : o === w ? c[0] === ">" ? (o = i ?? C, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? w : c[3] === "\"" ? ve : _e) : o === ve || o === _e ? o = w : o === he || o === ge ? o = C : (o = w, i = void 0);
+		let d = o === w && e[t + 1].startsWith("/>") ? " " : "";
+		a += o === C ? n + fe : l >= 0 ? (r.push(s), n.slice(0, l) + ue + n.slice(l) + v + d) : n + v + (l === -2 ? t : d);
 	}
-	return [Ce(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
-}, D = class e {
+	return [xe(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
+}, Ce = class e {
 	constructor({ strings: t, _$litType$: n }, r) {
 		let i;
 		this.parts = [];
-		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = we(t, n);
-		if (this.el = e.createElement(l, r), E.currentNode = this.el.content, n === 2 || n === 3) {
+		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Se(t, n);
+		if (this.el = e.createElement(l, r), O.currentNode = this.el.content, n === 2 || n === 3) {
 			let e = this.el.content.firstChild;
 			e.replaceWith(...e.childNodes);
 		}
-		for (; (i = E.nextNode()) !== null && c.length < s;) {
+		for (; (i = O.nextNode()) !== null && c.length < s;) {
 			if (i.nodeType === 1) {
-				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(de)) {
-					let t = u[o++], n = i.getAttribute(e).split(_), r = /([.?@])?(.*)/.exec(t);
+				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(ue)) {
+					let t = u[o++], n = i.getAttribute(e).split(v), r = /([.?@])?(.*)/.exec(t);
 					c.push({
 						type: 1,
 						index: a,
 						name: r[2],
 						strings: n,
-						ctor: r[1] === "." ? Ee : r[1] === "?" ? De : r[1] === "@" ? Oe : A
+						ctor: r[1] === "." ? Te : r[1] === "?" ? Ee : r[1] === "@" ? De : j
 					}), i.removeAttribute(e);
-				} else e.startsWith(_) && (c.push({
+				} else e.startsWith(v) && (c.push({
 					type: 6,
 					index: a
 				}), i.removeAttribute(e));
-				if (xe.test(i.tagName)) {
-					let e = i.textContent.split(_), t = e.length - 1;
+				if (ye.test(i.tagName)) {
+					let e = i.textContent.split(v), t = e.length - 1;
 					if (t > 0) {
-						i.textContent = g ? g.emptyScript : "";
-						for (let n = 0; n < t; n++) i.append(e[n], y()), E.nextNode(), c.push({
+						i.textContent = _ ? _.emptyScript : "";
+						for (let n = 0; n < t; n++) i.append(e[n], b()), O.nextNode(), c.push({
 							type: 2,
 							index: ++a
 						});
-						i.append(e[t], y());
+						i.append(e[t], b());
 					}
 				}
 			} else if (i.nodeType === 8) {
-				if (i.data === fe) c.push({
+				if (i.data === de) c.push({
 					type: 2,
 					index: a
 				});
 				else {
 					let e = -1;
-					for (; (e = i.data.indexOf(_, e + 1)) !== -1;) c.push({
+					for (; (e = i.data.indexOf(v, e + 1)) !== -1;) c.push({
 						type: 7,
 						index: a
-					}), e += _.length - 1;
+					}), e += v.length - 1;
 				}
 			}
 			a++;
 		}
 	}
 	static createElement(e, t) {
-		let n = v.createElement("template");
+		let n = y.createElement("template");
 		return n.innerHTML = e, n;
 	}
 };
-function O(e, t, n = e, r) {
-	if (t === w) return t;
-	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = b(t) ? void 0 : t._$litDirective$;
-	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = O(e, i._$AS(e, t.values), i, r)), t;
+function k(e, t, n = e, r) {
+	if (t === E) return t;
+	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = x(t) ? void 0 : t._$litDirective$;
+	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = k(e, i._$AS(e, t.values), i, r)), t;
 }
-var Te = class {
+var we = class {
 	constructor(e, t) {
 		this._$AV = [], this._$AN = void 0, this._$AD = e, this._$AM = t;
 	}
@@ -344,28 +344,28 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	u(e) {
-		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? v).importNode(t, !0);
-		E.currentNode = r;
-		let i = E.nextNode(), a = 0, o = 0, s = n[0];
+		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? y).importNode(t, !0);
+		O.currentNode = r;
+		let i = O.nextNode(), a = 0, o = 0, s = n[0];
 		for (; s !== void 0;) {
 			if (a === s.index) {
 				let t;
-				s.type === 2 ? t = new k(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new ke(i, this, e)), this._$AV.push(t), s = n[++o];
+				s.type === 2 ? t = new A(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new Oe(i, this, e)), this._$AV.push(t), s = n[++o];
 			}
-			a !== s?.index && (i = E.nextNode(), a++);
+			a !== s?.index && (i = O.nextNode(), a++);
 		}
-		return E.currentNode = v, r;
+		return O.currentNode = y, r;
 	}
 	p(e) {
 		let t = 0;
 		for (let n of this._$AV) n !== void 0 && (n.strings === void 0 ? n._$AI(e[t]) : (n._$AI(e, n, t), t += n.strings.length - 2)), t++;
 	}
-}, k = class e {
+}, A = class e {
 	get _$AU() {
 		return this._$AM?._$AU ?? this._$Cv;
 	}
 	constructor(e, t, n, r) {
-		this.type = 2, this._$AH = T, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
+		this.type = 2, this._$AH = D, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
 	}
 	get parentNode() {
 		let e = this._$AA.parentNode, t = this._$AM;
@@ -378,7 +378,7 @@ var Te = class {
 		return this._$AB;
 	}
 	_$AI(e, t = this) {
-		e = O(this, e, t), b(e) ? e === T || e == null || e === "" ? (this._$AH !== T && this._$AR(), this._$AH = T) : e !== this._$AH && e !== w && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? he(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
+		e = k(this, e, t), x(e) ? e === D || e == null || e === "" ? (this._$AH !== D && this._$AR(), this._$AH = D) : e !== this._$AH && e !== E && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? pe(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
 	}
 	O(e) {
 		return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -387,36 +387,36 @@ var Te = class {
 		this._$AH !== e && (this._$AR(), this._$AH = this.O(e));
 	}
 	_(e) {
-		this._$AH !== T && b(this._$AH) ? this._$AA.nextSibling.data = e : this.T(v.createTextNode(e)), this._$AH = e;
+		this._$AH !== D && x(this._$AH) ? this._$AA.nextSibling.data = e : this.T(y.createTextNode(e)), this._$AH = e;
 	}
 	$(e) {
-		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = D.createElement(Ce(n.h, n.h[0]), this.options)), n);
+		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = Ce.createElement(xe(n.h, n.h[0]), this.options)), n);
 		if (this._$AH?._$AD === r) this._$AH.p(t);
 		else {
-			let e = new Te(r, this), n = e.u(this.options);
+			let e = new we(r, this), n = e.u(this.options);
 			e.p(t), this.T(n), this._$AH = e;
 		}
 	}
 	_$AC(e) {
-		let t = Se.get(e.strings);
-		return t === void 0 && Se.set(e.strings, t = new D(e)), t;
+		let t = be.get(e.strings);
+		return t === void 0 && be.set(e.strings, t = new Ce(e)), t;
 	}
 	k(t) {
-		me(this._$AH) || (this._$AH = [], this._$AR());
+		S(this._$AH) || (this._$AH = [], this._$AR());
 		let n = this._$AH, r, i = 0;
-		for (let a of t) i === n.length ? n.push(r = new e(this.O(y()), this.O(y()), this, this.options)) : r = n[i], r._$AI(a), i++;
+		for (let a of t) i === n.length ? n.push(r = new e(this.O(b()), this.O(b()), this, this.options)) : r = n[i], r._$AI(a), i++;
 		i < n.length && (this._$AR(r && r._$AB.nextSibling, i), n.length = i);
 	}
 	_$AR(e = this._$AA.nextSibling, t) {
 		for (this._$AP?.(!1, !0, t); e !== this._$AB;) {
-			let t = le(e).nextSibling;
-			le(e).remove(), e = t;
+			let t = ce(e).nextSibling;
+			ce(e).remove(), e = t;
 		}
 	}
 	setConnected(e) {
 		this._$AM === void 0 && (this._$Cv = e, this._$AP?.(e));
 	}
-}, A = class {
+}, j = class {
 	get tagName() {
 		return this.element.tagName;
 	}
@@ -424,47 +424,47 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	constructor(e, t, n, r, i) {
-		this.type = 1, this._$AH = T, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = T;
+		this.type = 1, this._$AH = D, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = D;
 	}
 	_$AI(e, t = this, n, r) {
 		let i = this.strings, a = !1;
-		if (i === void 0) e = O(this, e, t, 0), a = !b(e) || e !== this._$AH && e !== w, a && (this._$AH = e);
+		if (i === void 0) e = k(this, e, t, 0), a = !x(e) || e !== this._$AH && e !== E, a && (this._$AH = e);
 		else {
 			let r = e, o, s;
-			for (e = i[0], o = 0; o < i.length - 1; o++) s = O(this, r[n + o], t, o), s === w && (s = this._$AH[o]), a ||= !b(s) || s !== this._$AH[o], s === T ? e = T : e !== T && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
+			for (e = i[0], o = 0; o < i.length - 1; o++) s = k(this, r[n + o], t, o), s === E && (s = this._$AH[o]), a ||= !x(s) || s !== this._$AH[o], s === D ? e = D : e !== D && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
 		}
 		a && !r && this.j(e);
 	}
 	j(e) {
-		e === T ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
+		e === D ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
 	}
-}, Ee = class extends A {
+}, Te = class extends j {
 	constructor() {
 		super(...arguments), this.type = 3;
 	}
 	j(e) {
-		this.element[this.name] = e === T ? void 0 : e;
+		this.element[this.name] = e === D ? void 0 : e;
 	}
-}, De = class extends A {
+}, Ee = class extends j {
 	constructor() {
 		super(...arguments), this.type = 4;
 	}
 	j(e) {
-		this.element.toggleAttribute(this.name, !!e && e !== T);
+		this.element.toggleAttribute(this.name, !!e && e !== D);
 	}
-}, Oe = class extends A {
+}, De = class extends j {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r, i), this.type = 5;
 	}
 	_$AI(e, t = this) {
-		if ((e = O(this, e, t, 0) ?? T) === w) return;
-		let n = this._$AH, r = e === T && n !== T || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== T && (n === T || r);
+		if ((e = k(this, e, t, 0) ?? D) === E) return;
+		let n = this._$AH, r = e === D && n !== D || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== D && (n === D || r);
 		r && this.element.removeEventListener(this.name, this, n), i && this.element.addEventListener(this.name, this, e), this._$AH = e;
 	}
 	handleEvent(e) {
 		typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, e) : this._$AH.handleEvent(e);
 	}
-}, ke = class {
+}, Oe = class {
 	constructor(e, t, n) {
 		this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = n;
 	}
@@ -472,18 +472,18 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	_$AI(e) {
-		O(this, e);
+		k(this, e);
 	}
-}, Ae = ce.litHtmlPolyfillSupport;
-Ae?.(D, k), (ce.litHtmlVersions ??= []).push("3.3.3");
-var je = (e, t, n) => {
+}, ke = g.litHtmlPolyfillSupport;
+ke?.(Ce, A), (g.litHtmlVersions ??= []).push("3.3.3");
+var Ae = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
-		r._$litPart$ = i = new k(t.insertBefore(y(), e), e, void 0, n ?? {});
+		r._$litPart$ = i = new A(t.insertBefore(b(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
-}, j = globalThis, M = class extends h {
+}, M = globalThis, N = class extends h {
 	constructor() {
 		super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
 	}
@@ -493,7 +493,7 @@ var je = (e, t, n) => {
 	}
 	update(e) {
 		let t = this.render();
-		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = je(t, this.renderRoot, this.renderOptions);
+		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Ae(t, this.renderRoot, this.renderOptions);
 	}
 	connectedCallback() {
 		super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -502,25 +502,25 @@ var je = (e, t, n) => {
 		super.disconnectedCallback(), this._$Do?.setConnected(!1);
 	}
 	render() {
-		return w;
+		return E;
 	}
 };
-M._$litElement$ = !0, M.finalized = !0, j.litElementHydrateSupport?.({ LitElement: M });
-var Me = j.litElementPolyfillSupport;
-Me?.({ LitElement: M }), (j.litElementVersions ??= []).push("4.2.2");
+N._$litElement$ = !0, N.finalized = !0, M.litElementHydrateSupport?.({ LitElement: N });
+var je = M.litElementPolyfillSupport;
+je?.({ LitElement: N }), (M.litElementVersions ??= []).push("4.2.2");
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/custom-element.js
-var Ne = (e) => (t, n) => {
+var Me = (e) => (t, n) => {
 	n === void 0 ? customElements.define(e, t) : n.addInitializer(() => {
 		customElements.define(e, t);
 	});
-}, Pe = {
+}, Ne = {
 	attribute: !0,
 	type: String,
 	converter: m,
 	reflect: !1,
 	hasChanged: oe
-}, Fe = (e = Pe, t, n) => {
+}, Pe = (e = Ne, t, n) => {
 	let { kind: r, metadata: i } = n, a = globalThis.litPropertyMetadata.get(i);
 	if (a === void 0 && globalThis.litPropertyMetadata.set(i, a = /* @__PURE__ */ new Map()), r === "setter" && ((e = Object.create(e)).wrapped = !0), a.set(n.name, e), r === "accessor") {
 		let { name: r } = n;
@@ -543,8 +543,8 @@ var Ne = (e) => (t, n) => {
 	}
 	throw Error("Unsupported decorator location: " + r);
 };
-function N(e) {
-	return (t, n) => typeof n == "object" ? Fe(e, t, n) : ((e, t, n) => {
+function Fe(e) {
+	return (t, n) => typeof n == "object" ? Pe(e, t, n) : ((e, t, n) => {
 		let r = t.hasOwnProperty(n);
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
@@ -552,7 +552,7 @@ function N(e) {
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/state.js
 function P(e) {
-	return N({
+	return Fe({
 		...e,
 		state: !0,
 		attribute: !1
@@ -724,85 +724,84 @@ var qe = [
 	"warning",
 	"critical",
 	"blocked"
-], Xe = {
+], V = {
 	warning: 75,
 	critical: 90
-}, Ze = {
+}, Xe = {
 	ok: "var(--codex-usage-ok-color, #25b7f3)",
 	warning: "var(--codex-usage-warning-color, #ffb74d)",
 	critical: "var(--codex-usage-critical-color, #ff5f6d)",
 	blocked: "var(--codex-usage-blocked-color, #d32f49)",
 	unknown: "var(--codex-usage-unknown-color, #9e9e9e)"
-}, V = (e = !0) => ({
+}, H = (e = !0) => ({
 	visible: e,
 	values: {}
-}), H = {
+}), U = {
 	type: "custom:codex-usage-card",
 	account_mode: "auto",
 	included_entry_ids: [],
 	allow_account_switching: !0,
-	compact: !1,
+	compact: !0,
 	title: "Codex Usage",
 	show_unavailable_limits: !1,
 	sections: {
-		limits: V(),
-		additional_limits: V("auto"),
-		resets: V(),
-		pace: V(),
-		account: V(),
-		credits: V("auto"),
-		spending: V("auto"),
-		profile: V("auto"),
-		footer: V()
+		limits: H(),
+		additional_limits: H("auto"),
+		resets: H(),
+		pace: H(),
+		account: H(),
+		credits: H("auto"),
+		spending: H("auto"),
+		profile: H("auto"),
+		footer: H()
 	},
-	thresholds: { ...Xe },
-	colors: { ...Ze },
+	thresholds: { ...V },
+	colors: { ...Xe },
 	stale_after_minutes: 15,
 	appearance: {
 		card_radius: 20,
-		panel_radius: 14,
 		spacing: 16
 	}
 };
-function U(e) {
+function W(e) {
 	return typeof e == "object" && !!e && !Array.isArray(e);
 }
-function Qe(e) {
-	if (!U(e)) return {};
+function Ze(e) {
+	if (!W(e)) return {};
 	try {
 		return structuredClone(e);
 	} catch {
 		return {};
 	}
 }
-function $e(e, t) {
+function Qe(e, t) {
 	return typeof e == "string" && t.includes(e);
 }
-function et(e) {
+function $e(e) {
 	if (typeof e == "string") return e.trim() || void 0;
 }
-function tt(e) {
-	return Array.isArray(e) ? [...new Set(e.map(et).filter((e) => !!e))] : [];
+function et(e) {
+	return Array.isArray(e) ? [...new Set(e.map($e).filter((e) => !!e))] : [];
 }
-function nt(e) {
-	let t = U(e) ? e : {};
+function tt(e) {
+	let t = W(e) ? e : {};
 	return Object.fromEntries(Je.map((e) => {
-		let n = U(t[e]) ? t[e] : {}, r = U(n.values) ? Object.fromEntries(Object.entries(n.values).filter(([, e]) => typeof e == "boolean")) : {};
+		let n = W(t[e]) ? t[e] : {}, r = W(n.values) ? Object.fromEntries(Object.entries(n.values).filter(([, e]) => typeof e == "boolean")) : {};
 		return [e, {
-			visible: typeof n.visible == "boolean" || n.visible === "auto" ? n.visible : H.sections[e].visible,
+			visible: typeof n.visible == "boolean" || n.visible === "auto" ? n.visible : U.sections[e].visible,
 			values: r
 		}];
 	}));
 }
-function rt(e) {
-	if (!U(e)) return { ...Xe };
+function nt(e) {
+	if (!W(e)) return { ...V };
 	let t = e.warning, n = e.critical;
 	return typeof t == "number" && Number.isFinite(t) && typeof n == "number" && Number.isFinite(n) && t >= 0 && t < n && n <= 100 ? {
 		warning: t,
 		critical: n
-	} : { ...Xe };
+	} : { ...V };
 }
-function it(e) {
+function rt(e) {
 	if (typeof e != "string" || !e.trim()) return !1;
 	if (typeof CSS > "u" || typeof CSS.supports != "function") return !0;
 	try {
@@ -811,47 +810,46 @@ function it(e) {
 		return !1;
 	}
 }
-function at(e) {
-	let t = U(e) ? e : {};
-	return Object.fromEntries(Ye.map((e) => [e, it(t[e]) ? t[e].trim() : Ze[e]]));
+function it(e) {
+	let t = W(e) ? e : {};
+	return Object.fromEntries(Ye.map((e) => [e, rt(t[e]) ? t[e].trim() : Xe[e]]));
 }
-function ot(e, t, n, r) {
+function at(e, t, n, r) {
 	return typeof e == "number" && Number.isFinite(e) && e >= n && e <= r ? e : t;
 }
-function st(e) {
-	let t = U(e) ? e : {};
+function ot(e) {
+	let t = W(e) ? e : {};
 	return {
-		card_radius: ot(t.card_radius, H.appearance.card_radius, 0, 48),
-		panel_radius: ot(t.panel_radius, H.appearance.panel_radius, 0, 36),
-		spacing: ot(t.spacing, H.appearance.spacing, 4, 32)
+		card_radius: at(t.card_radius, U.appearance.card_radius, 0, 48),
+		spacing: at(t.spacing, U.appearance.spacing, 4, 32)
 	};
 }
-function W(e) {
-	let t = Qe(e), n = {
-		type: typeof t.type == "string" ? t.type : H.type,
-		account_mode: $e(t.account_mode, qe) ? t.account_mode : H.account_mode,
-		included_entry_ids: tt(t.included_entry_ids),
-		allow_account_switching: typeof t.allow_account_switching == "boolean" ? t.allow_account_switching : H.allow_account_switching,
-		compact: typeof t.compact == "boolean" ? t.compact : H.compact,
-		title: typeof t.title == "string" ? t.title : H.title,
-		show_unavailable_limits: typeof t.show_unavailable_limits == "boolean" ? t.show_unavailable_limits : H.show_unavailable_limits,
-		sections: nt(t.sections),
-		thresholds: rt(t.thresholds),
-		colors: at(t.colors),
-		stale_after_minutes: typeof t.stale_after_minutes == "number" && Number.isFinite(t.stale_after_minutes) && t.stale_after_minutes >= 5 && t.stale_after_minutes <= 1440 ? t.stale_after_minutes : H.stale_after_minutes,
-		appearance: st(t.appearance)
-	}, r = et(t.selected_entry_id);
+function G(e) {
+	let t = Ze(e), n = {
+		type: typeof t.type == "string" ? t.type : U.type,
+		account_mode: Qe(t.account_mode, qe) ? t.account_mode : U.account_mode,
+		included_entry_ids: et(t.included_entry_ids),
+		allow_account_switching: typeof t.allow_account_switching == "boolean" ? t.allow_account_switching : U.allow_account_switching,
+		compact: typeof t.compact == "boolean" ? t.compact : U.compact,
+		title: typeof t.title == "string" ? t.title : U.title,
+		show_unavailable_limits: typeof t.show_unavailable_limits == "boolean" ? t.show_unavailable_limits : U.show_unavailable_limits,
+		sections: tt(t.sections),
+		thresholds: nt(t.thresholds),
+		colors: it(t.colors),
+		stale_after_minutes: typeof t.stale_after_minutes == "number" && Number.isFinite(t.stale_after_minutes) && t.stale_after_minutes >= 5 && t.stale_after_minutes <= 1440 ? t.stale_after_minutes : U.stale_after_minutes,
+		appearance: ot(t.appearance)
+	}, r = $e(t.selected_entry_id);
 	r && (n.selected_entry_id = r);
 	for (let e of [
 		"view_layout",
 		"layout_options",
 		"grid_options"
-	]) U(t[e]) && (n[e] = t[e]);
+	]) W(t[e]) && (n[e] = t[e]);
 	return Array.isArray(t.visibility) && (n.visibility = structuredClone(t.visibility)), n;
 }
 //#endregion
 //#region src/format.ts
-var ct = {
+var st = {
 	guest: "Guest",
 	free: "Free",
 	go: "Go",
@@ -870,24 +868,28 @@ var ct = {
 	edu: "Edu",
 	unknown: "Unknown plan"
 };
-function lt(e) {
+function ct(e) {
 	if (!e) return "";
 	let t = e.trim().toLowerCase();
-	return ct[t] ? ct[t] : ut(t);
+	return st[t] ? st[t] : lt(t);
 }
-function ut(e) {
+function lt(e) {
 	return e.trim().toLowerCase().split(/[_-]+/u).filter(Boolean).map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(" ");
 }
-function G(e, t, n = !1) {
+function K(e, t, n = !1) {
 	return e === null || !Number.isFinite(e) ? "—" : new Intl.NumberFormat(t, {
 		notation: n ? "compact" : "standard",
 		maximumFractionDigits: n ? 2 : 1
 	}).format(e);
 }
-function K(e, t) {
+function ut(e, t) {
 	if (e === null) return "—";
 	let n = Number(e);
 	return Number.isFinite(n) ? new Intl.NumberFormat(t, { maximumFractionDigits: 2 }).format(n) : e;
+}
+function q(e, t) {
+	let n = ut(e, t);
+	return n === "—" ? n : `$${n}`;
 }
 function dt(e, t) {
 	if (!e) return null;
@@ -989,7 +991,6 @@ var pt = {
 		colorBlocked: "Blocked",
 		colorUnknown: "Unavailable",
 		cardRadius: "Card radius",
-		panelRadius: "Panel radius",
 		spacing: "Spacing",
 		resetDefaults: "Reset to defaults",
 		sectionLimits: "Limits",
@@ -1012,6 +1013,8 @@ var pt = {
 		mostConstrainedLowRemaining: "{limit} has only {percent}% remaining.",
 		mostConstrainedBlockedUsage: "Codex usage is currently blocked by your {limit}.",
 		mostConstrainedBlockedSpend: "Usage is currently blocked by your spending limit.",
+		mostConstrainedBlockedCredits: "Usage is currently blocked by your credit limit.",
+		mostConstrainedBlockedUnknown: "Codex usage is currently unavailable.",
 		resetsImminently: "Resets shortly",
 		resetsInMinutes: "Resets in {minutes} min",
 		resetsInHours: "Resets in {hours}h",
@@ -1024,7 +1027,7 @@ var pt = {
 		workspace: "Workspace",
 		accountId: "Account ID",
 		unlimitedCredits: "Unlimited credits",
-		creditsAvailableAmount: "${amount} available",
+		creditsAvailableAmount: "{amount} available",
 		resetCreditsAvailable: "{count} reset credits available",
 		expiresOn: "Expires {date}"
 	},
@@ -1102,7 +1105,6 @@ var pt = {
 		colorBlocked: "Blockiert",
 		colorUnknown: "Nicht verfügbar",
 		cardRadius: "Kartenradius",
-		panelRadius: "Panelradius",
 		spacing: "Abstand",
 		resetDefaults: "Auf Standard zurücksetzen",
 		sectionLimits: "Limits",
@@ -1125,6 +1127,8 @@ var pt = {
 		mostConstrainedLowRemaining: "{limit} hat nur noch {percent}% übrig.",
 		mostConstrainedBlockedUsage: "Die Codex-Nutzung wird derzeit durch dein {limit} blockiert.",
 		mostConstrainedBlockedSpend: "Die Nutzung wird derzeit durch dein Ausgabenlimit blockiert.",
+		mostConstrainedBlockedCredits: "Die Nutzung wird derzeit durch dein Guthabenlimit blockiert.",
+		mostConstrainedBlockedUnknown: "Die Codex-Nutzung ist derzeit nicht verfügbar.",
 		resetsImminently: "Setzt sich gleich zurück",
 		resetsInMinutes: "Setzt sich in {minutes} Min. zurück",
 		resetsInHours: "Setzt sich in {hours}h zurück",
@@ -1137,7 +1141,7 @@ var pt = {
 		workspace: "Workspace",
 		accountId: "Konto-ID",
 		unlimitedCredits: "Unbegrenztes Guthaben",
-		creditsAvailableAmount: "{amount} $ verfügbar",
+		creditsAvailableAmount: "{amount} verfügbar",
 		resetCreditsAvailable: "{count} Reset-Guthaben verfügbar",
 		expiresOn: "Läuft ab am {date}"
 	}
@@ -1148,7 +1152,7 @@ function mt(e, t, n) {
 }
 //#endregion
 //#region src/status.ts
-var q = {
+var J = {
 	unknown: 0,
 	ok: 1,
 	warning: 2,
@@ -1159,33 +1163,33 @@ function ht(e, t, n) {
 	return t ? "blocked" : typeof e != "number" || !Number.isFinite(e) ? "unknown" : e >= n.critical ? "critical" : e >= n.warning ? "warning" : "ok";
 }
 function gt(e) {
-	return e.reduce((e, t) => q[t] > q[e] ? t : e, "unknown");
+	return e.reduce((e, t) => J[t] > J[e] ? t : e, "unknown");
 }
 //#endregion
 //#region src/view-model.ts
-function J(e) {
+function _t(e) {
 	if (!e) return null;
 	let t = new Date(e);
 	return Number.isFinite(t.getTime()) ? t : null;
 }
-function _t(e, t, n) {
-	let r = J(e);
+function vt(e, t, n) {
+	let r = _t(e);
 	return r === null || n.getTime() - r.getTime() > t * 6e4;
 }
-function vt(e, t) {
+function yt(e, t) {
 	if (!e.duration_seconds || !e.resets_at || e.used_percent === null) return null;
-	let n = J(e.resets_at);
+	let n = _t(e.resets_at);
 	if (!n) return null;
 	let r = n.getTime() - e.duration_seconds * 1e3, i = (t.getTime() - r) / (e.duration_seconds * 1e3) * 100;
 	return !Number.isFinite(i) || i < 0 || i > 100 ? null : e.used_percent - i;
 }
-function yt(e, t) {
+function bt(e, t) {
 	if (e.reached !== t.reached) return e.reached;
 	let n = e.remaining_percent ?? Infinity, r = t.remaining_percent ?? Infinity;
 	return n === r ? e.source !== t.source && e.source === "main" : n < r;
 }
-function bt(e) {
-	return e.length === 0 ? null : e.reduce((e, t) => yt(t, e) ? t : e);
+function xt(e) {
+	return e.length === 0 ? null : e.reduce((e, t) => bt(t, e) ? t : e);
 }
 function Y(e, t, n) {
 	if (t !== "auto") return t;
@@ -1197,32 +1201,32 @@ function Y(e, t, n) {
 		default: return !0;
 	}
 }
-function xt(e, t, n) {
-	let r = !e.available || _t(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((r) => ({
+function St(e, t, n) {
+	let r = !e.available || vt(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((r) => ({
 		...r,
 		severity: ht(r.used_percent, r.reached || e.blocker !== null, t.thresholds),
-		pace: vt(r, n)
+		pace: yt(r, n)
 	})), a = e.blocker === null ? gt(i.map((e) => e.severity)) : "blocked";
 	return {
 		...e,
 		limits: i,
 		severity: a,
 		stale: r,
-		mostConstrainedLimit: bt(i)
+		mostConstrainedLimit: xt(i)
 	};
 }
-function St(e, t, n, r = /* @__PURE__ */ new Date()) {
+function Ct(e, t, n, r = /* @__PURE__ */ new Date()) {
 	let i = e.accounts;
 	t.included_entry_ids.length > 0 && (i = i.filter((e) => t.included_entry_ids.includes(e.id)));
-	let a = i.map((e) => xt(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
-	s ||= t.account_mode === "single" ? a[0] ?? null : [...a].sort((e, t) => q[t.severity] - q[e.severity])[0] ?? null;
+	let a = i.map((e) => St(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
+	s ||= t.account_mode === "single" ? a[0] ?? null : [...a].sort((e, t) => J[t.severity] - J[e.severity])[0] ?? null;
 	let c = t.account_mode === "single" ? s : null;
 	return {
 		accounts: a,
 		selectedAccount: s,
 		severity: c ? c.severity : gt(a.map((e) => e.severity)),
 		stale: c ? c.stale : a.some((e) => e.stale),
-		generatedAt: J(e.generated_at),
+		generatedAt: _t(e.generated_at),
 		integrationVersion: e.integration_version
 	};
 }
@@ -1236,7 +1240,7 @@ function X(e, t, n, r) {
 }
 //#endregion
 //#region src/codex-usage-card.ts
-var Ct = "codex_usage_card_data_updated", wt = "https://github.com/LucaFSmart/codex-usage#dashboard-card", Tt = [
+var wt = "codex_usage_card_data_updated", Tt = "https://github.com/LucaFSmart/codex-usage#dashboard-card", Et = [
 	{
 		key: "lifetime_tokens",
 		label: "lifetimeTokens",
@@ -1289,7 +1293,7 @@ var Ct = "codex_usage_card_data_updated", wt = "https://github.com/LucaFSmart/co
 		key: "most_used_reasoning_effort_percentage",
 		label: "reasoningShare"
 	}
-], Et = {
+], Dt = {
 	unknown: "severityUnknown",
 	ok: "severityOk",
 	warning: "severityWarning",
@@ -1299,10 +1303,10 @@ var Ct = "codex_usage_card_data_updated", wt = "https://github.com/LucaFSmart/co
 function Z(e, t) {
 	return e === null ? "—" : `${new Intl.NumberFormat(t, { maximumFractionDigits: 1 }).format(e)}%`;
 }
-function Dt(e) {
+function Ot(e) {
 	return e.length > 4 ? `…${e.slice(-4)}` : e;
 }
-var Q = class extends M {
+var Q = class extends N {
 	#e = void 0;
 	get hass() {
 		return this.#e;
@@ -1338,7 +1342,7 @@ var Q = class extends M {
 	set detailsExpanded(e) {
 		this.#i = e;
 	}
-	config = structuredClone(H);
+	config = structuredClone(U);
 	unsubscribe;
 	subscribedConnection;
 	loading = !1;
@@ -1350,7 +1354,7 @@ var Q = class extends M {
 	}
 	setConfig(e) {
 		if (e.type !== "custom:codex-usage-card") throw Error("Invalid card type");
-		this.config = W(e), this.sessionEntryId = void 0, this.detailsExpanded = !this.config.compact, this.requestUpdate();
+		this.config = G(e), this.sessionEntryId = void 0, this.detailsExpanded = !this.config.compact, this.requestUpdate();
 	}
 	getGridOptions() {
 		return {
@@ -1376,7 +1380,7 @@ var Q = class extends M {
 		if (this.subscribedConnection !== this.hass.connection) {
 			this.unsubscribe?.(), this.subscribedConnection = this.hass.connection;
 			try {
-				this.unsubscribe = await this.hass.connection.subscribeEvents(() => void this.loadSnapshot(), Ct);
+				this.unsubscribe = await this.hass.connection.subscribeEvents(() => void this.loadSnapshot(), wt);
 			} catch {
 				this.error = !0, this.subscribedConnection = void 0;
 			}
@@ -1402,7 +1406,7 @@ var Q = class extends M {
 		return this.hass?.locale?.language ?? this.hass?.language;
 	}
 	statusLabel(e) {
-		return this.t(Et[e]);
+		return this.t(Dt[e]);
 	}
 	blockerLabel(e) {
 		return e === "spend" ? this.t("blockerSpend") : e === "credits" ? this.t("blockerCredits") : e === "usage_limit" ? this.t("blockerUsage") : this.t("blockerUnknown");
@@ -1427,10 +1431,13 @@ var Q = class extends M {
 		}) : this.t("resetsInDays", { days: r });
 	}
 	calloutLabel(e) {
+		if (e.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
+		if (e.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
+		if (e.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
 		let t = e.mostConstrainedLimit;
-		return t ? e.blocker === "spend" ? this.t("mostConstrainedBlockedSpend") : e.blocker !== null || t.reached ? this.t("mostConstrainedBlockedUsage", { limit: this.limitLabel(t) }) : t.severity === "warning" || t.severity === "critical" ? this.t("mostConstrainedLowRemaining", {
+		return t ? e.blocker === "usage_limit" || t.reached ? this.t("mostConstrainedBlockedUsage", { limit: this.limitLabel(t) }) : t.severity === "warning" || t.severity === "critical" ? this.t("mostConstrainedLowRemaining", {
 			limit: this.limitLabel(t),
-			percent: G(t.remaining_percent, this.locale)
+			percent: K(t.remaining_percent, this.locale)
 		}) : this.t("mostConstrainedTightest", { limit: this.limitLabel(t) }) : null;
 	}
 	openMoreInfo(e) {
@@ -1448,14 +1455,14 @@ var Q = class extends M {
 		return e.limits.filter((e) => e.source === t && this.config.sections[n].values[e.id] !== !1 && (this.config.show_unavailable_limits || e.used_percent !== null || e.remaining_percent !== null));
 	}
 	renderLimitRow(e, t) {
-		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = C` <div class="limit-head">
+		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = T` <div class="limit-head">
         <span class="limit-name">${this.limitLabel(e)}</span>
-        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? C`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : T}
+        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : D}
       </div>
       <div class="limit-body">
-        ${t ? C`<div class="ring" style=${`--progress:${r ?? 0}`} aria-hidden="true">
+        ${t ? T`<div class="ring" style=${`--progress:${r ?? 0}`} aria-hidden="true">
                 <strong>${Z(r, this.locale)}</strong>
-              </div>` : C`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
+              </div>` : T`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
         <div class="limit-copy">
           <div
             class="bar"
@@ -1469,72 +1476,72 @@ var Q = class extends M {
           <span class="limit-used"
             >${Z(n, this.locale)} ${this.t("usedInline")}</span
           >
-          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? C`<small
-                  >${this.t("pace")}: ${G(Math.abs(e.pace), this.locale)}
+          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? T`<small
+                  >${this.t("pace")}: ${K(Math.abs(e.pace), this.locale)}
                   ${this.t("percentagePoints")}
                   ${e.pace >= 0 ? this.t("ahead") : this.t("behind")}</small
-                >` : T}
+                >` : D}
         </div>
       </div>
-      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? C`<small class="limit-absolute"
+      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<small class="limit-absolute"
               >${this.t("resets")}: ${this.absoluteResetLabel(e.resets_at)}</small
-            >` : T}`;
-		return e.entity_id ? C`<button
+            >` : D}`;
+		return e.entity_id ? T`<button
           class="limit-row"
           data-limit-id=${e.id}
           @click=${() => this.openMoreInfo(e.entity_id)}
         >
           ${i}
-        </button>` : C`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
+        </button>` : T`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
 	}
 	renderAdditionalLimits(e) {
-		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e)) return T;
+		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e)) return D;
 		let t = this.eligibleLimits(e, "additional");
-		return t.length ? C`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
-      ${t.map((e) => this.renderLimitRow(e, !1))}` : T;
+		return t.length ? T`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+      ${t.map((e) => this.renderLimitRow(e, !1))}` : D;
 	}
 	renderCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e) || !e.credits || !this.valueVisible("credits", "balance")) return T;
-		let t = e.credits, n = t.unlimited ? this.t("unlimitedCredits") : t.has_credits === !1 ? this.t("unavailable") : this.t("creditsAvailableAmount", { amount: K(t.balance, this.locale) });
-		return C`<div class="info-row" data-detail="credits">
+		if (!Y("credits", this.config.sections.credits.visible, e) || !e.credits || !this.valueVisible("credits", "balance")) return D;
+		let t = e.credits, n = t.unlimited ? this.t("unlimitedCredits") : t.has_credits === !1 ? this.t("unavailable") : this.t("creditsAvailableAmount", { amount: q(t.balance, this.locale) });
+		return T`<div class="info-row" data-detail="credits">
       <span class="info-label">${this.t("credits")}</span>
       <span class="info-value">${n}</span>
     </div>`;
 	}
 	renderResetCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return T;
-		let t = e.reset_credits, n = [C`<div class="info-row" data-detail="reset-credits">
+		if (!Y("credits", this.config.sections.credits.visible, e) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return D;
+		let t = e.reset_credits, n = [T`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
           >${this.t("resetCreditsAvailable", { count: t.available_count ?? 0 })}</span
         >
       </div>`];
-		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && n.push(C`<div class="info-row" data-credit-key="total_earned">
+		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && n.push(T`<div class="info-row" data-credit-key="total_earned">
           <span class="info-label">${this.t("totalEarned")}</span>
-          <span class="info-value">${G(t.total_earned, this.locale)}</span>
-        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && n.push(C`<div class="info-row" data-credit-key="next_expiry">
+          <span class="info-value">${K(t.total_earned, this.locale)}</span>
+        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && n.push(T`<div class="info-row" data-credit-key="next_expiry">
           <span class="info-label">${this.t("nextExpiry")}</span>
           <span class="info-value"
             >${this.t("expiresOn", { date: this.absoluteResetLabel(t.next_expiry) })}</span
           >
-        </div>`), C`${n}`;
+        </div>`), T`${n}`;
 	}
 	renderSpendingRows(e) {
-		if (!Y("spending", this.config.sections.spending.visible, e) || !e.spend) return T;
+		if (!Y("spending", this.config.sections.spending.visible, e) || !e.spend) return D;
 		let t = e.spend, n = [
 			["remaining", t.remaining],
 			["limit", t.limit],
 			["used", t.used],
 			["used_percent", t.used_percent]
 		].find(([e, t]) => this.valueVisible("spending", e) && t !== null);
-		if (!n) return T;
-		let [r, i] = n, a = [C`<div class="info-row" data-detail="spending">
+		if (!n) return D;
+		let [r, i] = n, a = [T`<div class="info-row" data-detail="spending">
         <span class="info-label">${this.t("spending")}</span>
         <span class="info-value"
-          >${r === "used_percent" ? Z(i, this.locale) : K(i, this.locale)}</span
+          >${r === "used_percent" ? Z(i, this.locale) : q(i, this.locale)}</span
         >
       </div>`];
-		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(C`<div
+		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(T`<div
           class="bar bar--mini"
           role="progressbar"
           aria-valuemin="0"
@@ -1542,80 +1549,83 @@ var Q = class extends M {
           aria-valuenow=${t.used_percent}
         >
           <span style=${`width:${t.used_percent}%`}></span>
-        </div>`), a.push(C`<div class="info-row" data-spend-key="used_percent">
+        </div>`), a.push(T`<div class="info-row" data-spend-key="used_percent">
           <span class="info-label">${this.t("usage")}</span>
           <span class="info-value">${Z(t.used_percent, this.locale)}</span>
-        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(C`<div class="info-row" data-spend-key="used">
+        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(T`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
-          <span class="info-value">${K(t.used, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(C`<div class="info-row" data-spend-key="limit">
+          <span class="info-value">${q(t.used, this.locale)}</span>
+        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(T`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
-          <span class="info-value">${K(t.limit, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "source") && t.source && a.push(C`<div class="info-row" data-spend-key="source">
+          <span class="info-value">${q(t.limit, this.locale)}</span>
+        </div>`), this.valueVisible("spending", "source") && t.source && a.push(T`<div class="info-row" data-spend-key="source">
           <span class="info-label">${this.t("source")}</span>
           <span class="info-value">${t.source}</span>
-        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(C`<div class="info-row" data-spend-key="reset">
+        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(T`<div class="info-row" data-spend-key="reset">
           <span class="info-label">${this.t("resets")}</span>
           <span class="info-value">${this.absoluteResetLabel(t.resets_at)}</span>
-        </div>`), C`${a}`;
+        </div>`), T`${a}`;
 	}
 	renderProfileRows(e) {
-		if (!Y("profile", this.config.sections.profile.visible, e) || !e.profile) return T;
-		let t = Tt.flatMap((t) => {
+		if (!Y("profile", this.config.sections.profile.visible, e) || !e.profile) return D;
+		let t = Et.flatMap((t) => {
 			if (!this.valueVisible("profile", t.key)) return [];
 			let n = e.profile?.[t.key];
 			if (n == null) return [];
-			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : G(n, this.locale, t.compact) : ut(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
-			return [C`<div class="info-row" data-profile-key=${t.key}>
+			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : K(n, this.locale, t.compact) : lt(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
+			return [T`<div class="info-row" data-profile-key=${t.key}>
           <span class="info-label">${this.t(t.label)}</span>
           <span class="info-value">${r}</span>
         </div>`];
 		});
-		return t.length ? C`${t}` : T;
+		return t.length ? T`${t}` : D;
 	}
 	renderAccountRows(e) {
-		if (!Y("account", this.config.sections.account.visible, e)) return T;
+		if (!Y("account", this.config.sections.account.visible, e)) return D;
 		let t = [];
-		return this.valueVisible("account", "plan") && e.plan && t.push(C`<div class="info-row">
+		return this.valueVisible("account", "plan") && e.plan && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("planLabel")}</span>
-          <span class="info-value">${lt(e.plan)}</span>
-        </div>`), this.valueVisible("account", "workspace") && t.push(C`<div class="info-row">
+          <span class="info-value">${ct(e.plan)}</span>
+        </div>`), this.valueVisible("account", "workspace") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("workspace")}</span>
           <span class="info-value">${e.name}</span>
-        </div>`), this.valueVisible("account", "account_id") && t.push(C`<div class="info-row">
+        </div>`), this.valueVisible("account", "account_id") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("accountId")}</span>
-          <span class="info-value">${Dt(e.id)}</span>
-        </div>`), t.length ? C`<div class="account-details" data-detail="account">${t}</div>` : T;
+          <span class="info-value">${Ot(e.id)}</span>
+        </div>`), t.length ? T`<div class="account-details" data-detail="account">${t}</div>` : D;
 	}
 	renderDetails(e) {
-		let t = [
+		let t = this.renderCreditsRows(e), n = this.renderResetCreditsRows(e), r = this.renderSpendingRows(e), i = this.renderProfileRows(e), a = this.renderAccountRows(e), o = [
 			this.renderAdditionalLimits(e),
-			this.renderCreditsRows(e),
-			this.renderResetCreditsRows(e),
-			this.renderSpendingRows(e),
-			this.renderProfileRows(e),
-			this.renderAccountRows(e)
-		].filter((e) => e !== T);
-		return t.length ? C`<div class="details">${t}</div>` : T;
+			t !== D || n !== D ? T`<div class="section-label">${this.t("sectionCredits")}</div>
+            ${t}${n}` : D,
+			r === D ? D : T`<div class="section-label">${this.t("sectionSpending")}</div>
+            ${r}`,
+			i === D ? D : T`<div class="section-label">${this.t("sectionProfile")}</div>
+            ${i}`,
+			a === D ? D : T`<div class="section-label">${this.t("sectionAccount")}</div>
+            ${a}`
+		].filter((e) => e !== D);
+		return o.length ? T`<div class="details">${o}</div>` : D;
 	}
 	render() {
-		let e = this.snapshot ? St(this.snapshot, this.config, this.sessionEntryId) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = lt(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.eligibleLimits(t, "main") : [], c = t ? this.renderDetails(t) : T, l = c !== T, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--panel-radius:${this.config.appearance.panel_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
-		return C`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
+		let e = this.snapshot ? Ct(this.snapshot, this.config, this.sessionEntryId) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = ct(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.eligibleLimits(t, "main") : [], c = t ? this.renderDetails(t) : D, l = c !== D, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
+		return T`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
       <div class="surface">
         <header>
           <div>
             <h2>${this.config.title}</h2>
-            ${o ? C`<p>${o}</p>` : T}
+            ${o ? T`<p>${o}</p>` : D}
           </div>
           <span class="status"
             >${i ? `${this.t("overall")} · ` : ""}${this.statusLabel(n)}</span
           >
         </header>
-        ${r ? C`<p class="freshness">
-                ${this.t("dataMayBeOutdated")}${t ? C` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : T}
-              </p>` : T}
-        ${i && e && this.config.allow_account_switching ? C`<nav aria-label=${this.t("account")}>
-                ${e.accounts.map((e) => C`<button
+        ${r ? T`<p class="freshness">
+                ${this.t("dataMayBeOutdated")}${t ? T` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : D}
+              </p>` : D}
+        ${i && e && this.config.allow_account_switching ? T`<nav aria-label=${this.t("account")}>
+                ${e.accounts.map((e) => T`<button
                       class="account-chip ${e.id === t?.id ? "selected" : ""}"
                       data-entry-id=${e.id}
                       @click=${() => this.sessionEntryId = e.id}
@@ -1623,28 +1633,28 @@ var Q = class extends M {
                       <i style=${`--chip-color:${this.config.colors[e.severity]}`}></i
                       >${e.name}
                     </button>`)}
-              </nav>` : T}
-        ${t?.blocker ? C`<p class="blocker-note">${this.blockerLabel(t.blocker)}</p>` : T}
-        ${t ? this.config.sections.limits.visible ? s.length ? C`<main class="limits">
+              </nav>` : D}
+        ${t?.blocker ? T`<p class="blocker-note">${this.blockerLabel(t.blocker)}</p>` : D}
+        ${t && u ? T`<p class="callout">${u}</p>` : D}
+        ${t ? this.config.sections.limits.visible ? s.length ? T`<main class="limits">
                     ${s.map((e, t) => this.renderLimitRow(e, t === 0))}
-                  </main>` : C`<div class="empty">
+                  </main>` : T`<div class="empty">
                     ${this.error ? this.t("unavailable") : this.t("noData")}
-                  </div>` : T : C`<div class="empty">${this.t("unavailable")}</div>`}
-        ${t && u ? C`<p class="callout">${u}</p>` : T}
-        ${l ? C`<button
+                  </div>` : D : T`<div class="empty">${this.t("unavailable")}</div>`}
+        ${l ? T`<button
                 class="details-toggle"
                 @click=${() => this.detailsExpanded = !this.detailsExpanded}
               >
                 <span>${this.t(this.detailsExpanded ? "hideDetails" : "showDetails")}</span>
                 <i class="chevron ${this.detailsExpanded ? "open" : ""}"></i>
-              </button>` : T}
-        ${l && this.detailsExpanded ? c : T}
-        ${t && this.config.sections.footer.visible ? C`<footer>
-                ${this.valueVisible("footer", "updated") ? C`<span
+              </button>` : D}
+        ${l && this.detailsExpanded ? c : D}
+        ${t && this.config.sections.footer.visible ? T`<footer>
+                ${this.valueVisible("footer", "updated") ? T`<span
                         >${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}</span
-                      >` : T}
-                ${this.valueVisible("footer", "version") ? C`<span>v${e?.integrationVersion}</span>` : T}
-              </footer>` : T}
+                      >` : D}
+                ${this.valueVisible("footer", "version") ? T`<span>v${e?.integrationVersion}</span>` : D}
+              </footer>` : D}
       </div>
     </ha-card>`;
 	}
@@ -1963,8 +1973,8 @@ var Q = class extends M {
     }
   `;
 };
-X([N({ attribute: !1 })], Q.prototype, "hass", null), X([P()], Q.prototype, "snapshot", null), X([P()], Q.prototype, "error", null), X([P()], Q.prototype, "sessionEntryId", null), X([P()], Q.prototype, "detailsExpanded", null), Q = X([Ne("codex-usage-card")], Q);
-var $ = class extends M {
+X([Fe({ attribute: !1 })], Q.prototype, "hass", null), X([P()], Q.prototype, "snapshot", null), X([P()], Q.prototype, "error", null), X([P()], Q.prototype, "sessionEntryId", null), X([P()], Q.prototype, "detailsExpanded", null), Q = X([Me("codex-usage-card")], Q);
+var $ = class extends N {
 	#e = void 0;
 	get hass() {
 		return this.#e;
@@ -1972,7 +1982,7 @@ var $ = class extends M {
 	set hass(e) {
 		this.#e = e;
 	}
-	#t = structuredClone(H);
+	#t = structuredClone(U);
 	get config() {
 		return this.#t;
 	}
@@ -1990,7 +2000,7 @@ var $ = class extends M {
 	handleValueChanged = (e) => {
 		if (!(e instanceof CustomEvent) || !e.detail?.value) return;
 		e.stopPropagation();
-		let t = W({
+		let t = G({
 			...this.config,
 			...structuredClone(e.detail.value)
 		});
@@ -2010,7 +2020,7 @@ var $ = class extends M {
 		this.removeEventListener("value-changed", this.handleValueChanged), super.disconnectedCallback();
 	}
 	setConfig(e) {
-		this.config = W(e);
+		this.config = G(e);
 	}
 	updated(e) {
 		!e.has("hass") || !this.hass || this.loadedConnection === this.hass.connection || (this.loadedConnection = this.hass.connection, Ke(this.hass).then((e) => {
@@ -2044,19 +2054,19 @@ var $ = class extends M {
 		}[e]);
 	}
 	updateThresholds(e) {
-		e.stopPropagation(), this.emitConfig(W({
+		e.stopPropagation(), this.emitConfig(G({
 			...this.config,
 			thresholds: e.detail.value
 		}));
 	}
 	updateAppearance(e) {
-		e.stopPropagation(), this.emitConfig(W({
+		e.stopPropagation(), this.emitConfig(G({
 			...this.config,
 			appearance: e.detail.value
 		}));
 	}
 	updateColors(e) {
-		e.stopPropagation(), this.emitConfig(W({
+		e.stopPropagation(), this.emitConfig(G({
 			...this.config,
 			colors: e.detail.value
 		}));
@@ -2072,7 +2082,6 @@ var $ = class extends M {
 			show_unavailable_limits: "showUnavailable",
 			stale_after_minutes: "staleAfter",
 			card_radius: "cardRadius",
-			panel_radius: "panelRadius",
 			spacing: "spacing"
 		}[e.name] : void 0;
 		return t ? this.t(t) : e.name ?? "";
@@ -2149,7 +2158,7 @@ var $ = class extends M {
 				key: "reset",
 				label: this.t("resets")
 			}
-		] : e === "profile" ? Tt.map((e) => ({
+		] : e === "profile" ? Et.map((e) => ({
 			key: e.key,
 			label: this.t(e.label)
 		})) : e === "account" ? [
@@ -2174,12 +2183,12 @@ var $ = class extends M {
 		}] : [];
 	}
 	resetAdvanced() {
-		this.emitConfig(W({
+		this.emitConfig(G({
 			...this.config,
-			thresholds: H.thresholds,
-			stale_after_minutes: H.stale_after_minutes,
-			colors: H.colors,
-			appearance: H.appearance
+			thresholds: U.thresholds,
+			stale_after_minutes: U.stale_after_minutes,
+			colors: U.colors,
+			appearance: U.appearance
 		}));
 	}
 	render() {
@@ -2250,7 +2259,7 @@ var $ = class extends M {
 				} }
 			}
 		];
-		return C`<div class="editor">
+		return T`<div class="editor">
       <ha-form
         .hass=${this.hass}
         .data=${this.config}
@@ -2260,7 +2269,7 @@ var $ = class extends M {
       <details open>
         <summary>${this.t("sections")}</summary>
         <div class="section-list">
-          ${Je.map((e) => C`<div class="section-row">
+          ${Je.map((e) => T`<div class="section-row">
                 <label class="section-toggle"
                   ><input
                     type="checkbox"
@@ -2268,15 +2277,15 @@ var $ = class extends M {
                     @change=${() => this.toggleSection(e)}
                   />${this.sectionLabel(e)}</label
                 >
-                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? C`<div class="value-toggles">
-                        ${this.valueOptions(e).map((t) => C`<label data-value-key=${t.key}
+                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? T`<div class="value-toggles">
+                        ${this.valueOptions(e).map((t) => T`<label data-value-key=${t.key}
                               ><input
                                 type="checkbox"
                                 .checked=${this.config.sections[e].values[t.key] !== !1}
                                 @change=${() => this.toggleValue(e, t.key)}
                               />${t.label}</label
                             >`)}
-                      </div>` : T}
+                      </div>` : D}
               </div>`)}
         </div>
       </details>
@@ -2337,39 +2346,28 @@ var $ = class extends M {
         <ha-form
           .hass=${this.hass}
           .data=${this.config.appearance}
-          .schema=${[
-			{
-				name: "card_radius",
-				selector: { number: {
-					min: 0,
-					max: 48,
-					mode: "box"
-				} }
-			},
-			{
-				name: "panel_radius",
-				selector: { number: {
-					min: 0,
-					max: 36,
-					mode: "box"
-				} }
-			},
-			{
-				name: "spacing",
-				selector: { number: {
-					min: 4,
-					max: 32,
-					mode: "box"
-				} }
-			}
-		]}
+          .schema=${[{
+			name: "card_radius",
+			selector: { number: {
+				min: 0,
+				max: 48,
+				mode: "box"
+			} }
+		}, {
+			name: "spacing",
+			selector: { number: {
+				min: 4,
+				max: 32,
+				mode: "box"
+			} }
+		}]}
           .computeLabel=${this.computeLabel}
           @value-changed=${this.updateAppearance}
         ></ha-form>
         <button class="reset-button" @click=${this.resetAdvanced}>
           ${this.t("resetDefaults")}
         </button>
-        <p><a href=${wt} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
+        <p><a href=${Tt} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
       </details>
     </div>`;
 	}
@@ -2435,15 +2433,15 @@ var $ = class extends M {
     }
   `;
 };
-X([N({ attribute: !1 })], $.prototype, "hass", null), X([P()], $.prototype, "config", null), X([P()], $.prototype, "accounts", null), $ = X([Ne("codex-usage-card-editor")], $);
+X([Fe({ attribute: !1 })], $.prototype, "hass", null), X([P()], $.prototype, "config", null), X([P()], $.prototype, "accounts", null), $ = X([Me("codex-usage-card-editor")], $);
 //#endregion
 //#region src/index.ts
-var Ot = {
+var kt = {
 	type: "codex-usage-card",
 	name: "Codex Usage Card",
 	description: "Adaptive multi-account Codex usage overview.",
 	preview: !0,
 	documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card"
 };
-window.customCards ??= [], window.customCards.some((e) => e.type === Ot.type) || window.customCards.push(Ot);
+window.customCards ??= [], window.customCards.some((e) => e.type === kt.type) || window.customCards.push(kt);
 //#endregion
