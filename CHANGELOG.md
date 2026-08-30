@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.2 - 2026-08-30
+
+- Replace the brand icon (`custom_components/codex_usage/brand/icon.png`,
+  also shown in the README) with a new design. Still 256×256 RGBA with a
+  transparent background, verified by the existing brand-icon contract
+  test. No other file references the icon, so this is the only asset
+  that changed.
+
 ## 0.6.1 - 2026-08-30
 
 Small follow-up to 0.6.0, from a deeper review pass.

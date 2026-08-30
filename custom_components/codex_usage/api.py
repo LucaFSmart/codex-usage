@@ -32,7 +32,7 @@ from .const import (
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.6.1"
+USER_AGENT = "HomeAssistant-CodexUsage/0.6.2"
 
 
 class CodexApiError(Exception):
