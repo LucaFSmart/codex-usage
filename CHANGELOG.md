@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.5 - 2026-08-30
+
+Hardening pass: API robustness, a frontend reconnect race, and CodeQL.
+
+- **Guard against a malformed or malicious Codex API response crashing an
+  update.** An extremely large `reset_after_seconds` value could raise an
+  `OverflowError` when computing a reset timestamp; `additional_rate_limits`
+  was unbounded and could grow arbitrarily large; an OAuth token response
+  that wasn't a JSON object crashed with an unhandled `AttributeError`
+  instead of failing cleanly. All three now fail safely instead of
+  crashing.
+- Disable HTTP redirects on the four OAuth POST requests (device code,
+  poll, exchange, refresh), so a compromised or misbehaving endpoint can't
+  silently redirect a token exchange elsewhere.
+- Fix a race in the card's Home Assistant event subscription: if the
+  connection changed twice in quick succession, a stale `subscribeEvents`
+  resolution could overwrite the newer connection's unsubscribe handle,
+  leaking the active subscription. It's now cleaned up instead.
+- Add CodeQL static analysis (Python and JavaScript/TypeScript) via
+  Advanced Setup, with the bundled `codex-usage-card.js` build artifact
+  excluded from scanning (it vendors `lit-html`; real dependency
+  vulnerabilities are already caught by Dependabot).
+
 ## 0.6.4 - 2026-08-30
 
 Card polish, from a live-screenshot review pass over 0.6.3.

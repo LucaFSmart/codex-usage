@@ -1398,11 +1398,14 @@ var Q = class extends M {
 		if (!this.hass) return;
 		let e = this.subscribedConnection !== this.hass.connection || !this.snapshot;
 		if (this.subscribedConnection !== this.hass.connection) {
-			this.unsubscribe?.(), this.subscribedConnection = this.hass.connection;
+			this.unsubscribe?.(), this.unsubscribe = void 0;
+			let e = this.hass.connection;
+			this.subscribedConnection = e;
 			try {
-				this.unsubscribe = await this.hass.connection.subscribeEvents(() => void this.loadSnapshot(), wt);
+				let t = await e.subscribeEvents(() => void this.loadSnapshot(), wt);
+				this.subscribedConnection === e ? this.unsubscribe = t : t();
 			} catch {
-				this.error = !0, this.subscribedConnection = void 0;
+				this.subscribedConnection === e && (this.error = !0, this.subscribedConnection = void 0);
 			}
 		}
 		e && await this.loadSnapshot();

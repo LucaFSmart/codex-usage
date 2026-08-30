@@ -73,7 +73,7 @@ Usage is refreshed every five minutes by default. Profile and reset-credit metad
 
 The card bundle and Lovelace resource are registered automatically when the integration loads. In dashboard edit mode select **Add card**, search for **Codex Usage Card**, and configure it in the visual editor.
 
-For dashboards managed entirely in YAML, add `/codex_usage/frontend/codex-usage-card.js?v=0.6.4` as a JavaScript module resource manually; Home Assistant only permits automatic resource management in storage mode.
+For dashboards managed entirely in YAML, add `/codex_usage/frontend/codex-usage-card.js?v=0.6.5` as a JavaScript module resource manually; Home Assistant only permits automatic resource management in storage mode.
 
 Minimal YAML:
 
@@ -221,7 +221,7 @@ Accounts check is used during setup or reauthentication. Profile and reset-credi
 | Reauthentication requested | Repeat the device-code flow; the workspace selection is retained. |
 | A former 5-hour entity is `unknown` | The current response does not report that window. Weekly data is never relabeled as five-hour data. |
 | Optional data is absent | The account did not report that capability, or its isolated endpoint failed temporarily. Limits continue updating. |
-| Card is missing from the picker | Restart Home Assistant, hard-refresh the browser, and confirm `/codex_usage/frontend/codex-usage-card.js?v=0.6.4` exists under dashboard resources. |
+| Card is missing from the picker | Restart Home Assistant, hard-refresh the browser, and confirm `/codex_usage/frontend/codex-usage-card.js?v=0.6.5` exists under dashboard resources. |
 | Card says data is stale | Confirm the integration itself updates successfully and compare `stale_after_minutes` with the configured polling interval. |
 
 Diagnostics can be downloaded from **Settings → Devices & services → Codex Usage**. They exclude credentials and backend identities.

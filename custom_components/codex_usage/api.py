@@ -32,7 +32,8 @@ from .const import (
 )
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.6.4"
+USER_AGENT = "HomeAssistant-CodexUsage/0.6.5"
+MAX_ADDITIONAL_RATE_LIMITS = 50
 
 
 class CodexApiError(Exception):
@@ -303,6 +304,8 @@ def credentials_from_token_response(
     payload: dict[str, Any], previous: CodexCredentials | None = None
 ) -> CodexCredentials:
     """Create credentials from an OAuth token or refresh response."""
+    if not isinstance(payload, dict):
+        raise CodexAuthenticationError("OpenAI returned an invalid token response")
     access_token = payload.get("access_token") or (previous.access_token if previous else None)
     refresh_token = payload.get("refresh_token") or (previous.refresh_token if previous else None)
     id_token = payload.get("id_token") or (previous.id_token if previous else None)
@@ -421,7 +424,12 @@ def _reset_time(payload: dict[str, Any]) -> datetime | None:
     if resets_at is not None:
         return resets_at
     offset = _relative_seconds(payload.get("reset_after_seconds"))
-    return None if offset is None else datetime.now(UTC) + timedelta(seconds=offset)
+    if offset is None:
+        return None
+    try:
+        return datetime.now(UTC) + timedelta(seconds=offset)
+    except OverflowError:
+        return None
 
 
 def _window(payload: Any) -> RateLimitWindow | None:
@@ -480,7 +488,10 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
             )
         )
 
-    for item in payload.get("additional_rate_limits") or []:
+    raw_additional = payload.get("additional_rate_limits")
+    if not isinstance(raw_additional, list):
+        raw_additional = []
+    for item in raw_additional[:MAX_ADDITIONAL_RATE_LIMITS]:
         if not isinstance(item, dict):
             continue
         limit_id = (
@@ -674,6 +685,7 @@ class CodexApiClient:
                 json={"client_id": OAUTH_CLIENT_ID},
                 headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 if response.status in (403, 404):
                     raise DeviceAuthorizationUnavailable
@@ -701,6 +713,7 @@ class CodexApiClient:
                 json={"device_auth_id": code.device_auth_id, "user_code": code.user_code},
                 headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 if response.status in (403, 404):
                     raise DeviceAuthorizationPending
@@ -733,6 +746,7 @@ class CodexApiClient:
                 data=data,
                 headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 if response.status >= 400:
                     raise CodexAuthenticationError(f"Token exchange failed ({response.status})")
@@ -755,6 +769,7 @@ class CodexApiClient:
                 },
                 headers={"User-Agent": USER_AGENT},
                 timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 if response.status in (400, 401, 403):
                     raise CodexAuthenticationError("The OpenAI session can no longer be refreshed")

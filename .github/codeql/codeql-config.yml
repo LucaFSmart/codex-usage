@@ -1,0 +1,6 @@
+name: "CodeQL config"
+
+paths-ignore:
+  # Vite-bundled build artifact (vendors lit-html); not authored source.
+  # Real dependency vulnerabilities are caught by Dependabot instead.
+  - custom_components/codex_usage/frontend/codex-usage-card.js

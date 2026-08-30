@@ -101,6 +101,40 @@ describe("CodexUsageCard", () => {
     expect(callWS).toHaveBeenCalledTimes(2);
   });
 
+  it("cleans up a stale subscribeEvents resolution instead of letting it overwrite a newer connection's handle", async () => {
+    let resolveOld!: (unsub: () => void) => void;
+    const oldHass = makeFakeHass();
+    oldHass.connection.subscribeEvents = vi.fn(
+      () =>
+        new Promise<() => void>((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+    const oldUnsubscribe = vi.fn();
+
+    const newHass = makeFakeHass();
+    const newUnsubscribe = vi.fn();
+    newHass.connection.subscribeEvents = vi.fn(async () => newUnsubscribe);
+
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = oldHass;
+    await card.updateComplete;
+
+    card.hass = newHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    resolveOld(oldUnsubscribe);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(oldUnsubscribe).toHaveBeenCalledOnce();
+    expect(newUnsubscribe).not.toHaveBeenCalled();
+
+    card.disconnectedCallback();
+    expect(newUnsubscribe).toHaveBeenCalledOnce();
+  });
+
   it("shows only the formatted plan beneath the title for one account", async () => {
     const snapshot = {
       ...SNAPSHOT,

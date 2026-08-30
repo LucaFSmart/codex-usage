@@ -146,15 +146,24 @@ export class CodexUsageCard extends LitElement {
     const needsInitialLoad = this.subscribedConnection !== this.hass.connection || !this.snapshot;
     if (this.subscribedConnection !== this.hass.connection) {
       this.unsubscribe?.();
-      this.subscribedConnection = this.hass.connection;
+      this.unsubscribe = undefined;
+      const connection = this.hass.connection;
+      this.subscribedConnection = connection;
       try {
-        this.unsubscribe = await this.hass.connection.subscribeEvents(
+        const unsubscribe = await connection.subscribeEvents(
           () => void this.loadSnapshot(),
           CARD_DATA_EVENT,
         );
+        if (this.subscribedConnection !== connection) {
+          unsubscribe();
+        } else {
+          this.unsubscribe = unsubscribe;
+        }
       } catch {
-        this.error = true;
-        this.subscribedConnection = undefined;
+        if (this.subscribedConnection === connection) {
+          this.error = true;
+          this.subscribedConnection = undefined;
+        }
       }
     }
     if (needsInitialLoad) await this.loadSnapshot();

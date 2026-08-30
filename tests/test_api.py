@@ -17,6 +17,7 @@ from custom_components.codex_usage.api import (
     CodexCredentials,
     CodexOptionalEndpointUnavailable,
     CodexProfileUnavailable,
+    DeviceCode,
     ResetCredits,
     credentials_from_token_response,
     parse_accounts,
@@ -53,10 +54,17 @@ class _FakeSession:
         self.response = response
         self.last_url: str | None = None
         self.last_headers: dict[str, str] | None = None
+        self.last_kwargs: dict[str, object] | None = None
 
     def get(self, url: str, **kwargs: object) -> _FakeResponse:
         self.last_url = url
         self.last_headers = kwargs.get("headers")  # type: ignore[assignment]
+        return self.response
+
+    def post(self, url: str, **kwargs: object) -> _FakeResponse:
+        self.last_url = url
+        self.last_headers = kwargs.get("headers")  # type: ignore[assignment]
+        self.last_kwargs = kwargs
         return self.response
 
 
@@ -266,6 +274,37 @@ def test_parse_new_read_only_usage_fields_and_unknown_windows() -> None:
     unknown = next(limit for limit in data.additional_limits if limit.limit_id == "codex_1440m")
     assert unknown.primary is not None
     assert unknown.primary.duration_label == "Daily"
+
+
+def test_additional_rate_limits_are_capped_to_a_sane_count() -> None:
+    payload = {
+        "rate_limit": {"primary_window": {"used_percent": 5, "limit_window_seconds": 18_000}},
+        "additional_rate_limits": [
+            {
+                "metered_feature": f"feature_{index}",
+                "rate_limit": {
+                    "primary_window": {"used_percent": 1, "limit_window_seconds": 18_000}
+                },
+            }
+            for index in range(500)
+        ],
+    }
+
+    data = parse_usage(payload)
+
+    assert len(data.additional_limits) <= 50
+
+
+@pytest.mark.parametrize("additional_rate_limits", [{"not": "a list"}, "not-a-list", 42])
+def test_non_list_additional_rate_limits_is_ignored(additional_rate_limits: object) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"primary_window": {"used_percent": 5, "limit_window_seconds": 18_000}},
+            "additional_rate_limits": additional_rate_limits,
+        }
+    )
+
+    assert data.additional_limits == ()
 
 
 def test_static_entities_use_resolved_windows_and_new_read_only_fields() -> None:
@@ -494,7 +533,8 @@ def test_absolute_reset_timestamp_wins_over_relative_seconds() -> None:
 
 
 @pytest.mark.parametrize(
-    "reset_after_seconds", [True, -1, None, float("inf"), "not-a-number", {"seconds": 60}]
+    "reset_after_seconds",
+    [True, -1, None, float("inf"), "not-a-number", {"seconds": 60}, 10**100],
 )
 def test_invalid_relative_reset_offsets_are_ignored(reset_after_seconds: object) -> None:
     data = parse_usage(
@@ -690,6 +730,72 @@ def test_credentials_reject_missing_workspace() -> None:
         )
 
 
+@pytest.mark.parametrize("payload", [[], "not-a-dict", 42, None])
+def test_credentials_reject_non_dict_token_response(payload: object) -> None:
+    with pytest.raises(CodexAuthenticationError):
+        credentials_from_token_response(payload)  # type: ignore[arg-type]
+
+
+def test_device_code_request_disables_redirects() -> None:
+    session = _FakeSession(
+        _FakeResponse(200, {"device_auth_id": "d1", "user_code": "u1", "interval": 5})
+    )
+
+    asyncio.run(CodexApiClient(session).async_request_device_code())  # type: ignore[arg-type]
+
+    assert session.last_kwargs is not None
+    assert session.last_kwargs.get("allow_redirects") is False
+
+
+def test_device_code_poll_disables_redirects() -> None:
+    session = _FakeSession(_FakeResponse(200, {"authorization_code": "a", "code_verifier": "v"}))
+    code = DeviceCode(device_auth_id="d1", user_code="u1", interval=5)
+
+    asyncio.run(CodexApiClient(session).async_poll_device_code(code))  # type: ignore[arg-type]
+
+    assert session.last_kwargs is not None
+    assert session.last_kwargs.get("allow_redirects") is False
+
+
+def test_device_code_exchange_disables_redirects() -> None:
+    token_payload = {
+        "access_token": _jwt({"chatgpt_account_id": "workspace-1", "exp": int(time.time()) + 3600}),
+        "refresh_token": "refresh",
+        "id_token": _jwt({"email": "user@example.com"}),
+    }
+    session = _FakeSession(_FakeResponse(200, token_payload))
+
+    asyncio.run(
+        CodexApiClient(session).async_exchange_device_code(  # type: ignore[arg-type]
+            {"authorization_code": "a", "code_verifier": "v"}
+        )
+    )
+
+    assert session.last_kwargs is not None
+    assert session.last_kwargs.get("allow_redirects") is False
+
+
+def test_credentials_refresh_disables_redirects() -> None:
+    token_payload = {
+        "access_token": _jwt({"chatgpt_account_id": "workspace-1", "exp": int(time.time()) + 3600}),
+        "refresh_token": "refresh",
+        "id_token": _jwt({"email": "user@example.com"}),
+    }
+    session = _FakeSession(_FakeResponse(200, token_payload))
+    credentials = CodexCredentials(
+        access_token="old-access",
+        refresh_token="old-refresh",
+        id_token="old-id",
+        expires_at=0,
+        account_id="workspace-1",
+    )
+
+    asyncio.run(CodexApiClient(session).async_refresh_credentials(credentials))  # type: ignore[arg-type]
+
+    assert session.last_kwargs is not None
+    assert session.last_kwargs.get("allow_redirects") is False
+
+
 def test_missing_limit_state_stays_unavailable() -> None:
     data = parse_usage({"plan_type": "free", "rate_limit": None})
     assert _limit_reached(data) is None
@@ -736,7 +842,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
         "X-OpenAI-Fedramp": "true",
     }
 
@@ -834,7 +940,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -859,7 +965,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
         "Cache-Control": "no-store",
     }
 
