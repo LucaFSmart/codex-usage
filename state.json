@@ -2,6 +2,8 @@
   "checked_at": "2026-08-30T00:00:00Z",
   "checked_via": "webfetch_public_pr_page",
   "note": "This session had no GitHub API access to hacs/default (cross-owner attach not permitted alongside lucafsmart/codex-usage sources); data gathered via WebFetch on the public PR page instead of gh api. Future checks should try gh/API access first and fall back to this method.",
+  "storage_note": "refs/hacs-watch/state (a non-refs/heads custom ref) is rejected by GitHub with HTTP 403 on git push -- GitHub only accepts pushes to refs/heads/* and refs/tags/*, custom ref namespaces cannot be created via git push. Falling back to a dedicated branch 'hacs-watch-state' instead. Confirmed via actions_list that pushing this branch did NOT trigger validate.yml workflow runs (branch had 0 runs after push), but include '[skip ci]' in the commit message on future updates anyway as a safety margin.",
+  "storage_ref": "refs/heads/hacs-watch-state",
   "state": "OPEN",
   "mergeable": "UNKNOWN",
   "mergeStateStatus": "UNKNOWN_NOT_CONFLICTING",
