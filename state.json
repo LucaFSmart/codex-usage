@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-08-30T00:00:00Z",
+  "checked_via": "webfetch_public_pr_page",
+  "note": "This session had no GitHub API access to hacs/default (cross-owner attach not permitted alongside lucafsmart/codex-usage sources); data gathered via WebFetch on the public PR page instead of gh api. Future checks should try gh/API access first and fall back to this method.",
+  "state": "OPEN",
+  "mergeable": "UNKNOWN",
+  "mergeStateStatus": "UNKNOWN_NOT_CONFLICTING",
+  "conflict_present": false,
+  "comment_count": 3,
+  "latest_comment_author": "LucaFSmart",
+  "latest_comment_summary": "Confirmed rebase done, conflict resolved, CI green, ready for review",
+  "review_count": 1,
+  "latest_review_author": "frenck",
+  "latest_review_state": "CHANGES_REQUESTED",
+  "latest_review_summary": "Merge conflict in catalog file, requested rebase (already resolved same day)",
+  "baseline_source": "task_description_2026-08-30_run",
+  "actionable_this_check": false
+}
