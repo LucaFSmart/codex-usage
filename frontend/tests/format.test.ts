@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatAbsoluteReset, formatUsd, relativeDurationUntil } from "../src/format";
+import {
+  formatAbsoluteReset,
+  formatPlanLabel,
+  formatUsd,
+  relativeDurationUntil,
+} from "../src/format";
 
 describe("relativeDurationUntil", () => {
   const now = new Date("2026-08-30T12:00:00Z");
@@ -62,5 +67,21 @@ describe("formatUsd", () => {
 
   it("returns an em dash without a dollar sign for a missing value", () => {
     expect(formatUsd(null, "en-US")).toBe("—");
+  });
+});
+
+describe("formatPlanLabel", () => {
+  it.each([
+    ["self_serve_business_prolite", "Business Pro Lite"],
+    ["ent26", "Enterprise 26"],
+    ["enterprise_cbp_automation", "Automation Enterprise"],
+    ["edu_plus", "Edu Plus"],
+    ["edu_pro", "Edu Pro"],
+  ])("labels the current openai/codex plan value %s as %s", (value, expected) => {
+    expect(formatPlanLabel(value)).toBe(expected);
+  });
+
+  it("falls back to a generic title-cased label for a genuinely unknown plan", () => {
+    expect(formatPlanLabel("some_future_plan")).toBe("Some Future Plan");
   });
 });

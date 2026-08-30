@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.1 - 2026-08-30
+
+Small follow-up to 0.6.0, from a deeper review pass.
+
+- Add display labels for five `openai/codex` plan values that shipped
+  since the last check (`self_serve_business_prolite`, `ent26`,
+  `enterprise_cbp_automation`, `edu_plus`, `edu_pro`). Unknown plans were
+  never rejected — they fell back to a generic title-cased label — so
+  this is cosmetic, not a fix for broken behavior.
+- Add `npm audit --audit-level=high` to the `frontend` CI job and as
+  `npm run audit`, so a high/critical dependency advisory now fails CI
+  instead of only being checked manually before a release.
+- Remove a leftover "Until a GitHub repository is configured" sentence
+  from `SECURITY.md`.
+- Update the bug report template's version placeholders
+  (`0.1.0`/`2026.7.2` → `0.6.1`/`2026.8.3`).
+
 ## 0.6.0 - 2026-08-30
 
 Card-focused release. The backend data model and HTTP contract are

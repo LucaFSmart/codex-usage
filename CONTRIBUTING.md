@@ -3,7 +3,7 @@
 1. Fork the repository and create a focused branch.
 2. Use Python 3.14 for development (matches CI); the integration's declared minimum is Home Assistant 2026.3.0 (see `hacs.json`).
 3. Run `ruff format .`, `ruff check .`, and `pytest`.
-4. In `frontend/`, run `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:coverage`, `npm run build`, and `npm run test:visual`.
+4. In `frontend/`, run `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run audit`, `npm test`, `npm run test:coverage`, `npm run build`, and `npm run test:visual`.
 5. Never include access tokens, refresh tokens, ID tokens, device codes, cookies, or unredacted diagnostics in issues or test fixtures.
 6. Explain user-visible changes in `CHANGELOG.md`.
 

@@ -1,7 +1,7 @@
 {
   "name": "codex-usage-card",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "build": "vite build",
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:visual": "playwright test"
+    "test:visual": "playwright test",
+    "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
     "lit": "3.3.3"
