@@ -22,7 +22,7 @@ Codex Usage is a read-only Home Assistant integration for the Codex limits inclu
 - Optional credit, spend-control, reset-credit, and aggregate profile data
 - Workspace selection during setup and multiple separately configured accounts
 - Bundled `custom:codex-usage-card` with automatic multi-account overview
-- Adaptive, compact, and detailed card layouts with a visual editor
+- Single-surface card design with a collapsible details panel and a visual editor
 - English and German integration and card UI, with English fallback
 - Privacy-safe diagnostics and browser snapshots
 - Configurable usage polling from 60 to 3,600 seconds
@@ -89,27 +89,28 @@ account_mode: auto       # auto | single | all
 selected_entry_id: ""    # set through the editor for a fixed account
 included_entry_ids: []
 allow_account_switching: true
-display_mode: adaptive   # adaptive | compact | detailed
+compact: false           # true starts the details panel collapsed
 title: Codex Usage
 show_unavailable_limits: false
 sections:
   limits: { visible: true, values: {} }
+  additional_limits: { visible: "auto", values: {} }
   resets: { visible: true, values: {} }
   pace: { visible: true, values: {} }
-  credits: { visible: true, values: {} }
-  spending: { visible: true, values: {} }
-  profile: { visible: true, values: {} }
+  account: { visible: true, values: {} }
+  credits: { visible: "auto", values: {} }
+  spending: { visible: "auto", values: {} }
+  profile: { visible: "auto", values: {} }
   footer: { visible: true, values: {} }
 thresholds:
-  elevated: 60
-  critical: 85
+  warning: 75
+  critical: 90
 colors:
-  normal: "var(--codex-usage-normal-color, #25b7f3)"
-  elevated: "var(--codex-usage-elevated-color, #ffb74d)"
+  ok: "var(--codex-usage-ok-color, #25b7f3)"
+  warning: "var(--codex-usage-warning-color, #ffb74d)"
   critical: "var(--codex-usage-critical-color, #ff5f6d)"
   blocked: "var(--codex-usage-blocked-color, #d32f49)"
-  stale: "var(--codex-usage-stale-color, #78909c)"
-  missing: "var(--codex-usage-missing-color, #9e9e9e)"
+  unknown: "var(--codex-usage-unknown-color, #9e9e9e)"
 stale_after_minutes: 15
 appearance:
   card_radius: 20
@@ -117,16 +118,17 @@ appearance:
   spacing: 16
 ```
 
+`visible: "auto"` shows a section only when the selected account actually reports that data (for example, `credits` stays hidden for an account with no credit balance); `visible: true`/`false` are unconditional. Thresholds are percent **used**; `warning`/`critical` at `75`/`90` correspond to `25%`/`10%` remaining.
+
 With one configured account the card opens directly on it. With several accounts it shows account chips and initially selects the account with the most urgent state. Chip selection lasts only until the dashboard reloads; choose a fixed account in the editor for persistent selection.
 
 Only fields actually reported for the selected workspace are shown by default. Unknown future limit windows receive a generic duration/name and remain visible. A metric opens Home Assistant's More Info dialog only when its enabled entity is available.
 
 ### Sections and layouts
 
-- `adaptive` is the recommended default and changes density with available width.
-- `compact` shows the status and limit essentials without detail panels.
-- `adaptive` adds concise credit, reset-credit, spending, and profile summaries when reported.
-- `detailed` expands spending, reset-credit, and every supported profile aggregate.
+- The status chip, most-constrained-limit callout, and the primary 5-hour/weekly limits are always visible, regardless of the details panel's state.
+- `compact: false` (default) opens with the details panel expanded; `compact: true` starts it collapsed. Either way, the card's own "Show details"/"Hide details" toggle lets the viewer expand or collapse it at any time, independent of the configured default.
+- The details panel holds additional limits, credits, spend control, reset credits, profile stats, and account info. Each of these sections can be hidden entirely (`visible: false`), forced on (`visible: true`), or set to `visible: "auto"` to hide itself automatically when the selected account has no data for it.
 - Every content group and its individual values can be hidden independently in the visual editor.
 - The editor also controls included accounts, the fixed account, freshness threshold, semantic colors, and card dimensions.
 - Home Assistant `view_layout`, `layout_options`, `grid_options`, and `visibility` fields are preserved.
@@ -139,14 +141,12 @@ The outer element is a normal `ha-card`, so Home Assistant themes and card-mod s
 
 ```yaml
 Codex Usage Theme:
-  codex-usage-normal-color: "#25b7f3"
-  codex-usage-elevated-color: "#ffb74d"
+  codex-usage-ok-color: "#25b7f3"
+  codex-usage-warning-color: "#ffb74d"
   codex-usage-critical-color: "#ff5f6d"
   codex-usage-blocked-color: "#d32f49"
-  codex-usage-stale-color: "#78909c"
-  codex-usage-missing-color: "#9e9e9e"
+  codex-usage-unknown-color: "#9e9e9e"
   codex-usage-card-radius: 20px
-  codex-usage-panel-radius: 14px
   codex-usage-spacing: 16px
 ```
 
@@ -154,15 +154,20 @@ The supported CSS custom properties are:
 
 | Variable | Purpose |
 | --- | --- |
-| `--codex-usage-normal-color` | Healthy ambient edge and progress |
-| `--codex-usage-elevated-color` | Elevated usage state |
-| `--codex-usage-critical-color` | Critical usage state |
+| `--codex-usage-ok-color` | Healthy status edge, chip, and progress fill |
+| `--codex-usage-warning-color` | Low-remaining usage state |
+| `--codex-usage-critical-color` | Critically low usage state |
 | `--codex-usage-blocked-color` | Explicitly blocked state |
-| `--codex-usage-stale-color` | Old or unreachable snapshot |
-| `--codex-usage-missing-color` | No displayable data |
+| `--codex-usage-unknown-color` | No displayable data |
 | `--codex-usage-card-radius` | Outer card radius |
-| `--codex-usage-panel-radius` | Inner panel radius |
-| `--codex-usage-spacing` | Card and grid spacing |
+| `--codex-usage-spacing` | Card padding and content spacing |
+
+The freshness banner (data may be outdated) always uses a fixed, non-themable
+color — deliberately decoupled from the severity palette above, since a stale
+but otherwise healthy account should never look alarming. `appearance.panel_radius`
+is still accepted for backward compatibility but currently has no visible effect,
+since the card no longer renders any bordered per-item panels; it is likely to
+be removed in a future release.
 
 There is intentionally no free-form CSS or JavaScript configuration field. card-mod can style the outer `ha-card` without weakening the card's configuration boundary.
 
@@ -224,7 +229,7 @@ Diagnostics can be downloaded from **Settings → Devices & services → Codex U
 ```bash
 python -m venv .venv
 .venv/Scripts/activate
-pip install homeassistant==2026.7.3 pytest ruff
+pip install homeassistant==2026.8.3 pytest ruff
 ruff format --check .
 ruff check .
 pytest
