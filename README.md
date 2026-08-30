@@ -191,7 +191,13 @@ Home Assistant stores OAuth tokens in `.storage/core.config_entries`; backups co
 - does not expose tokens, account/user IDs, email, roles, profile images, reset-credit IDs, or raw blocker messages to the card;
 - provides diagnostics from an explicit safe allowlist only.
 
-The card uses an authenticated Home Assistant WebSocket command, `codex_usage/card_data`, that returns normalized display data with internal config-entry selectors. A data-free Home Assistant event tells the card to reload after coordinator updates.
+The card uses an authenticated Home Assistant WebSocket command,
+`codex_usage/card_data`, that returns normalized display data with internal
+config-entry selectors. Admins and users with global entity-read access can
+see all configured accounts; a restricted user receives an account only when
+Home Assistant grants read access to every entity belonging to that config
+entry, including disabled entities. A data-free Home Assistant event tells the
+card to reload after coordinator updates.
 
 Removing the integration removes its Home Assistant config entry. To revoke the OpenAI session immediately, also revoke the corresponding session in ChatGPT security settings. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
@@ -225,11 +231,10 @@ Diagnostics can be downloaded from **Settings → Devices & services → Codex U
 ```bash
 python -m venv .venv
 .venv/Scripts/activate
-pip install homeassistant==2026.8.3 pytest pytest-homeassistant-custom-component ruff
+pip install homeassistant==2026.8.3 pytest ruff
 ruff format --check .
 ruff check .
 pytest
-pytest tests_integration/test_integration_smoke.py -v -o asyncio_mode=auto
 
 cd frontend
 npm ci
@@ -240,6 +245,15 @@ npm run audit
 npm test
 npm run test:coverage
 npm run build
+```
+
+The real Home Assistant integration smoke test requires Linux (the Home
+Assistant test runtime imports Unix-only modules). CI runs it on Ubuntu. To run
+it locally on Linux:
+
+```bash
+pip install homeassistant==2026.8.3 pytest pytest-homeassistant-custom-component
+pytest tests_integration/test_integration_smoke.py -v -o asyncio_mode=auto
 ```
 
 The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs the integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
