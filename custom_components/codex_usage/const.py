@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 DOMAIN: Final = "codex_usage"
 PLATFORMS: Final = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
-CARD_VERSION: Final = "0.6.2"
+CARD_VERSION: Final = "0.6.3"
 CARD_URL: Final = "/codex_usage/frontend/codex-usage-card.js"
 
 OAUTH_CLIENT_ID: Final = "app_EMoamEEZ73f0CkXaXp7hrann"

@@ -117,6 +117,7 @@ export const STRINGS = {
     // friendlier credits/spend copy
     unlimitedCredits: "Unlimited credits",
     creditsAvailableAmount: "{amount} available",
+    resetCreditAvailable: "{count} reset credit available",
     resetCreditsAvailable: "{count} reset credits available",
     expiresOn: "Expires {date}",
   },
@@ -238,6 +239,7 @@ export const STRINGS = {
     // friendlier credits/spend copy
     unlimitedCredits: "Unbegrenztes Guthaben",
     creditsAvailableAmount: "{amount} verfügbar",
+    resetCreditAvailable: "{count} Reset-Guthaben verfügbar",
     resetCreditsAvailable: "{count} Reset-Guthaben verfügbar",
     expiresOn: "Läuft ab am {date}",
   },

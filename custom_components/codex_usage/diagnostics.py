@@ -4,20 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import CodexUsageConfigEntry
-from .const import CONF_ACCESS_TOKEN, CONF_ID_TOKEN, CONF_REFRESH_TOKEN
-
-TO_REDACT = {
-    CONF_ACCESS_TOKEN,
-    CONF_REFRESH_TOKEN,
-    CONF_ID_TOKEN,
-    "account_id",
-    "user_id",
-    "email",
-}
+from .const import CONF_EXPIRES_AT, CONF_FEDRAMP, CONF_UPDATE_INTERVAL
 
 
 async def async_get_config_entry_diagnostics(
@@ -26,8 +16,14 @@ async def async_get_config_entry_diagnostics(
     """Return token-free diagnostics for a config entry."""
     coordinator = entry.runtime_data
     return {
-        "entry": async_redact_data(dict(entry.data), TO_REDACT),
-        "options": dict(entry.options),
+        "entry": {
+            key: entry.data[key] for key in (CONF_EXPIRES_AT, CONF_FEDRAMP) if key in entry.data
+        },
+        "options": (
+            {CONF_UPDATE_INTERVAL: entry.options[CONF_UPDATE_INTERVAL]}
+            if CONF_UPDATE_INTERVAL in entry.options
+            else {}
+        ),
         "last_update_success": coordinator.last_update_success,
         "profile_available": coordinator.profile_available,
         "profile_last_success": coordinator.profile_last_success,

@@ -43,8 +43,14 @@ def test_diagnostics_use_safe_allowlist() -> None:
             "id_token": "secret",
             "account_id": "private-account",
             "user_id": "private-user",
+            "expires_at": 1_800_000_000,
+            "fedramp": False,
+            "future_sensitive_field": "future-entry-secret",
         },
-        options={"update_interval": 300},
+        options={
+            "update_interval": 300,
+            "future_sensitive_option": "future-option-secret",
+        },
         runtime_data=coordinator,
     )
 
@@ -67,8 +73,12 @@ def test_diagnostics_use_safe_allowlist() -> None:
         "spend_limit_reached": None,
         "reset_credit_count": 1,
     }
+    assert diagnostics["entry"] == {"expires_at": 1_800_000_000, "fedramp": False}
+    assert diagnostics["options"] == {"update_interval": 300}
     rendered = repr(diagnostics)
     assert "secret" not in rendered
     assert "private-account" not in rendered
     assert "private-user" not in rendered
+    assert "future-entry-secret" not in rendered
+    assert "future-option-secret" not in rendered
     assert "weekly" not in rendered

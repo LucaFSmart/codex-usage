@@ -375,6 +375,22 @@ describe("CodexUsageCard", () => {
     }
   });
 
+  it("uses singular reset-credit copy for exactly one available credit", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      reset_credits: { available_count: 1, total_earned: 1, next_expiry: null },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const row = card.shadowRoot?.querySelector('[data-detail="reset-credits"]')?.textContent;
+    expect(row).toContain("1 reset credit available");
+    expect(row).not.toContain("1 reset credits available");
+  });
+
   it("labels every detail group with a subtle section heading, matching additional limits", async () => {
     const account = {
       ...SNAPSHOT.accounts[0]!,
@@ -430,6 +446,52 @@ describe("CodexUsageCard", () => {
 });
 
 describe("CodexUsageCardEditor", () => {
+  it("retries account discovery after a transient snapshot failure", async () => {
+    const hass = makeFakeHass();
+    const callWS = vi
+      .spyOn(hass, "callWS")
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValue(SNAPSHOT);
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({ type: "custom:codex-usage-card" });
+    editor.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+
+    editor.hass = { ...hass };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+
+    expect(callWS).toHaveBeenCalledTimes(2);
+    expect(editor.shadowRoot?.textContent).toContain("Alpha");
+  });
+
+  it("ignores a late snapshot from a replaced Home Assistant connection", async () => {
+    let resolveOld!: (snapshot: typeof SNAPSHOT) => void;
+    const oldHass = makeFakeHass();
+    oldHass.callWS = <T>() =>
+      new Promise<T>((resolve) => {
+        resolveOld = (snapshot) => resolve(snapshot as T);
+      });
+    const newSnapshot = { ...SNAPSHOT, accounts: [SNAPSHOT.accounts[1]!] };
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({ type: "custom:codex-usage-card" });
+    editor.hass = oldHass;
+    await editor.updateComplete;
+
+    editor.hass = makeFakeHass(newSnapshot);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+    expect(editor.shadowRoot?.textContent).toContain("Beta");
+
+    resolveOld(SNAPSHOT);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+
+    expect(editor.shadowRoot?.textContent).toContain("Beta");
+    expect(editor.shadowRoot?.textContent).not.toContain("Alpha");
+  });
+
   it("emits an immutable config-changed event", async () => {
     const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
     const original = { type: "custom:codex-usage-card", title: "Before" };
@@ -478,8 +540,6 @@ describe("CodexUsageCardEditor", () => {
     const names = forms.flatMap((form) => form.schema?.map((item) => item.name) ?? []);
     expect(names).toContain("included_entry_ids");
     expect(names).toContain("stale_after_minutes");
-    expect(names).toContain("ok");
-    expect(names).not.toContain("stale");
     expect(names).toContain("warning");
     expect(editor.shadowRoot?.querySelector('[data-value-key="peak_daily_tokens"]')).not.toBeNull();
     expect(editor.shadowRoot?.querySelector('[data-value-key="balance"]')).not.toBeNull();
@@ -500,5 +560,44 @@ describe("CodexUsageCardEditor", () => {
 
     expect(editor.shadowRoot?.textContent).toContain("Additional limits");
     expect(editor.shadowRoot?.textContent).toContain("Account");
+  });
+
+  it("edits semantic colors with synchronized native and text inputs", async () => {
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({ type: "custom:codex-usage-card" });
+    editor.hass = makeFakeHass();
+    await editor.updateComplete;
+    const listener = vi.fn();
+    editor.addEventListener("config-changed", listener);
+
+    const swatch = editor.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-color-key="ok"] input[type="color"]',
+    );
+    expect(swatch?.value.toLowerCase()).toBe("#25b7f3");
+    swatch!.value = "#112233";
+    swatch!.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+
+    expect((listener.mock.calls[0]?.[0] as CustomEvent).detail.config.colors.ok).toBe(
+      "var(--codex-usage-ok-color, #112233)",
+    );
+  });
+
+  it("keeps free-form CSS color values available in the paired text input", async () => {
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({ type: "custom:codex-usage-card" });
+    editor.hass = makeFakeHass();
+    await editor.updateComplete;
+    const listener = vi.fn();
+    editor.addEventListener("config-changed", listener);
+
+    const text = editor.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-color-key="warning"] input[type="text"]',
+    );
+    text!.value = "rebeccapurple";
+    text!.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    expect((listener.mock.calls[0]?.[0] as CustomEvent).detail.config.colors.warning).toBe(
+      "rebeccapurple",
+    );
   });
 });

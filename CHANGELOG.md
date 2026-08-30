@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.3 - 2026-08-30
+
+Security-focused release.
+
+- **Fix an access-control gap in the `codex_usage/card_data` websocket
+  command.** It previously returned every configured account's usage,
+  credit, and spend data to any authenticated Home Assistant user,
+  regardless of that user's entity permissions. It now checks the
+  requesting user against each account's entities and fails closed
+  (excludes the account) unless the user is an admin or has explicit
+  read access to all of that config entry's entities, including
+  disabled ones. Only relevant to multi-user Home Assistant instances
+  where a non-admin user shouldn't see another user's Codex usage.
+- **Replace the diagnostics redaction blocklist with an allowlist.**
+  `async_get_config_entry_diagnostics` previously redacted a fixed list
+  of known-sensitive keys (tokens, account/user ID, email) and passed
+  everything else through. It now includes only `expires_at` and
+  `fedramp` from the config entry, and `update_interval` from options —
+  any new sensitive field added to the entry in the future is excluded
+  by default instead of needing to be remembered on a redaction list.
+- **Pin third-party GitHub Actions in `validate.yml` to exact commit
+  SHAs** (`actions/checkout`, `actions/setup-python`, `actions/setup-node`,
+  `hacs/action`, `home-assistant/actions/hassfest`) instead of mutable
+  tags/branches, and add an explicit `permissions: contents: read` at
+  the workflow level. Standard supply-chain hardening for a public,
+  HACS-distributed repository.
+- Add a native color-picker swatch next to each semantic-color text
+  field in the card editor, alongside the existing free-text input. The
+  swatch reads/writes just the `#hex` fallback inside the existing
+  `var(--codex-usage-X-color, #hex)` value, so CSS-variable/theme
+  overrides keep working exactly as before; typing a value directly in
+  the text field is unaffected.
+- Fix a race condition in the card editor: switching Home Assistant
+  connections while an account list fetch was still in flight could let
+  a stale response overwrite the current account list.
+- Add a singular "1 reset credit available" string, previously always
+  pluralized regardless of count.
+
 ## 0.6.2 - 2026-08-30
 
 - Replace the brand icon (`custom_components/codex_usage/brand/icon.png`,

@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from "lit/decorators.js";
 
 import { fetchCardSnapshot } from "./card-data";
-import { DEFAULT_CONFIG, normalizeConfig, SECTION_KEYS } from "./config";
+import { DEFAULT_COLORS, DEFAULT_CONFIG, normalizeConfig, SECTION_KEYS } from "./config";
 import {
   formatAbsoluteReset,
   formatMetricLabel,
@@ -66,6 +66,27 @@ function formatPercent(value: number | null, locale: string | undefined): string
 
 function truncateId(id: string): string {
   return id.length > 4 ? `…${id.slice(-4)}` : id;
+}
+
+const COLOR_KEYS: readonly Severity[] = ["ok", "warning", "critical", "blocked", "unknown"];
+const COLOR_LABELS: Record<Severity, TranslationKey> = {
+  ok: "colorOk",
+  warning: "colorWarning",
+  critical: "colorCritical",
+  blocked: "colorBlocked",
+  unknown: "colorUnknown",
+};
+const VAR_HEX_PATTERN = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
+
+function extractSwatchHex(value: string, fallback: string): string {
+  const match = value.match(VAR_HEX_PATTERN);
+  if (match) return match[2]!;
+  return /^#[0-9a-fA-F]{6}$/i.test(value) ? value : fallback;
+}
+
+function applySwatchHex(value: string, hex: string): string {
+  const match = value.match(VAR_HEX_PATTERN);
+  return match ? `var(${match[1]}, ${hex})` : hex;
 }
 
 @customElement("codex-usage-card")
@@ -371,11 +392,14 @@ export class CodexUsageCard extends LitElement {
       return nothing;
     }
     const resetCredits = account.reset_credits;
+    const availableCount = resetCredits.available_count ?? 0;
     const rows: TemplateResult[] = [
       html`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
-          >${this.t("resetCreditsAvailable", { count: resetCredits.available_count ?? 0 })}</span
+          >${this.t(availableCount === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", {
+            count: availableCount,
+          })}</span
         >
       </div>`,
     ];
@@ -1047,13 +1071,17 @@ export class CodexUsageCardEditor extends LitElement {
   protected override updated(changed: PropertyValues<this>): void {
     if (!changed.has("hass") || !this.hass || this.loadedConnection === this.hass.connection)
       return;
-    this.loadedConnection = this.hass.connection;
+    const connection = this.hass.connection;
+    this.loadedConnection = connection;
     void fetchCardSnapshot(this.hass)
       .then((snapshot) => {
+        if (this.loadedConnection !== connection) return;
         this.accounts = snapshot.accounts;
       })
       .catch(() => {
+        if (this.loadedConnection !== connection) return;
         this.accounts = [];
+        this.loadedConnection = undefined;
       });
   }
 
@@ -1098,9 +1126,24 @@ export class CodexUsageCardEditor extends LitElement {
     this.emitConfig(normalizeConfig({ ...this.config, appearance: event.detail.value }));
   }
 
-  private updateColors(event: CustomEvent<{ value: Record<string, unknown> }>): void {
-    event.stopPropagation();
-    this.emitConfig(normalizeConfig({ ...this.config, colors: event.detail.value }));
+  private colorSwatchValue(key: Severity): string {
+    const fallback = extractSwatchHex(DEFAULT_COLORS[key], "#000000");
+    return extractSwatchHex(this.config.colors[key], fallback);
+  }
+
+  private updateColorSwatch(key: Severity, event: Event): void {
+    const hex = (event.target as HTMLInputElement).value;
+    const next = applySwatchHex(this.config.colors[key], hex);
+    this.emitConfig(
+      normalizeConfig({ ...this.config, colors: { ...this.config.colors, [key]: next } }),
+    );
+  }
+
+  private updateColorText(key: Severity, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.emitConfig(
+      normalizeConfig({ ...this.config, colors: { ...this.config.colors, [key]: value } }),
+    );
   }
 
   private readonly computeLabel = (schema: { name?: string }): string => {
@@ -1124,18 +1167,6 @@ export class CodexUsageCardEditor extends LitElement {
     const labels: Record<string, TranslationKey> = {
       warning: "thresholdWarning",
       critical: "colorCritical",
-    };
-    const label = schema.name ? labels[schema.name] : undefined;
-    return label ? this.t(label) : (schema.name ?? "");
-  };
-
-  private readonly computeColorLabel = (schema: { name?: string }): string => {
-    const labels: Record<string, TranslationKey> = {
-      ok: "colorOk",
-      warning: "colorWarning",
-      critical: "colorCritical",
-      blocked: "colorBlocked",
-      unknown: "colorUnknown",
     };
     const label = schema.name ? labels[schema.name] : undefined;
     return label ? this.t(label) : (schema.name ?? "");
@@ -1310,19 +1341,24 @@ export class CodexUsageCardEditor extends LitElement {
           @value-changed=${this.updateThresholds}
         ></ha-form>
         <h4>${this.t("semanticColors")}</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${this.config.colors}
-          .schema=${[
-            { name: "ok", selector: { text: {} } },
-            { name: "warning", selector: { text: {} } },
-            { name: "critical", selector: { text: {} } },
-            { name: "blocked", selector: { text: {} } },
-            { name: "unknown", selector: { text: {} } },
-          ]}
-          .computeLabel=${this.computeColorLabel}
-          @value-changed=${this.updateColors}
-        ></ha-form>
+        <div class="color-list">
+          ${COLOR_KEYS.map(
+            (key) =>
+              html`<label class="color-row" data-color-key=${key}>
+                <span>${this.t(COLOR_LABELS[key])}</span>
+                <input
+                  type="color"
+                  .value=${this.colorSwatchValue(key)}
+                  @input=${(event: Event) => this.updateColorSwatch(key, event)}
+                />
+                <input
+                  type="text"
+                  .value=${this.config.colors[key]}
+                  @change=${(event: Event) => this.updateColorText(key, event)}
+                />
+              </label>`,
+          )}
+        </div>
         <h4>${this.t("appearance")}</h4>
         <ha-form
           .hass=${this.hass}
@@ -1350,6 +1386,26 @@ export class CodexUsageCardEditor extends LitElement {
     details {
       border-top: 1px solid var(--divider-color);
       padding-top: 10px;
+    }
+    .color-list {
+      display: grid;
+      gap: 8px;
+    }
+    .color-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 1fr) 40px minmax(0, 2fr);
+      align-items: center;
+      gap: 8px;
+    }
+    .color-row input[type="color"] {
+      width: 40px;
+      height: 32px;
+      padding: 2px;
+    }
+    .color-row input[type="text"] {
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 8px;
     }
     summary {
       cursor: pointer;

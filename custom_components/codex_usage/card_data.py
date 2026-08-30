@@ -8,6 +8,8 @@ from decimal import Decimal
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.auth.models import User
+from homeassistant.auth.permissions.const import POLICY_READ
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
@@ -109,6 +111,23 @@ def _active_entity_ids(hass: HomeAssistant) -> dict[str, str]:
     }
 
 
+def _user_can_read_entry(user: User, registry: Any, entry_id: str) -> bool:
+    """Require access to every entity before returning an all-or-nothing account payload."""
+    if user.is_admin or user.permissions.access_all_entities(POLICY_READ):
+        return True
+    try:
+        entries = [
+            item
+            for item in registry.entities.values()
+            if item.platform == DOMAIN and item.config_entry_id == entry_id
+        ]
+    except AttributeError, TypeError:
+        return False
+    return bool(entries) and all(
+        user.permissions.check_entity(item.entity_id, POLICY_READ) for item in entries
+    )
+
+
 def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -> dict[str, Any]:
     data = coordinator.data
     usage = data.usage
@@ -172,10 +191,14 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
     }
 
 
-def build_card_snapshot(hass: HomeAssistant) -> dict[str, Any]:
+def build_card_snapshot(hass: HomeAssistant, user: User) -> dict[str, Any]:
     """Build a normalized snapshot without credentials or backend identities."""
     entries = hass.data.get(DOMAIN, {}).get("entries", {})
     entity_ids = _active_entity_ids(hass)
+    try:
+        registry = er.async_get(hass)
+    except AttributeError, KeyError, TypeError:
+        registry = None
     return {
         "schema_version": 1,
         "integration_version": CARD_VERSION,
@@ -183,7 +206,7 @@ def build_card_snapshot(hass: HomeAssistant) -> dict[str, Any]:
         "accounts": [
             _account_payload(entry, coordinator, entity_ids)
             for entry, coordinator in entries.values()
-            if coordinator.data is not None
+            if coordinator.data is not None and _user_can_read_entry(user, registry, entry.entry_id)
         ],
     }
 
@@ -196,7 +219,7 @@ def websocket_card_data(
     msg: dict[str, Any],
 ) -> None:
     """Return the card snapshot to an authenticated Home Assistant user."""
-    connection.send_result(msg["id"], build_card_snapshot(hass))
+    connection.send_result(msg["id"], build_card_snapshot(hass, connection.user))
 
 
 @callback
