@@ -10,7 +10,7 @@ describe("normalizeConfig", () => {
   it("fills all defaults for a minimal Lovelace config", () => {
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(DEFAULT_CONFIG);
     expect(normalizeConfig({ type: "custom:codex-usage-card" })).toEqual(
-      expect.objectContaining({ account_mode: "auto", display_mode: "adaptive" }),
+      expect.objectContaining({ account_mode: "auto", compact: false }),
     );
   });
 
@@ -43,7 +43,7 @@ describe("normalizeConfig", () => {
         account_mode: "single",
         selected_entry_id: "entry-a",
         allow_account_switching: false,
-        display_mode: "compact",
+        compact: true,
         title: "Team usage",
       }),
     ).toEqual(
@@ -51,7 +51,7 @@ describe("normalizeConfig", () => {
         account_mode: "single",
         selected_entry_id: "entry-a",
         allow_account_switching: false,
-        display_mode: "compact",
+        compact: true,
         title: "Team usage",
       }),
     );
@@ -62,7 +62,7 @@ describe("normalizeConfig", () => {
         account_mode: "sometimes",
         selected_entry_id: 42,
         allow_account_switching: "yes",
-        display_mode: "huge",
+        compact: "huge",
         title: false,
       }),
     ).toEqual(DEFAULT_CONFIG);
@@ -94,14 +94,14 @@ describe("normalizeConfig", () => {
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 60, critical: 60 },
+        thresholds: { warning: 75, critical: 75 },
       }).thresholds,
     ).toEqual(DEFAULT_THRESHOLDS);
 
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 10, critical: Number.POSITIVE_INFINITY },
+        thresholds: { warning: 10, critical: Number.POSITIVE_INFINITY },
       }).thresholds,
     ).toEqual(DEFAULT_THRESHOLDS);
   });
@@ -110,9 +110,9 @@ describe("normalizeConfig", () => {
     expect(
       normalizeConfig({
         type: "custom:codex-usage-card",
-        thresholds: { elevated: 0, critical: 99 },
+        thresholds: { warning: 0, critical: 99 },
       }).thresholds,
-    ).toEqual({ elevated: 0, critical: 99 });
+    ).toEqual({ warning: 0, critical: 99 });
   });
 
   it("validates every configured color and falls back individually", () => {
@@ -122,12 +122,32 @@ describe("normalizeConfig", () => {
 
     const normalized = normalizeConfig({
       type: "custom:codex-usage-card",
-      colors: { normal: "rebeccapurple", blocked: "not a color" },
+      colors: { ok: "rebeccapurple", blocked: "not a color" },
     });
 
-    expect(normalized.colors.normal).toBe("rebeccapurple");
+    expect(normalized.colors.ok).toBe("rebeccapurple");
     expect(normalized.colors.blocked).toBe(DEFAULT_COLORS.blocked);
-    expect(normalized.colors.missing).toBe(DEFAULT_COLORS.missing);
+    expect(normalized.colors.unknown).toBe(DEFAULT_COLORS.unknown);
+  });
+
+  it.each([
+    ["auto", "auto"],
+    [true, true],
+    [false, false],
+  ] as const)("accepts %s as a section visibility value", (input, expected) => {
+    expect(
+      normalizeConfig({
+        type: "custom:codex-usage-card",
+        sections: { credits: { visible: input, values: {} } },
+      }).sections.credits.visible,
+    ).toBe(expected);
+  });
+
+  it("defaults credits, spending, and profile sections to auto-visibility", () => {
+    expect(DEFAULT_CONFIG.sections.credits.visible).toBe("auto");
+    expect(DEFAULT_CONFIG.sections.spending.visible).toBe("auto");
+    expect(DEFAULT_CONFIG.sections.profile.visible).toBe("auto");
+    expect(DEFAULT_CONFIG.sections.additional_limits.visible).toBe("auto");
   });
 
   it("does not mutate or retain nested references from the input", () => {
@@ -158,8 +178,7 @@ describe("normalizeConfig", () => {
       }),
     });
     expect(
-      normalizeConfig({ type: "custom:codex-usage-card", colors: { normal: "broken" } }).colors
-        .normal,
-    ).toBe(DEFAULT_COLORS.normal);
+      normalizeConfig({ type: "custom:codex-usage-card", colors: { ok: "broken" } }).colors.ok,
+    ).toBe(DEFAULT_COLORS.ok);
   });
 });

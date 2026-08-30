@@ -26,16 +26,15 @@ for (const width of [320, 480, 768, 1200]) {
   }
 }
 
-for (const state of ["normal", "elevated", "critical", "blocked", "stale", "weekly-only"]) {
+for (const state of ["normal", "warning", "critical", "blocked", "stale", "weekly-only"]) {
   test(`semantic state ${state}`, async ({ page }) => {
     const errors = captureErrors(page);
     await page.setViewportSize({ width: 768, height: 800 });
     await page.goto(`/visual/?theme=dark&state=${state}&accounts=1`);
     const card = page.locator("codex-usage-card");
     await expect(card).toBeVisible();
-    await expect(card.locator("ha-card")).toHaveClass(
-      new RegExp(state === "weekly-only" ? "normal" : state),
-    );
+    const expectedClass = state === "weekly-only" || state === "normal" ? "ok" : state;
+    await expect(card.locator("ha-card")).toHaveClass(new RegExp(expectedClass));
     expect(errors).toEqual([]);
   });
 }
@@ -43,7 +42,7 @@ for (const state of ["normal", "elevated", "critical", "blocked", "stale", "week
 test("account chip interaction updates the selected account", async ({ page }) => {
   const errors = captureErrors(page);
   await page.setViewportSize({ width: 768, height: 900 });
-  await page.goto("/visual/?theme=dark&state=normal&accounts=2&mode=adaptive");
+  await page.goto("/visual/?theme=dark&state=normal&accounts=2");
   const card = page.locator("codex-usage-card");
 
   await card.locator('button[data-entry-id="entry-1"]').click();
@@ -53,23 +52,49 @@ test("account chip interaction updates the selected account", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
-for (const mode of ["compact", "adaptive", "detailed"]) {
+for (const mode of ["compact", "expanded"]) {
   test(`${mode} mode exposes the intended density`, async ({ page }) => {
     const errors = captureErrors(page);
     await page.setViewportSize({ width: 768, height: 1000 });
-    await page.goto(`/visual/?theme=light&state=normal&accounts=1&mode=${mode}`);
+    const modeParam = mode === "compact" ? "&mode=compact" : "";
+    await page.goto(`/visual/?theme=light&state=normal&accounts=1${modeParam}`);
     const card = page.locator("codex-usage-card");
+
+    // Primary limits (and the ring for the first one) always render, regardless
+    // of compact/expanded -- compact only affects the Details area.
+    await expect(card.locator(".ring")).toBeVisible();
 
     if (mode === "compact") {
       await expect(card.locator(".details")).toHaveCount(0);
-      await expect(card.locator(".ring")).toHaveCount(0);
-    } else if (mode === "adaptive") {
-      await expect(card.locator('[data-detail="reset-credits"]')).toBeVisible();
-      await expect(card.locator('[data-profile-key="peak_daily_tokens"]')).toHaveCount(0);
+      await expect(card.locator(".details-toggle")).toContainText("Show details");
     } else {
+      await expect(card.locator('[data-detail="reset-credits"]')).toBeVisible();
       await expect(card.locator('[data-profile-key="peak_daily_tokens"]')).toBeVisible();
       await expect(card.locator('[data-spend-key="used_percent"]')).toBeVisible();
+      await expect(card.locator(".details-toggle")).toContainText("Hide details");
     }
     expect(errors).toEqual([]);
   });
 }
+
+test("the details area is one continuous surface, not a nested card", async ({ page }) => {
+  const errors = captureErrors(page);
+  await page.setViewportSize({ width: 768, height: 1000 });
+  await page.goto("/visual/?theme=dark&state=normal&accounts=1");
+  const card = page.locator("codex-usage-card");
+
+  await expect(card.locator("ha-card")).toHaveCount(1);
+
+  const creditsSurface = await card.locator('[data-detail="credits"]').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, boxShadow: style.boxShadow };
+  });
+  expect(["rgba(0, 0, 0, 0)", "transparent"]).toContain(creditsSurface.background);
+  expect(creditsSurface.boxShadow).toBe("none");
+
+  await card.locator(".details-toggle").click();
+  await expect(card.locator("ha-card")).toHaveCount(1);
+  await expect(card.locator('[data-detail="credits"]')).toHaveCount(0);
+  await expect(card.locator(".ring")).toBeVisible();
+  expect(errors).toEqual([]);
+});

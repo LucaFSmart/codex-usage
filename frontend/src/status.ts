@@ -1,12 +1,11 @@
 import type { Severity, UsageThresholds } from "./types";
 
-const SEVERITY_RANK: Record<Severity, number> = {
-  missing: 0,
-  normal: 1,
-  stale: 2,
-  elevated: 3,
-  critical: 4,
-  blocked: 5,
+export const SEVERITY_RANK: Record<Severity, number> = {
+  unknown: 0,
+  ok: 1,
+  warning: 2,
+  critical: 3,
+  blocked: 4,
 };
 
 export function evaluateLimit(
@@ -15,16 +14,16 @@ export function evaluateLimit(
   thresholds: UsageThresholds,
 ): Severity {
   if (explicitlyBlocked) return "blocked";
-  if (typeof usage !== "number" || !Number.isFinite(usage)) return "missing";
+  if (typeof usage !== "number" || !Number.isFinite(usage)) return "unknown";
   if (usage >= thresholds.critical) return "critical";
-  if (usage >= thresholds.elevated) return "elevated";
-  return "normal";
+  if (usage >= thresholds.warning) return "warning";
+  return "ok";
 }
 
 export function worstSeverity(severities: readonly Severity[]): Severity {
   return severities.reduce<Severity>(
     (worst, severity) => (SEVERITY_RANK[severity] > SEVERITY_RANK[worst] ? severity : worst),
-    "missing",
+    "unknown",
   );
 }
 

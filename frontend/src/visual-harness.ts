@@ -5,21 +5,21 @@ import type { CardSnapshot, HomeAssistant } from "./types";
 const query = new URLSearchParams(location.search);
 const requestedState = query.get("state") ?? "normal";
 const accountCount = Number(query.get("accounts") ?? "1");
-const displayMode = query.get("mode") ?? "detailed";
+const compact = query.get("mode") === "compact";
 document.body.className = query.get("theme") === "light" ? "light" : "dark";
 
 const usage =
-  requestedState === "elevated"
-    ? 70
+  requestedState === "warning"
+    ? 80
     : requestedState === "critical"
-      ? 91
+      ? 95
       : requestedState === "blocked"
         ? 100
         : 35;
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.5.4",
+  integration_version: "0.6.0",
   generated_at: new Date().toISOString(),
   accounts: Array.from({ length: accountCount }, (_, index) => ({
     id: `entry-${index}`,
@@ -55,6 +55,21 @@ const snapshot: CardSnapshot = {
         reached: requestedState === "blocked",
         entity_id: "sensor.codex_weekly_usage",
       },
+      ...(requestedState === "weekly-only"
+        ? []
+        : [
+            {
+              id: "codex:additional:code_review",
+              name: "Code review",
+              source: "additional" as const,
+              duration_seconds: 604800,
+              used_percent: 20,
+              remaining_percent: 80,
+              resets_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+              reached: false,
+              entity_id: null,
+            },
+          ]),
     ],
     credits: { balance: "12.50", has_credits: true, unlimited: false, overage_reached: false },
     spend: {
@@ -102,6 +117,6 @@ const card = document.createElement("codex-usage-card") as HTMLElement & {
   hass: HomeAssistant;
   setConfig(config: Record<string, unknown>): void;
 };
-card.setConfig({ type: "custom:codex-usage-card", display_mode: displayMode });
+card.setConfig({ type: "custom:codex-usage-card", compact });
 card.hass = hass;
 document.body.append(card);

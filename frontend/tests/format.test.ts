@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+
+import { formatAbsoluteReset, relativeDurationUntil } from "../src/format";
+
+describe("relativeDurationUntil", () => {
+  const now = new Date("2026-08-30T12:00:00Z");
+
+  it("returns null for a missing or invalid value", () => {
+    expect(relativeDurationUntil(null, now)).toBeNull();
+    expect(relativeDurationUntil("not a date", now)).toBeNull();
+  });
+
+  it("computes minutes, hours, and days for a future timestamp", () => {
+    expect(relativeDurationUntil("2026-08-30T12:03:00Z", now)).toEqual({
+      totalMinutes: 3,
+      days: 0,
+      hours: 0,
+      minutes: 3,
+    });
+    expect(relativeDurationUntil("2026-08-30T14:14:00Z", now)).toEqual({
+      totalMinutes: 134,
+      days: 0,
+      hours: 2,
+      minutes: 14,
+    });
+    expect(relativeDurationUntil("2026-09-02T15:00:00Z", now)).toEqual({
+      totalMinutes: 4500,
+      days: 3,
+      hours: 3,
+      minutes: 0,
+    });
+  });
+
+  it("clamps a past timestamp to zero rather than going negative", () => {
+    expect(relativeDurationUntil("2026-08-30T11:00:00Z", now)).toEqual({
+      totalMinutes: 0,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+    });
+  });
+});
+
+describe("formatAbsoluteReset", () => {
+  it("returns an em dash for a missing or invalid value", () => {
+    expect(formatAbsoluteReset(null, "en-US")).toBe("—");
+    expect(formatAbsoluteReset("not a date", "en-US")).toBe("—");
+  });
+
+  it("formats a valid timestamp with weekday, date, and time", () => {
+    const formatted = formatAbsoluteReset("2026-09-02T15:00:00Z", "en-US");
+    expect(formatted).not.toBe("—");
+    expect(formatted.length).toBeGreaterThan(0);
+  });
+});

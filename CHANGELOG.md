@@ -2,6 +2,52 @@
 
 All notable changes to this project are documented here.
 
+## 0.6.0 - 2026-08-30
+
+Card-focused release. The backend data model and HTTP contract are
+unchanged; every change below is in the bundled dashboard card.
+
+- Redesign the card's information hierarchy: a compact status chip
+  (Healthy / Low usage remaining / Critically low usage remaining / Limit
+  reached / Data unavailable), a one-line "most constrained limit" callout,
+  and remaining percentage (not used) as the primary number on the 5-hour
+  and weekly limits, with relative reset times ("Resets in 2h 14m") as the
+  primary reset label and the absolute timestamp demoted to secondary text.
+- Replace `display_mode` (`adaptive`/`compact`/`detailed`) with a single
+  `compact: boolean` option plus a live "Show details"/"Hide details"
+  toggle. The primary limits always render; only credits, spend,
+  additional limits, account details, and profile stats live behind the
+  toggle, which the viewer can expand or collapse at any time regardless
+  of the configured default.
+- Decouple data freshness from usage severity. An account can now show a
+  healthy status chip and an independent "Data may be outdated" line at
+  the same time, instead of a stale snapshot forcing the whole card into
+  an ambiguous state.
+- Extend `sections.<key>.visible` to accept `"auto"` (show only if the
+  account actually has that data) alongside the existing boolean. Credits,
+  spending, profile, and additional limits default to `"auto"`, so an
+  account with no spend control or no reset credits no longer shows empty
+  placeholders.
+- Add two new sections: `additional_limits` (any `additional_rate_limits`
+  entry, rendered with the same row treatment as the primary limits, just
+  less prominent) and `account` (plan, workspace, and a truncated account
+  ID — no email or full raw IDs).
+- Rework the visual language to one continuous `ha-card` surface: no more
+  per-item bordered/background panels for limits, credits, spend, reset
+  credits, or account details. Everything is separated by spacing and
+  typography instead, using a small set of CSS custom-property spacing
+  tokens (`--codex-space-1` through `--codex-space-5`).
+- Rename the severity thresholds from `elevated`/`critical` (60/85% used)
+  to `warning`/`critical` (75/90% used), and the color palette from
+  `normal`/`elevated`/`missing`/`stale` to `ok`/`warning`/`unknown`, with
+  `stale` no longer a configurable color (freshness now uses one fixed,
+  non-severity CSS variable).
+
+This is a breaking change for anyone with an existing card configuration
+that sets `display_mode`, `thresholds.elevated`, or `colors.normal` /
+`colors.elevated` / `colors.stale` / `colors.missing` — those keys are no
+longer read. Nothing else in the config schema changed.
+
 ## 0.5.4 - 2026-08-18
 
 - Derive a limit's reset time from the backend's `reset_after_seconds` when

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_THRESHOLDS } from "../src/config";
-import { evaluateAccount, evaluateLimit, worstSeverity } from "../src/status";
+import { evaluateAccount, evaluateLimit, SEVERITY_RANK, worstSeverity } from "../src/status";
 
 describe("evaluateLimit", () => {
   it.each([
-    [null, "missing"],
-    [Number.NaN, "missing"],
-    [59.9, "normal"],
-    [60, "elevated"],
-    [84.9, "elevated"],
-    [85, "critical"],
+    [null, "unknown"],
+    [Number.NaN, "unknown"],
+    [74.9, "ok"],
+    [75, "warning"],
+    [89.9, "warning"],
+    [90, "critical"],
     [99.9, "critical"],
     [100, "critical"],
   ] as const)("evaluates %s as %s at the exact default boundaries", (usage, expected) => {
@@ -23,28 +23,37 @@ describe("evaluateLimit", () => {
   });
 });
 
+describe("SEVERITY_RANK", () => {
+  it("ranks severities from least to most severe", () => {
+    expect(SEVERITY_RANK.unknown).toBeLessThan(SEVERITY_RANK.ok);
+    expect(SEVERITY_RANK.ok).toBeLessThan(SEVERITY_RANK.warning);
+    expect(SEVERITY_RANK.warning).toBeLessThan(SEVERITY_RANK.critical);
+    expect(SEVERITY_RANK.critical).toBeLessThan(SEVERITY_RANK.blocked);
+  });
+});
+
 describe("worstSeverity", () => {
   it("uses the explicit severity precedence", () => {
-    expect(worstSeverity(["normal", "stale", "critical", "elevated"])).toBe("critical");
+    expect(worstSeverity(["ok", "critical", "warning"])).toBe("critical");
     expect(worstSeverity(["blocked", "critical"])).toBe("blocked");
   });
 
-  it("does not let a missing limit override a valid limit", () => {
-    expect(worstSeverity(["missing", "normal"])).toBe("normal");
+  it("does not let an unknown limit override a valid limit", () => {
+    expect(worstSeverity(["unknown", "ok"])).toBe("ok");
   });
 
-  it("returns missing when no valid limit severity exists", () => {
-    expect(worstSeverity([])).toBe("missing");
-    expect(worstSeverity(["missing", "missing"])).toBe("missing");
+  it("returns unknown when no valid limit severity exists", () => {
+    expect(worstSeverity([])).toBe("unknown");
+    expect(worstSeverity(["unknown", "unknown"])).toBe("unknown");
   });
 });
 
 describe("evaluateAccount", () => {
-  it("keeps a weekly-normal account normal when five-hour data is missing", () => {
-    expect(evaluateAccount(["missing", "normal"])).toBe("normal");
+  it("keeps a weekly-ok account ok when five-hour data is missing", () => {
+    expect(evaluateAccount(["unknown", "ok"])).toBe("ok");
   });
 
   it("lets any explicit backend blocker override all limit severities", () => {
-    expect(evaluateAccount(["normal", "elevated"], [false, true])).toBe("blocked");
+    expect(evaluateAccount(["ok", "warning"], [false, true])).toBe("blocked");
   });
 });

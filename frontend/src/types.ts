@@ -8,18 +8,25 @@ export interface LovelaceCardConfig {
 }
 
 export type AccountMode = "auto" | "single" | "all";
-export type DisplayMode = "adaptive" | "compact" | "detailed";
-export type Severity = "missing" | "stale" | "normal" | "elevated" | "critical" | "blocked";
+export type Severity = "unknown" | "ok" | "warning" | "critical" | "blocked";
 export type SectionKey =
-  "limits" | "resets" | "pace" | "profile" | "credits" | "spending" | "footer";
+  | "limits"
+  | "additional_limits"
+  | "resets"
+  | "pace"
+  | "account"
+  | "profile"
+  | "credits"
+  | "spending"
+  | "footer";
 
 export interface SectionConfig {
-  visible: boolean;
+  visible: boolean | "auto";
   values: Record<string, boolean>;
 }
 
 export interface UsageThresholds {
-  elevated: number;
+  warning: number;
   critical: number;
 }
 
@@ -34,7 +41,7 @@ export interface CodexUsageCardConfig extends LovelaceCardConfig {
   selected_entry_id?: string;
   included_entry_ids: string[];
   allow_account_switching: boolean;
-  display_mode: DisplayMode;
+  compact: boolean;
   title: string;
   show_unavailable_limits: boolean;
   sections: Record<SectionKey, SectionConfig>;
@@ -124,12 +131,14 @@ export interface AccountViewModel extends Omit<CardAccount, "limits"> {
   limits: LimitViewModel[];
   severity: Severity;
   stale: boolean;
+  mostConstrainedLimit: LimitViewModel | null;
 }
 
 export interface CardViewModel {
   accounts: AccountViewModel[];
   selectedAccount: AccountViewModel | null;
   severity: Severity;
+  stale: boolean;
   generatedAt: Date | null;
   integrationVersion: string;
 }

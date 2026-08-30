@@ -2,7 +2,6 @@ import type {
   AccountMode,
   CardAppearance,
   CodexUsageCardConfig,
-  DisplayMode,
   SectionConfig,
   SectionKey,
   Severity,
@@ -10,53 +9,48 @@ import type {
 } from "./types";
 
 const ACCOUNT_MODES: readonly AccountMode[] = ["auto", "single", "all"];
-const DISPLAY_MODES: readonly DisplayMode[] = ["adaptive", "compact", "detailed"];
 export const SECTION_KEYS: readonly SectionKey[] = [
   "limits",
+  "additional_limits",
   "resets",
   "pace",
+  "account",
   "credits",
   "spending",
   "profile",
   "footer",
 ];
-const SEVERITIES: readonly Severity[] = [
-  "missing",
-  "stale",
-  "normal",
-  "elevated",
-  "critical",
-  "blocked",
-];
+const SEVERITIES: readonly Severity[] = ["unknown", "ok", "warning", "critical", "blocked"];
 
-export const DEFAULT_THRESHOLDS: UsageThresholds = { elevated: 60, critical: 85 };
+export const DEFAULT_THRESHOLDS: UsageThresholds = { warning: 75, critical: 90 };
 
 export const DEFAULT_COLORS: Record<Severity, string> = {
-  normal: "var(--codex-usage-normal-color, #25b7f3)",
-  elevated: "var(--codex-usage-elevated-color, #ffb74d)",
+  ok: "var(--codex-usage-ok-color, #25b7f3)",
+  warning: "var(--codex-usage-warning-color, #ffb74d)",
   critical: "var(--codex-usage-critical-color, #ff5f6d)",
   blocked: "var(--codex-usage-blocked-color, #d32f49)",
-  stale: "var(--codex-usage-stale-color, #78909c)",
-  missing: "var(--codex-usage-missing-color, #9e9e9e)",
+  unknown: "var(--codex-usage-unknown-color, #9e9e9e)",
 };
 
-const section = (visible = true): SectionConfig => ({ visible, values: {} });
+const section = (visible: boolean | "auto" = true): SectionConfig => ({ visible, values: {} });
 
 export const DEFAULT_CONFIG: CodexUsageCardConfig = {
   type: "custom:codex-usage-card",
   account_mode: "auto",
   included_entry_ids: [],
   allow_account_switching: true,
-  display_mode: "adaptive",
+  compact: false,
   title: "Codex Usage",
   show_unavailable_limits: false,
   sections: {
     limits: section(),
+    additional_limits: section("auto"),
     resets: section(),
     pace: section(),
-    credits: section(),
-    spending: section(),
-    profile: section(),
+    account: section(),
+    credits: section("auto"),
+    spending: section("auto"),
+    profile: section("auto"),
     footer: section(),
   },
   thresholds: { ...DEFAULT_THRESHOLDS },
@@ -107,7 +101,7 @@ function normalizeSections(value: unknown): Record<SectionKey, SectionConfig> {
         key,
         {
           visible:
-            typeof input.visible === "boolean"
+            typeof input.visible === "boolean" || input.visible === "auto"
               ? input.visible
               : DEFAULT_CONFIG.sections[key].visible,
           values,
@@ -119,16 +113,16 @@ function normalizeSections(value: unknown): Record<SectionKey, SectionConfig> {
 
 function normalizeThresholds(value: unknown): UsageThresholds {
   if (!isRecord(value)) return { ...DEFAULT_THRESHOLDS };
-  const elevated = value.elevated;
+  const warning = value.warning;
   const critical = value.critical;
-  return typeof elevated === "number" &&
-    Number.isFinite(elevated) &&
+  return typeof warning === "number" &&
+    Number.isFinite(warning) &&
     typeof critical === "number" &&
     Number.isFinite(critical) &&
-    elevated >= 0 &&
-    elevated < critical &&
+    warning >= 0 &&
+    warning < critical &&
     critical <= 100
-    ? { elevated, critical }
+    ? { warning, critical }
     : { ...DEFAULT_THRESHOLDS };
 }
 
@@ -179,9 +173,7 @@ export function normalizeConfig(input: unknown): CodexUsageCardConfig {
       typeof source.allow_account_switching === "boolean"
         ? source.allow_account_switching
         : DEFAULT_CONFIG.allow_account_switching,
-    display_mode: isOneOf(source.display_mode, DISPLAY_MODES)
-      ? source.display_mode
-      : DEFAULT_CONFIG.display_mode,
+    compact: typeof source.compact === "boolean" ? source.compact : DEFAULT_CONFIG.compact,
     title: typeof source.title === "string" ? source.title : DEFAULT_CONFIG.title,
     show_unavailable_limits:
       typeof source.show_unavailable_limits === "boolean"

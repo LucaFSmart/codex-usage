@@ -54,3 +54,36 @@ export function formatDecimal(value: string | null, locale: string | undefined):
     ? new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(number)
     : value;
 }
+
+export interface RelativeDuration {
+  totalMinutes: number;
+  days: number;
+  hours: number;
+  minutes: number;
+}
+
+export function relativeDurationUntil(value: string | null, now: Date): RelativeDuration | null {
+  if (!value) return null;
+  const target = new Date(value);
+  if (!Number.isFinite(target.getTime())) return null;
+  const totalMinutes = Math.max(0, Math.round((target.getTime() - now.getTime()) / 60_000));
+  return {
+    totalMinutes,
+    days: Math.floor(totalMinutes / 1440),
+    hours: Math.floor((totalMinutes % 1440) / 60),
+    minutes: totalMinutes % 60,
+  };
+}
+
+export function formatAbsoluteReset(value: string | null, locale: string | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}

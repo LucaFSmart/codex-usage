@@ -1,4 +1,4 @@
-import { evaluateLimit, worstSeverity } from "./status";
+import { evaluateLimit, SEVERITY_RANK, worstSeverity } from "./status";
 import type {
   AccountViewModel,
   CardAccount,
@@ -6,6 +6,7 @@ import type {
   CardViewModel,
   CodexUsageCardConfig,
   LimitViewModel,
+  SectionKey,
   Severity,
 } from "./types";
 
@@ -30,6 +31,40 @@ function pace(limit: CardAccount["limits"][number], now: Date): number | null {
   return limit.used_percent - elapsed;
 }
 
+function isMoreConstrained(a: LimitViewModel, b: LimitViewModel): boolean {
+  if (a.reached !== b.reached) return a.reached;
+  const remainingA = a.remaining_percent ?? Number.POSITIVE_INFINITY;
+  const remainingB = b.remaining_percent ?? Number.POSITIVE_INFINITY;
+  if (remainingA !== remainingB) return remainingA < remainingB;
+  if (a.source !== b.source) return a.source === "main";
+  return false;
+}
+
+export function mostConstrainedLimit(limits: readonly LimitViewModel[]): LimitViewModel | null {
+  if (limits.length === 0) return null;
+  return limits.reduce((best, current) => (isMoreConstrained(current, best) ? current : best));
+}
+
+export function isSectionVisible(
+  key: SectionKey,
+  visible: boolean | "auto",
+  account: AccountViewModel,
+): boolean {
+  if (visible !== "auto") return visible;
+  switch (key) {
+    case "credits":
+      return account.credits !== null || account.reset_credits !== null;
+    case "spending":
+      return account.spend !== null;
+    case "profile":
+      return account.profile !== null;
+    case "additional_limits":
+      return account.limits.some((item) => item.source === "additional");
+    default:
+      return true;
+  }
+}
+
 function accountModel(
   account: CardAccount,
   config: CodexUsageCardConfig,
@@ -45,10 +80,15 @@ function accountModel(
     ),
     pace: pace(item, now),
   }));
-  let severity: Severity =
+  const severity: Severity =
     account.blocker !== null ? "blocked" : worstSeverity(limits.map((item) => item.severity));
-  if (account.blocker === null && stale && severity !== "missing") severity = "stale";
-  return { ...account, limits, severity, stale };
+  return {
+    ...account,
+    limits,
+    severity,
+    stale,
+    mostConstrainedLimit: mostConstrainedLimit(limits),
+  };
 }
 
 export function buildCardViewModel(
@@ -69,22 +109,15 @@ export function buildCardViewModel(
       config.account_mode === "single"
         ? (accounts[0] ?? null)
         : ([...accounts].sort(
-            (left, right) =>
-              ["missing", "normal", "stale", "elevated", "critical", "blocked"].indexOf(
-                right.severity,
-              ) -
-              ["missing", "normal", "stale", "elevated", "critical", "blocked"].indexOf(
-                left.severity,
-              ),
+            (left, right) => SEVERITY_RANK[right.severity] - SEVERITY_RANK[left.severity],
           )[0] ?? null);
   }
+  const single = config.account_mode === "single" ? selectedAccount : null;
   return {
     accounts,
     selectedAccount,
-    severity:
-      config.account_mode === "single" && selectedAccount
-        ? selectedAccount.severity
-        : worstSeverity(accounts.map((item) => item.severity)),
+    severity: single ? single.severity : worstSeverity(accounts.map((item) => item.severity)),
+    stale: single ? single.stale : accounts.some((item) => item.stale),
     generatedAt: parsedDate(snapshot.generated_at),
     integrationVersion: snapshot.integration_version,
   };
