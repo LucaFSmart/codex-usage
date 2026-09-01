@@ -179,6 +179,60 @@ OpenAI may report only a weekly limit, multiple rolling windows, a monthly contr
 
 Optional profile, credit, and spending detail entities are disabled by default for new installations. Enable any of them under the device's **Entities** page if they are needed in automations; the bundled card receives the same safe aggregate data independently of entity enablement.
 
+## Entities
+
+One device per configured account. Rows marked *disabled* must be enabled manually under the device's **Entities** page.
+
+**Core (enabled by default)**
+
+| Entity | Platform | Notes |
+| --- | --- | --- |
+| Plan | Sensor | Text |
+| 5-hour usage / remaining | Sensor | %, only if the account reports a 5-hour window |
+| 5-hour reset | Sensor | Timestamp |
+| Weekly usage / remaining | Sensor | %, only if the account reports a weekly window |
+| Weekly reset | Sensor | Timestamp |
+| Weekly usage pace | Sensor | %, ahead/behind of the expected pace for the elapsed window |
+| Available usage resets | Sensor | Count |
+| Rate limit reached | Binary sensor | On when any limit, credit, or spend control is currently blocking |
+
+**Additional limits (auto-discovered)**
+
+A usage / remaining / reset sensor trio per extra rate-limited feature the account reports (for example Code review). These aren't a fixed list — entities are created automatically as the backend reports them and stay if a feature later disappears.
+
+**Credits (disabled by default)**
+
+| Entity | Platform |
+| --- | --- |
+| Credit balance | Sensor |
+| Credits available | Binary sensor |
+| Unlimited credits | Binary sensor |
+| Credit overage limit reached | Binary sensor |
+
+**Spend control (disabled by default)**
+
+| Entity | Platform | Notes |
+| --- | --- | --- |
+| Spend used / limit / remaining | Sensor | |
+| Spend usage | Sensor | % |
+| Spend reset | Sensor | Timestamp |
+| Spend limit reached | Binary sensor | |
+
+**Aggregate profile statistics (disabled by default)**
+
+| Entity | Platform | Notes |
+| --- | --- | --- |
+| Lifetime tokens | Sensor | Total increasing |
+| Peak daily tokens | Sensor | |
+| Current streak / Longest streak | Sensor | Days |
+| Total threads | Sensor | Total increasing |
+| Longest running turn | Sensor | Duration, seconds |
+| Fast mode usage | Sensor | % |
+| Total skill uses | Sensor | Total increasing |
+| Unique skills used | Sensor | |
+| Most used reasoning effort | Sensor | Text |
+| Most used reasoning effort share | Sensor | % |
+
 ## Privacy and security
 
 Home Assistant stores OAuth tokens in `.storage/core.config_entries`; backups containing that file are sensitive. The integration:
