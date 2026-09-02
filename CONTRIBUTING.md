@@ -15,5 +15,5 @@ Backend compatibility changes should remain inside `custom_components/codex_usag
 2. Run the Python, frontend, bundle, browser, HACS, and hassfest checks in `.github/workflows/validate.yml`.
 3. Test fresh setup, token refresh, reauthentication, reload, and removal on a current Home Assistant release.
 4. Tag a GitHub release whose tag matches the manifest version exactly (for example, `1.2.3`).
-5. While a HACS default-catalog submission is pending, keep the latest release and validation runs current; do not comment on the catalog PR unless a maintainer requests it.
+5. Codex Usage is listed in the default HACS catalog; HACS picks up new releases automatically once tagged, no separate submission step is needed.
 

@@ -44,14 +44,16 @@ API-key billing is a separate OpenAI Platform product and is not supported here.
 
 [![Open your Home Assistant instance and open a repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=LucaFSmart&repository=codex-usage&category=integration)
 
-Until the repository appears in the default HACS catalog:
+Codex Usage is in the default HACS catalog. Search for **Codex Usage** under **HACS → Integrations** and install it.
+
+If it hasn't appeared yet (the HACS catalog can take a few hours to pick up a newly approved repository), add it as a custom repository in the meantime:
 
 1. Open **HACS → Integrations**.
 2. Select **Custom repositories** from the three-dot menu.
 3. Add `https://github.com/LucaFSmart/codex-usage` as category **Integration**.
 4. Install **Codex Usage** and restart Home Assistant.
 
-Once catalog review is complete, it will appear in normal HACS search. Existing custom-repository installations keep receiving updates from the same repository and require no reinstall or configuration change.
+Existing custom-repository installations keep receiving updates from the same repository and require no reinstall or configuration change.
 
 ### Manual
 
