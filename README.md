@@ -17,7 +17,7 @@ Codex Usage is a read-only Home Assistant integration for the Codex limits inclu
 - Secure OpenAI device-code login without passwords or copied browser cookies
 - Automatic token refresh and Home Assistant reauthentication
 - Capability-based parsing independent of plan names
-- Any reported rolling, weekly, monthly, feature-specific, or future limit window
+- Reported rolling, weekly, monthly and feature-specific windows within the supported response shapes
 - Remaining allowance, reset time, safe blocker status, and plausible usage pace
 - Optional credit, spend-control, reset-credit, and aggregate profile data
 - Workspace selection during setup and multiple separately configured accounts
@@ -173,13 +173,23 @@ There is intentionally no free-form CSS or JavaScript configuration field. card-
 
 Runtime behavior is based on fields actually returned by the account, never a hard-coded plan matrix. Current labels including Guest, Free, Go, Plus, Pro, Pro Lite, Team, Business, Enterprise, Education, Edu, K-12, Quorum, workspace and usage-based variants are formatted for display but do not enable or disable features.
 
+The reported allowance can be shared with other supported agentic features, including ChatGPT Work. A change in usage does not identify which app, model or task consumed it. Reaching an included limit also does not prove that all running work has stopped or that no additional usage option exists. See [OpenAI's usage guidance](https://help.openai.com/en/articles/11369540).
+
 - Plus has been verified against a current live response.
 - Other known plan shapes are covered with sanitized contract fixtures.
 - Unknown future plan labels and windows are handled on a best-effort basis.
 
 OpenAI may report only a weekly limit, multiple rolling windows, a monthly control, or workspace-specific extras. Missing optional functions are normal and remain hidden in the card unless `show_unavailable_limits` is enabled. Existing legacy entities keep their unique IDs and recorder history; a missing optional value is `unknown` while the coordinator itself remains reachable.
 
+The parser supports the current `primary_window`/`secondary_window` shapes and examines up to 50 entries in `additional_rate_limits`, plus supported legacy shapes. A future JSON schema is not automatically supported. Code Review is a feature-specific example; ordinary ChatGPT image and voice limit banners are outside this integration's data contract. See [Codex pricing and usage](https://learn.chatgpt.com/docs/pricing).
+
 Optional profile, credit, and spending detail entities are disabled by default for new installations. Enable any of them under the device's **Entities** page if they are needed in automations; the bundled card receives the same safe aggregate data independently of entity enablement.
+
+### Resets and credit balances
+
+Window reset times, saved usage resets and usage-credit balances are separate values. The integration reports backend data and does not infer that a reset was used from a drop in usage. See [banked resets](https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work) and [paid instant resets](https://help.openai.com/en/articles/20001507-paid-weekly-work-and-codex-rate-limit-resets) for their different behavior. Use the account's displayed reset and expiry information rather than assuming a fixed reset weekday or expiry duration.
+
+Usage credits are separate from a cash wallet or API credits, and a balance can be negative. The credit/spend sensors expose credit units; a dollar sign in the bundled 0.6.5 card must not be interpreted as a verified currency value. That presentation is scheduled for correction in 0.7. See [OpenAI's credit guide](https://help.openai.com/en/articles/12642688).
 
 ## Entities
 
