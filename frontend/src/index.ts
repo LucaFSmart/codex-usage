@@ -1,4 +1,5 @@
 import "./codex-usage-card";
+import "./codex-usage-card-editor";
 
 const metadata = {
   type: "codex-usage-card",

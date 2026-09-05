@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../src/codex-usage-card";
-import { CodexUsageCard, CodexUsageCardEditor } from "../src/codex-usage-card";
+import "../src/codex-usage-card-editor";
+import { CodexUsageCard } from "../src/codex-usage-card";
+import { CodexUsageCardEditor } from "../src/codex-usage-card-editor";
 import { makeFakeHass, SNAPSHOT } from "./fixtures";
 
 async function mount<T extends HTMLElement>(tag: string): Promise<T> {
@@ -25,6 +27,25 @@ afterEach(() => {
 });
 
 describe("CodexUsageCard", () => {
+  it("owns one local minute timer across disconnect and reconnect without timer networking", async () => {
+    const timer = vi.spyOn(globalThis, "setInterval");
+    const hass = makeFakeHass();
+    const callWS = vi.spyOn(hass, "callWS");
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(timer).toHaveBeenCalledOnce();
+    expect(callWS).toHaveBeenCalledOnce();
+
+    card.remove();
+    document.body.append(card);
+    await card.updateComplete;
+    expect(timer).toHaveBeenCalledTimes(2);
+    expect(callWS).toHaveBeenCalledOnce();
+    card.remove();
+    timer.mockRestore();
+  });
   it("exposes Home Assistant card APIs and section grid defaults", async () => {
     expect(CodexUsageCard.getStubConfig()).toEqual({});
     expect(new CodexUsageCard().getGridOptions()).toEqual({
@@ -682,6 +703,30 @@ describe("CodexUsageCardEditor", () => {
 
     expect(editor.shadowRoot?.textContent).toContain("Additional limits");
     expect(editor.shadowRoot?.textContent).toContain("Account");
+  });
+
+  it("uses three-state section selectors while preserving per-value hides and HA layout fields", async () => {
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({
+      type: "custom:codex-usage-card",
+      view_layout: { grid_area: "sidebar" },
+      sections: { credits: { visible: false, values: { balance: false } } },
+    });
+    editor.hass = makeFakeHass();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    const select = editor.shadowRoot?.querySelector<HTMLSelectElement>(
+      '[data-section-key="credits"]',
+    );
+    expect(select?.value).toBe("false");
+    select!.value = "auto";
+    select!.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    const config = (changed.mock.calls[0]?.[0] as CustomEvent).detail.config;
+    expect(config.sections.credits).toEqual({ visible: "auto", values: { balance: false } });
+    expect(config.view_layout).toEqual({ grid_area: "sidebar" });
   });
 
   it("edits semantic colors with synchronized native and text inputs", async () => {
