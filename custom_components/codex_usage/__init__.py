@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -19,8 +18,6 @@ from .card_registration import CodexUsageCardRegistration
 from .const import (
     CONF_EMAIL,
     CONF_PLAN_TYPE,
-    CONF_UPDATE_INTERVAL,
-    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     PLATFORMS,
 )
@@ -107,6 +104,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> None:
-    """Apply an updated polling interval without reloading the integration."""
-    interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
-    entry.runtime_data.update_interval = timedelta(seconds=interval)
+    """Reload so optional caches, source states and schedules match the options."""
+    await hass.config_entries.async_reload(entry.entry_id)

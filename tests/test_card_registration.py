@@ -7,9 +7,21 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import pytest
+
 from custom_components.codex_usage import async_setup_entry, async_unload_entry
 from custom_components.codex_usage.card_registration import CodexUsageCardRegistration
 from custom_components.codex_usage.const import CARD_URL, CARD_VERSION, DOMAIN
+
+
+@pytest.fixture(autouse=True)
+def issue_registry_boundary():
+    """Registration fakes own resource behavior; HA issue persistence has runtime tests."""
+    with (
+        patch("custom_components.codex_usage.repairs.ir.async_create_issue"),
+        patch("custom_components.codex_usage.repairs.ir.async_delete_issue"),
+    ):
+        yield
 
 
 def _resources(*items: dict[str, str]) -> MagicMock:
@@ -60,6 +72,24 @@ def test_registers_static_path_and_creates_missing_resource() -> None:
     hass.data["lovelace"].resources.async_create_item.assert_awaited_once_with(
         {"res_type": "module", "url": f"{CARD_URL}?v={CARD_VERSION}"}
     )
+
+
+def test_storage_failure_creates_repair_and_success_clears_it():
+    import pytest
+
+    hass = _hass()
+    hass.data["lovelace"].resources.async_create_item.side_effect = RuntimeError("test failure")
+    registration = CodexUsageCardRegistration(hass)
+    with (
+        patch("custom_components.codex_usage.repairs.ir.async_create_issue") as create,
+        patch("custom_components.codex_usage.repairs.ir.async_delete_issue") as clear,
+    ):
+        with pytest.raises(RuntimeError):
+            asyncio.run(registration.async_register())
+        assert create.call_args.args[1:3] == (DOMAIN, "card_registration_failed")
+        hass.data["lovelace"].resources.async_create_item.side_effect = None
+        asyncio.run(registration.async_register())
+        clear.assert_called_with(hass, DOMAIN, "card_registration_failed")
 
 
 def test_updates_stale_resource_version_without_creating_duplicate() -> None:

@@ -63,9 +63,31 @@ class _FakeSession:
 
     def post(self, url: str, **kwargs: object) -> _FakeResponse:
         self.last_url = url
-        self.last_headers = kwargs.get("headers")  # type: ignore[assignment]
+        self.last_headers = kwargs.get("headers")
         self.last_kwargs = kwargs
         return self.response
+
+
+@pytest.mark.parametrize("status", [429, 503, 200])
+def test_rotated_credentials_are_saved_before_failed_resource_request(status):
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+
+    from custom_components.codex_usage.api import CodexApiError
+
+    credentials = CodexCredentials("old", "old-refresh", "id", 0, "workspace")
+    rotated = replace(credentials, access_token="new", refresh_token="new-refresh", expires_at=9e9)
+    saved = []
+    response = _FakeResponse(status, None)
+    response.headers = {"Retry-After": "86400"}
+    session = _FakeSession(response)
+    client = CodexApiClient(session)
+    client.on_credentials_refresh = saved.append
+    client.async_refresh_credentials = AsyncMock(return_value=rotated)
+    with pytest.raises(CodexApiError):
+        asyncio.run(client.async_get_usage(credentials))
+    assert saved == [rotated]
+    assert session.last_headers["Authorization"] == "Bearer new"
 
 
 def test_parse_full_usage_response() -> None:

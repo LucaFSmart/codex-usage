@@ -40,7 +40,8 @@
       "cannot_connect": "Unable to connect to OpenAI.",
       "device_auth_disabled": "Device-code login is disabled for this account or workspace.",
       "device_flow_expired": "The device authorization expired. Start again.",
-      "reauth_successful": "Reauthentication was successful."
+      "reauth_successful": "Reauthentication was successful.",
+      "wrong_account": "Authorize the same user as this entry. Add another entry for a different user."
     }
   },
   "options": {
@@ -49,9 +50,17 @@
         "title": "Codex Usage options",
         "description": "OpenAI may rate-limit excessive polling. The recommended interval is 300 seconds.",
         "data": {
-          "update_interval": "Update interval (seconds)"
+          "update_interval": "Update interval (seconds)",
+          "fetch_profile": "Fetch profile statistics",
+          "fetch_reset_details": "Fetch saved-reset details"
         }
       }
+    }
+  },
+  "issues": {
+    "card_registration_failed": {
+      "title": "Codex Usage card resource could not be registered",
+      "description": "Automatic dashboard resource registration failed. Check Settings → Dashboards → Resources for the Codex Usage JavaScript module, remove duplicate entries if present, and reload the integration. See the card installation guide for the resource URL."
     }
   },
   "entity": {

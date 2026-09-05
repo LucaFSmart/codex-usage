@@ -11,6 +11,7 @@ import binascii
 import json
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -30,6 +31,7 @@ from .const import (
     RESET_CREDITS_API_URL,
     USAGE_API_URL,
 )
+from .retry import retry_deadline
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
 USER_AGENT = "HomeAssistant-CodexUsage/0.6.5"
@@ -38,6 +40,29 @@ MAX_ADDITIONAL_RATE_LIMITS = 50
 
 class CodexApiError(Exception):
     """Base error raised by the Codex API client."""
+
+
+class CodexHttpError(CodexApiError):
+    """A safe HTTP status and provider retry deadline, without response contents."""
+
+    def __init__(self, status: int, retry_at: datetime) -> None:
+        super().__init__(f"Codex request failed ({status})")
+        self.status = status
+        self.retry_at = retry_at
+
+
+def _check_retry(response: aiohttp.ClientResponse) -> None:
+    if response.status in (429, 503):
+        headers = getattr(response, "headers", {})
+        raise CodexHttpError(
+            response.status,
+            retry_deadline(
+                headers.get("Retry-After"),
+                server_date=headers.get("Date"),
+                now=datetime.now(UTC),
+                floor_seconds=60,
+            ),
+        )
 
 
 class CodexAuthenticationError(CodexApiError):
@@ -868,10 +893,10 @@ class CodexApiClient:
         """Fetch current usage, refreshing credentials as needed."""
         current = credentials
         if current.expires_at <= time.time() + 300:
-            current = await self.async_refresh_credentials(current)
+            current = await self._async_refresh_for_usage(current)
         status, payload = await self._async_usage_request(current)
         if status == 401:
-            current = await self.async_refresh_credentials(current)
+            current = await self._async_refresh_for_usage(current)
             status, payload = await self._async_usage_request(current)
         if status in (401, 403):
             raise CodexAuthenticationError("OpenAI rejected the stored credentials")
@@ -897,6 +922,7 @@ class CodexApiClient:
             async with self._session.get(
                 PROFILE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
+                _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexProfileUnavailable
                 if response.status == 401:
@@ -939,6 +965,7 @@ class CodexApiClient:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
             async with self._session.get(url, headers=headers, timeout=REQUEST_TIMEOUT) as response:
+                _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexOptionalEndpointUnavailable
                 if response.status == 401:
@@ -969,6 +996,7 @@ class CodexApiClient:
                 USAGE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
                 status = response.status
+                _check_retry(response)
                 try:
                     payload = await response.json(content_type=None)
                 except aiohttp.ContentTypeError, json.JSONDecodeError:
@@ -984,3 +1012,11 @@ class CodexApiClient:
             return await response.json(content_type=None)
         except (aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError) as err:
             raise CodexApiError("OpenAI returned invalid JSON") from err
+
+    on_credentials_refresh: Callable[[CodexCredentials], None] | None = None
+
+    async def _async_refresh_for_usage(self, credentials: CodexCredentials) -> CodexCredentials:
+        current = await self.async_refresh_credentials(credentials)
+        if self.on_credentials_refresh is not None:
+            self.on_credentials_refresh(current)
+        return current

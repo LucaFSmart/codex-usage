@@ -40,7 +40,8 @@
       "cannot_connect": "OpenAI ist nicht erreichbar.",
       "device_auth_disabled": "Die Geräteanmeldung ist für dieses Konto oder diesen Workspace deaktiviert.",
       "device_flow_expired": "Die Geräteautorisierung ist abgelaufen. Starte erneut.",
-      "reauth_successful": "Die erneute Authentifizierung war erfolgreich."
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich.",
+      "wrong_account": "Bitte denselben Benutzer wie für diesen Eintrag autorisieren. Für einen anderen Benutzer einen neuen Eintrag anlegen."
     }
   },
   "options": {
@@ -49,9 +50,17 @@
         "title": "Optionen für Codex-Nutzung",
         "description": "OpenAI kann zu häufige Abfragen begrenzen. Empfohlen sind 300 Sekunden.",
         "data": {
-          "update_interval": "Aktualisierungsintervall (Sekunden)"
+          "update_interval": "Aktualisierungsintervall (Sekunden)",
+          "fetch_profile": "Profilstatistiken abrufen",
+          "fetch_reset_details": "Details zu gespeicherten Resets abrufen"
         }
       }
+    }
+  },
+  "issues": {
+    "card_registration_failed": {
+      "title": "Kartenressource für Codex Usage konnte nicht registriert werden",
+      "description": "Die automatische Registrierung ist fehlgeschlagen. Prüfe unter Einstellungen → Dashboards → Ressourcen das JavaScript-Modul von Codex Usage, entferne gegebenenfalls doppelte Einträge und lade die Integration neu. Die Ressourcenadresse steht in der Installationsanleitung der Karte."
     }
   },
   "entity": {

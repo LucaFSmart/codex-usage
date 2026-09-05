@@ -68,6 +68,8 @@ def test_diagnostics_use_safe_allowlist() -> None:
             }
         ],
         "blocker_reason": None,
+        "limit_statuses": [{"source": "main", "allowed": None, "reached": None}],
+        "reset_provenance": None,
         "credit_available": True,
         "spend_limit_reached": None,
         "reset_credit_count": 1,

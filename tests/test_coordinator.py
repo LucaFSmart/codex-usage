@@ -1,7 +1,7 @@
 """Tests for usage and profile update scheduling."""
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -46,6 +46,7 @@ def _profile(total_threads: int) -> CodexProfileStats:
 
 class _FakeClient:
     def __init__(self) -> None:
+        self.usage_calls = 0
         self.profile_calls = 0
         self.profile_result: CodexProfileStats | Exception = _profile(10)
         self.reset_calls = 0
@@ -53,6 +54,7 @@ class _FakeClient:
         self.usage_result = parse_usage({"plan_type": "plus", "rate_limit": None})
 
     async def async_get_usage(self, credentials: CodexCredentials):
+        self.usage_calls += 1
         if isinstance(self.usage_result, Exception):
             raise self.usage_result
         return self.usage_result, credentials
@@ -74,7 +76,7 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator = object.__new__(CodexUsageCoordinator)
     coordinator.client = client  # type: ignore[assignment]
     coordinator.credentials = _credentials()
-    coordinator.config_entry = SimpleNamespace(data={})
+    coordinator.config_entry = SimpleNamespace(data={}, options={})
     coordinator.hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_update_entry=lambda *args, **kwargs: None)
     )
@@ -88,7 +90,49 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator._reset_last_success = None
     coordinator._reset_available = None
     coordinator._reset_last_error = None
+    coordinator._last_success = None
     return coordinator
+
+
+def test_disabled_optional_sources_skip_reads_and_keep_usage_reset_count():
+    client = _FakeClient()
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 4}})
+    coordinator = _coordinator(client)
+    coordinator.config_entry.options = {"fetch_profile": False, "fetch_reset_details": False}
+    data = asyncio.run(coordinator._async_update_data())
+    assert (client.profile_calls, client.reset_calls) == (0, 0)
+    assert data.profile is None and data.reset_credits is None
+    assert data.reset_summary.available_count == 4
+    assert coordinator.sources["profile"].state == "disabled"
+
+
+def test_optional_429_stops_further_reads_and_manual_refresh():
+    from custom_components.codex_usage.api import CodexHttpError
+
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=3)
+    client.profile_result = CodexHttpError(429, until)
+    coordinator = _coordinator(client)
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.reset_calls == 0
+    assert coordinator.sources["profile"].retry_at == until
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert client.usage_calls == 1
+
+
+def test_optional_503_does_not_stop_other_endpoint():
+    from custom_components.codex_usage.api import CodexHttpError
+
+    client = _FakeClient()
+    client.profile_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
+    coordinator = _coordinator(client)
+    asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
+    assert client.profile_calls == 1
+    assert client.reset_calls == 1
+    assert client.usage_calls == 2
 
 
 def test_profile_is_fetched_at_start_and_then_hourly() -> None:

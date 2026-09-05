@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from custom_components.codex_usage import async_migrate_entry
 from custom_components.codex_usage.api import (
@@ -18,6 +18,27 @@ from custom_components.codex_usage.config_flow import (
     workspace_choices,
 )
 from custom_components.codex_usage.coordinator import credentials_to_entry_data
+
+
+def test_options_offer_enabled_optional_sources_for_existing_entries():
+    from custom_components.codex_usage.config_flow import CodexUsageOptionsFlow
+
+    flow = CodexUsageOptionsFlow()
+    flow.async_show_form = MagicMock(side_effect=lambda **kwargs: kwargs)
+    with patch.object(CodexUsageOptionsFlow, "config_entry", new_callable=PropertyMock) as entry:
+        entry.return_value = SimpleNamespace(options={})
+        result = asyncio.run(flow.async_step_init())
+    values = result["data_schema"]({})
+    assert values == {"update_interval": 300, "fetch_profile": True, "fetch_reset_details": True}
+
+
+def test_optional_options_update_reloads_entry():
+    from custom_components.codex_usage import _async_update_listener
+
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_reload=AsyncMock()))
+    entry = SimpleNamespace(entry_id="test-entry", options={"fetch_profile": False})
+    asyncio.run(_async_update_listener(hass, entry))
+    hass.config_entries.async_reload.assert_awaited_once_with("test-entry")
 
 
 def _jwt(payload: dict[str, object]) -> str:

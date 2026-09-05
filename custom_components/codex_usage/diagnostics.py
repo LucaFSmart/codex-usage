@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from . import CodexUsageConfigEntry
 from .const import CONF_EXPIRES_AT, CONF_FEDRAMP, CONF_UPDATE_INTERVAL
-from .monitoring import restriction_summary
+from .monitoring import limit_statuses, restriction_summary
 
 
 async def async_get_config_entry_diagnostics(
@@ -20,11 +20,11 @@ async def async_get_config_entry_diagnostics(
         "entry": {
             key: entry.data[key] for key in (CONF_EXPIRES_AT, CONF_FEDRAMP) if key in entry.data
         },
-        "options": (
-            {CONF_UPDATE_INTERVAL: entry.options[CONF_UPDATE_INTERVAL]}
-            if CONF_UPDATE_INTERVAL in entry.options
-            else {}
-        ),
+        "options": {
+            key: entry.options[key]
+            for key in (CONF_UPDATE_INTERVAL, "fetch_profile", "fetch_reset_details")
+            if key in entry.options
+        },
         "last_update_success": coordinator.last_update_success,
         "profile_available": coordinator.profile_available,
         "profile_last_success": coordinator.profile_last_success,
@@ -68,6 +68,18 @@ def _safe_data(data: Any) -> dict[str, Any]:
     return {
         "plan": usage.plan_type,
         "limits": limits,
+        "limit_statuses": [
+            {"source": item.source, "allowed": item.allowed, "reached": item.reached}
+            for item in limit_statuses(usage)
+        ],
+        "reset_provenance": (
+            {
+                "count_source": data.reset_summary.count_source,
+                "details_consistent": data.reset_summary.details_consistent,
+            }
+            if getattr(data, "reset_summary", None)
+            else None
+        ),
         "blocker_reason": usage.blocker_reason,
         "credit_available": usage.credits.has_credits if usage.credits else None,
         "spend_limit_reached": usage.spend_limit_reached,
