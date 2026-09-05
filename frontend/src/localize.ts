@@ -116,6 +116,10 @@ export const STRINGS = {
     resetCreditAvailable: "{count} reset credit available",
     resetCreditsAvailable: "{count} reset credits available",
     expiresOn: "Expires {date}",
+    budget: "Budget",
+    sources: "Sources",
+    restrictionNamed: "Included usage limit reached: {limit}.",
+    restrictionSomeLimit: "At least one included usage limit is reached.",
   },
   de: {
     available: "Verfügbar",
@@ -234,6 +238,10 @@ export const STRINGS = {
     resetCreditAvailable: "{count} Reset-Guthaben verfügbar",
     resetCreditsAvailable: "{count} Reset-Guthaben verfügbar",
     expiresOn: "Läuft ab am {date}",
+    budget: "Budget",
+    sources: "Quellen",
+    restrictionNamed: "Inklusivlimit erreicht: {limit}.",
+    restrictionSomeLimit: "Mindestens ein Inklusivlimit ist erreicht.",
   },
 } as const;
 

@@ -8,7 +8,7 @@ import {
   formatMetricLabel,
   formatNumber,
   formatPlanLabel,
-  formatUsd,
+  formatDecimal,
   relativeDurationUntil,
 } from "./format";
 import { localize, type TranslationKey } from "./localize";
@@ -96,11 +96,18 @@ export class CodexUsageCard extends LitElement {
   @state() private accessor error = false;
   @state() private accessor sessionEntryId: string | undefined = undefined;
   @state() private accessor detailsExpanded = true;
+  @state() private accessor now = new Date();
 
   private config: CodexUsageCardConfig = structuredClone(DEFAULT_CONFIG);
   private unsubscribe: (() => void) | undefined;
   private subscribedConnection: HomeAssistant["connection"] | undefined;
   private loading = false;
+  private minuteTimer: ReturnType<typeof setInterval> | undefined;
+
+  public override connectedCallback(): void {
+    super.connectedCallback();
+    this.startMinuteTimer();
+  }
 
   public static getStubConfig(): Record<string, never> {
     return {};
@@ -139,6 +146,19 @@ export class CodexUsageCard extends LitElement {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.subscribedConnection = undefined;
+    this.stopMinuteTimer();
+  }
+
+  private startMinuteTimer(): void {
+    if (this.minuteTimer) return;
+    this.minuteTimer = setInterval(() => {
+      this.now = new Date();
+    }, 60_000);
+  }
+
+  private stopMinuteTimer(): void {
+    if (this.minuteTimer) clearInterval(this.minuteTimer);
+    this.minuteTimer = undefined;
   }
 
   private async startClient(): Promise<void> {
@@ -212,7 +232,7 @@ export class CodexUsageCard extends LitElement {
   }
 
   private relativeResetLabel(value: string | null): string {
-    const duration = relativeDurationUntil(value, new Date());
+    const duration = relativeDurationUntil(value, this.now);
     if (!duration) return "—";
     const { totalMinutes, days, hours, minutes } = duration;
     if (totalMinutes === 0) return this.t("resetsImminently");
@@ -234,6 +254,12 @@ export class CodexUsageCard extends LitElement {
     if (account.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
     if (account.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
     if (account.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
+    if (account.limit_summary?.reason === "additional_limit") {
+      const restricted = account.limit_statuses?.find((item) => item.reached === true);
+      return restricted
+        ? this.t("restrictionNamed", { limit: restricted.name })
+        : this.t("restrictionSomeLimit");
+    }
     const limit = account.mostConstrainedLimit;
     if (!limit) return null;
     if (account.blocker === "usage_limit" || limit.reached) {
@@ -272,7 +298,8 @@ export class CodexUsageCard extends LitElement {
       (item) =>
         item.source === source &&
         this.config.sections[sectionKey].values[item.id] !== false &&
-        (this.config.show_unavailable_limits ||
+        (source === "main" ||
+          this.config.show_unavailable_limits ||
           item.used_percent !== null ||
           item.remaining_percent !== null),
     );
@@ -310,7 +337,8 @@ export class CodexUsageCard extends LitElement {
             role="progressbar"
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuenow=${remaining ?? 0}
+            aria-valuetext=${formatPercent(remaining, this.locale)}
+            aria-valuenow=${remaining === null ? nothing : remaining}
           >
             <span style=${`width:${remaining ?? 0}%`}></span>
           </div>
@@ -350,6 +378,50 @@ export class CodexUsageCard extends LitElement {
       : html`<div class="limit-row" data-limit-id=${limit.id}>${content}</div>`;
   }
 
+  private renderBudgetRows(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (!isSectionVisible("budget", this.config.sections.budget.visible, account)) return nothing;
+    const rows = account.limits.flatMap((limit) => {
+      if (
+        !this.valueVisible("budget", limit.id) ||
+        limit.budget_pph === null ||
+        limit.budget_pph === undefined
+      )
+        return [];
+      const remaining = relativeDurationUntil(limit.resets_at, this.now);
+      if (!remaining || remaining.totalMinutes < 1) return [];
+      const perDay = (limit.duration_seconds ?? 0) >= 86_400;
+      const value = perDay ? limit.budget_pph * 24 : limit.budget_pph;
+      return [
+        html`<div class="info-row" data-budget-id=${limit.id}>
+          <span class="info-label">${this.limitLabel(limit)}</span
+          ><span class="info-value"
+            >${formatNumber(value, this.locale)} ${perDay ? "pp/day" : "pp/h"}</span
+          >
+        </div>`,
+      ];
+    });
+    return rows.length
+      ? html`<div class="section-label">${this.t("budget")}</div>
+          ${rows}`
+      : nothing;
+  }
+
+  private renderSources(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (!isSectionVisible("sources", this.config.sections.sources.visible, account)) return nothing;
+    const rows = Object.entries(account.sources ?? {}).map(
+      ([key, source]) =>
+        html`<div class="info-row" data-source=${key}>
+          <span class="info-label">${key}</span><span class="info-value">${source.state}</span>
+        </div>`,
+    );
+    return rows.length
+      ? html`<div class="section-label">${this.t("sources")}</div>
+          ${rows}`
+      : this.config.sections.sources.visible === true
+        ? html`<div class="info-row"><span class="info-value">—</span></div>`
+        : nothing;
+  }
+
   private renderAdditionalLimits(account: AccountViewModel): TemplateResult | typeof nothing {
     if (
       !isSectionVisible(
@@ -377,11 +449,17 @@ export class CodexUsageCard extends LitElement {
     const credits = account.credits;
     const value = credits.unlimited
       ? this.t("unlimitedCredits")
-      : credits.has_credits === false
-        ? this.t("unavailable")
-        : this.t("creditsAvailableAmount", {
-            amount: formatUsd(credits.balance, this.locale),
-          });
+      : credits.balance !== null
+        ? credits.has_credits === false
+          ? `${this.t("balance")}: ${formatDecimal(credits.balance, this.locale)}`
+          : this.t("creditsAvailableAmount", {
+              amount: formatDecimal(credits.balance, this.locale),
+            })
+        : credits.has_credits === false
+          ? this.t("unavailable")
+          : this.t("creditsAvailableAmount", {
+              amount: "—",
+            });
     return html`<div class="info-row" data-detail="credits">
       <span class="info-label">${this.t("credits")}</span>
       <span class="info-value">${value}</span>
@@ -455,7 +533,7 @@ export class CodexUsageCard extends LitElement {
           >${
             primaryKey === "used_percent"
               ? formatPercent(primaryValue as number | null, this.locale)
-              : formatUsd(primaryValue as string | null, this.locale)
+              : formatDecimal(primaryValue as string | null, this.locale)
           }</span
         >
       </div>`,
@@ -483,7 +561,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
-          <span class="info-value">${formatUsd(spend.used, this.locale)}</span>
+          <span class="info-value">${formatDecimal(spend.used, this.locale)}</span>
         </div>`,
       );
     }
@@ -491,7 +569,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
-          <span class="info-value">${formatUsd(spend.limit, this.locale)}</span>
+          <span class="info-value">${formatDecimal(spend.limit, this.locale)}</span>
         </div>`,
       );
     }
@@ -581,6 +659,8 @@ export class CodexUsageCard extends LitElement {
     const spendingRows = this.renderSpendingRows(account);
     const profileRows = this.renderProfileRows(account);
     const accountRows = this.renderAccountRows(account);
+    const budgetRows = this.renderBudgetRows(account);
+    const sourceRows = this.renderSources(account);
 
     const sections = [
       this.renderAdditionalLimits(account),
@@ -600,13 +680,15 @@ export class CodexUsageCard extends LitElement {
         ? html`<div class="section-label">${this.t("sectionAccount")}</div>
             ${accountRows}`
         : nothing,
+      budgetRows,
+      sourceRows,
     ].filter((section) => section !== nothing);
     return sections.length ? html`<div class="details">${sections}</div>` : nothing;
   }
 
   protected override render(): TemplateResult {
     const view = this.snapshot
-      ? buildCardViewModel(this.snapshot, this.config, this.sessionEntryId)
+      ? buildCardViewModel(this.snapshot, this.config, this.sessionEntryId, this.now)
       : null;
     const account = view?.selectedAccount ?? null;
     const severity: Severity = view?.severity ?? "unknown";
@@ -1123,6 +1205,8 @@ export class CodexUsageCardEditor extends LitElement {
       account: "sectionAccount",
       credits: "sectionCredits",
       spending: "sectionSpending",
+      budget: "budget",
+      sources: "sources",
       profile: "sectionProfile",
       footer: "sectionFooter",
     };

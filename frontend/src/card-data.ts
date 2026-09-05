@@ -2,12 +2,33 @@ import type {
   CardAccount,
   CardCredits,
   CardLimit,
+  CardLimitStatus,
+  CardLimitSummary,
   CardProfile,
   CardSnapshot,
   CardSpend,
+  CardSource,
   HomeAssistant,
   SafeBlocker,
 } from "./types";
+
+const SOURCE_KEYS = ["usage", "profile", "reset_details", "workspace_discovery"] as const;
+const SOURCE_STATES = ["ok", "error", "unsupported", "disabled", "never"] as const;
+const ERROR_CODES = [
+  "rate_limited",
+  "connection",
+  "authentication",
+  "invalid_response",
+  "http_error",
+] as const;
+const RESTRICTION_REASONS = [
+  "spend",
+  "credits",
+  "usage_limit",
+  "additional_limit",
+  "unknown",
+  "none",
+] as const;
 
 const BLOCKERS: readonly SafeBlocker[] = ["spend", "credits", "usage_limit", "unknown", null];
 const PROFILE_KEYS = [
@@ -85,6 +106,78 @@ function limit(value: unknown): CardLimit | null {
     resets_at: date(source.resets_at),
     reached: source.reached === true,
     entity_id: entityId(source.entity_id),
+    ...(Object.hasOwn(source, "budget_pph")
+      ? {
+          budget_pph:
+            typeof source.budget_pph === "number" &&
+            Number.isFinite(source.budget_pph) &&
+            source.budget_pph >= 0
+              ? source.budget_pph
+              : null,
+        }
+      : {}),
+    ...(Object.hasOwn(source, "budget_calculated_at")
+      ? { budget_calculated_at: date(source.budget_calculated_at) }
+      : {}),
+  };
+}
+
+function limitStatus(value: unknown): CardLimitStatus | null {
+  const source = record(value);
+  const id = text(source?.id);
+  const name = text(source?.name);
+  if (!source || !id || !name || (source.source !== "main" && source.source !== "additional"))
+    return null;
+  return {
+    id,
+    name,
+    source: source.source,
+    allowed: nullableBoolean(source.allowed),
+    reached: nullableBoolean(source.reached),
+  };
+}
+
+function limitSummary(value: unknown): CardLimitSummary | undefined {
+  const source = record(value);
+  if (!source || !RESTRICTION_REASONS.includes(source.reason as never)) return undefined;
+  const affected = Array.isArray(source.affected_limits)
+    ? [
+        ...new Set(
+          source.affected_limits.map(text).filter((item): item is string => item !== null),
+        ),
+      ].slice(0, 50)
+    : [];
+  return {
+    reached: nullableBoolean(source.reached),
+    reason: source.reason as CardLimitSummary["reason"],
+    affected_limits: affected,
+    affected_limits_truncated: source.affected_limits_truncated === true,
+  };
+}
+
+function sourceStatus(value: unknown): CardSource | null {
+  const source = record(value);
+  if (
+    !source ||
+    !SOURCE_STATES.includes(source.state as never) ||
+    (source.refresh_mode !== "poll" && source.refresh_mode !== "on_auth")
+  )
+    return null;
+  return {
+    state: source.state as CardSource["state"],
+    last_attempt: date(source.last_attempt),
+    last_success: date(source.last_success),
+    retry_at: date(source.retry_at),
+    error_code: ERROR_CODES.includes(source.error_code as never)
+      ? (source.error_code as CardSource["error_code"])
+      : null,
+    refresh_mode: source.refresh_mode,
+    expected_interval_seconds:
+      typeof source.expected_interval_seconds === "number" &&
+      Number.isFinite(source.expected_interval_seconds) &&
+      source.expected_interval_seconds > 0
+        ? source.expected_interval_seconds
+        : null,
   };
 }
 
@@ -163,9 +256,44 @@ function account(value: unknown): CardAccount | null {
           available_count: count(reset.available_count),
           total_earned: count(reset.total_earned),
           next_expiry: date(reset.next_expiry),
+          ...((["usage", "reset_details", "none"] as const).includes(reset.count_source as never)
+            ? { count_source: reset.count_source as "usage" | "reset_details" | "none" }
+            : {}),
+          ...(date(reset.count_updated_at)
+            ? { count_updated_at: date(reset.count_updated_at) }
+            : {}),
+          ...(nullableBoolean(reset.details_consistent) !== null
+            ? { details_consistent: nullableBoolean(reset.details_consistent) }
+            : {}),
+          ...(typeof reset.details_present === "boolean"
+            ? { details_present: reset.details_present }
+            : {}),
+          ...(date(reset.details_updated_at)
+            ? { details_updated_at: date(reset.details_updated_at) }
+            : {}),
         }
       : null,
     profile: profile(source.profile),
+    ...(Array.isArray(source.limit_statuses)
+      ? {
+          limit_statuses: source.limit_statuses
+            .map(limitStatus)
+            .filter((item): item is CardLimitStatus => item !== null),
+        }
+      : {}),
+    ...(() => {
+      const summary = limitSummary(source.limit_summary);
+      return summary ? { limit_summary: summary } : {};
+    })(),
+    ...(record(source.sources)
+      ? {
+          sources: Object.fromEntries(
+            SOURCE_KEYS.map((key) => [key, sourceStatus(record(source.sources)?.[key])]).filter(
+              ([, item]) => item !== null,
+            ),
+          ),
+        }
+      : {}),
   };
 }
 

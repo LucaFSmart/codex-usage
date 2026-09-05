@@ -17,6 +17,8 @@ export const SECTION_KEYS: readonly SectionKey[] = [
   "account",
   "credits",
   "spending",
+  "budget",
+  "sources",
   "profile",
   "footer",
 ];
@@ -50,6 +52,8 @@ export const DEFAULT_CONFIG: CodexUsageCardConfig = {
     account: section(),
     credits: section("auto"),
     spending: section("auto"),
+    budget: section("auto"),
+    sources: section(false),
     profile: section("auto"),
     footer: section(),
   },

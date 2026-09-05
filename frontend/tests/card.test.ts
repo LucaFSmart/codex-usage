@@ -421,7 +421,7 @@ describe("CodexUsageCard", () => {
     expect(row?.classList.contains("limit-row")).toBe(true);
   });
 
-  it("formats spend amounts as USD, consistent with the credits copy", async () => {
+  it("renders credit quantities without inventing a currency", async () => {
     const account = {
       ...SNAPSHOT.accounts[0]!,
       spend: {
@@ -442,11 +442,27 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
 
     const spendingRow = card.shadowRoot?.querySelector('[data-detail="spending"]')?.textContent;
-    expect(spendingRow).toContain("$81.8");
+    expect(spendingRow).toContain("81.8");
+    expect(spendingRow).not.toContain("$");
     const usedRow = card.shadowRoot?.querySelector('[data-spend-key="used"]')?.textContent;
-    expect(usedRow).toContain("$18.2");
+    expect(usedRow).toContain("18.2");
     const limitRow = card.shadowRoot?.querySelector('[data-spend-key="limit"]')?.textContent;
-    expect(limitRow).toContain("$100");
+    expect(limitRow).toContain("100");
+  });
+
+  it("keeps a signed credit balance visible when availability is explicitly false", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      credits: { balance: "-3.5", has_credits: false, unlimited: false, overage_reached: false },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector('[data-detail="credits"]')?.textContent).toContain(
+      "-3.5",
+    );
   });
 
   it("does not render individually-boxed sub-cards for credits, spend, or account details", async () => {

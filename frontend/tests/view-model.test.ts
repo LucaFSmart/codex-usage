@@ -72,6 +72,39 @@ describe("buildCardViewModel", () => {
     expect(buildCardViewModel(full, DEFAULT_CONFIG).severity).toBe("blocked");
   });
 
+  it("keeps healthy main windows healthy when a windowless feature restriction is reported", () => {
+    const result = buildCardViewModel(
+      {
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...alpha,
+            limits: [{ ...alpha.limits[0]!, used_percent: 10, remaining_percent: 90 }],
+            blocker: null,
+            limit_statuses: [
+              {
+                id: "code_review",
+                name: "Code review",
+                source: "additional",
+                allowed: false,
+                reached: true,
+              },
+            ],
+            limit_summary: {
+              reached: true,
+              reason: "additional_limit",
+              affected_limits: ["code_review"],
+              affected_limits_truncated: false,
+            },
+          },
+        ],
+      },
+      DEFAULT_CONFIG,
+    );
+    expect(result.selectedAccount?.limits[0]?.severity).toBe("ok");
+    expect(result.selectedAccount?.severity).toBe("blocked");
+  });
+
   it("calculates pace only for plausible windows", () => {
     const result = buildCardViewModel({ ...SNAPSHOT, accounts: [beta] }, DEFAULT_CONFIG);
     expect(result.selectedAccount?.limits[0]?.pace).toBeTypeOf("number");

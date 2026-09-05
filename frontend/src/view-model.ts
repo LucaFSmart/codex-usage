@@ -60,6 +60,15 @@ export function isSectionVisible(
       return account.profile !== null;
     case "additional_limits":
       return account.limits.some((item) => item.source === "additional");
+    case "budget":
+      return account.limits.some(
+        (item) => item.budget_pph !== null && item.budget_pph !== undefined,
+      );
+    case "sources":
+      return Object.values(account.sources ?? {}).some(
+        (source) =>
+          source.state === "error" || (source.state === "never" && source.refresh_mode === "poll"),
+      );
     default:
       return true;
   }
@@ -73,15 +82,13 @@ function accountModel(
   const stale = !account.available || isStale(account.updated_at, config.stale_after_minutes, now);
   const limits: LimitViewModel[] = account.limits.map((item) => ({
     ...item,
-    severity: evaluateLimit(
-      item.used_percent,
-      item.reached || account.blocker !== null,
-      config.thresholds,
-    ),
+    severity: evaluateLimit(item.used_percent, item.reached, config.thresholds),
     pace: pace(item, now),
   }));
   const severity: Severity =
-    account.blocker !== null ? "blocked" : worstSeverity(limits.map((item) => item.severity));
+    account.blocker !== null || account.limit_summary?.reached === true
+      ? "blocked"
+      : worstSeverity(limits.map((item) => item.severity));
   return {
     ...account,
     limits,
