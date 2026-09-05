@@ -65,6 +65,7 @@ def test_reset_priority(count, detail, expected, source, consistent, expiry):
 
 
 def test_detail_freshness_disable_and_context_order():
+    assert summary(1, None).next_expiry is None
     assert summary(age=7200).available_count == 1
     stale = summary(age=7201)
     assert stale.available_count is None and stale.next_expiry is None
@@ -74,6 +75,10 @@ def test_detail_freshness_disable_and_context_order():
     assert disabled.details_updated_at is None and not disabled.details_present
     assert summary(1, changed=NOW + timedelta(seconds=1)).next_expiry is None
     assert summary(1, changed=NOW).next_expiry is not None
+
+
+def test_expiry_requires_an_explicit_matching_detail_count():
+    assert summary(1, detail_count=None).next_expiry is None
 
 
 @pytest.mark.parametrize(
@@ -115,6 +120,23 @@ def test_main_aliases_are_not_additional_statuses():
     usage = parse_usage({"rate_limit": {"allowed": False, "primary_window": {"used_percent": 12}}})
     assert len(monitoring.limit_statuses(usage)) == 1
     assert monitoring.restriction_summary(usage).affected_limits == ("codex",)
+
+
+def test_real_codex_prefixed_additional_limit_is_not_treated_as_main_alias():
+    usage = parse_usage(
+        {
+            "rate_limit": {"allowed": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "codex_review",
+                    "rate_limit": {"allowed": False},
+                }
+            ],
+        }
+    )
+    statuses = monitoring.limit_statuses(usage)
+    assert [item.id for item in statuses] == ["codex", "codex_review"]
+    assert monitoring.restriction_summary(usage).affected_limits == ("codex_review",)
 
 
 def test_sources_validate_safe_enums_and_derive_age():

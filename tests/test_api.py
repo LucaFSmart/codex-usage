@@ -1067,3 +1067,15 @@ def test_conflicting_duplicate_windows_are_unknown_but_restriction_survives():
     assert usage.additional_limits[0].limit_reached is True
     assert usage.duplicate_limit_ids == 2
     assert usage.conflicting_windows == 1
+
+
+@pytest.mark.parametrize("rows", [(None, 20), (20, None)])
+def test_duplicate_missing_window_preserves_the_single_reported_value(rows):
+    def row(used):
+        window = None if used is None else {"used_percent": used, "limit_window_seconds": 3600}
+        return {"metered_feature": "feature", "rate_limit": {"primary_window": window}}
+
+    usage = parse_usage({"additional_rate_limits": [row(value) for value in rows]})
+    assert usage.additional_limits[0].primary is not None
+    assert usage.additional_limits[0].primary.used_percent == 20
+    assert usage.conflicting_windows == 0

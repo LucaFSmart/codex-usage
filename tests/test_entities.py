@@ -8,9 +8,11 @@ from homeassistant.components.sensor import SensorStateClass
 
 from custom_components.codex_usage.api import parse_usage
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
+from custom_components.codex_usage.entity import CodexUsageEntity
 from custom_components.codex_usage.sensor import (
     PROFILE_SENSORS,
     SENSORS,
+    CodexAdditionalLimitSensor,
     CodexUsageSensor,
     _existing_additional_keys,
     _static_sensor_descriptions,
@@ -126,6 +128,37 @@ def test_profile_state_classes_match_recorder_targets() -> None:
         "most_used_reasoning_effort_percentage",
     ):
         assert values[key] is None
+
+
+def test_dynamic_limit_name_uses_translation_key_and_neutral_duration_placeholder() -> None:
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "image_generation",
+                    "limit_name": "Images",
+                    "rate_limit": {
+                        "primary_window": {
+                            "used_percent": 20,
+                            "limit_window_seconds": 5400,
+                        }
+                    },
+                }
+            ]
+        }
+    )
+    coordinator = SimpleNamespace(data=SimpleNamespace(usage=usage))
+    entry = SimpleNamespace(unique_id="identity", data={"account_id": "account"})
+
+    def initialize(entity, coordinator, entry):
+        entity.coordinator = coordinator
+
+    with patch.object(CodexUsageEntity, "__init__", new=initialize):
+        entity = CodexAdditionalLimitSensor(
+            coordinator, entry, "image_generation", "Images", "primary", "usage"
+        )
+    assert entity._attr_translation_key == "dynamic_limit_usage"
+    assert entity._attr_translation_placeholders == {"limit_name": "Images", "duration": "90 min"}
 
 
 def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:

@@ -518,19 +518,38 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     duplicates = 0
     conflicts = 0
     by_id: dict[str, RateLimit] = {}
+    ambiguous_windows: set[tuple[str, str]] = set()
     for limit in parsed_additional:
         previous = by_id.get(limit.limit_id)
         if previous is None:
             by_id[limit.limit_id] = limit
             continue
         duplicates += 1
-        primary = previous.primary if previous.primary == limit.primary else None
-        secondary = previous.secondary if previous.secondary == limit.secondary else None
-        had_conflict = previous.primary is None and limit.primary is not None
-        if (
-            (previous.primary != limit.primary and (previous.primary or limit.primary))
-            or (previous.secondary != limit.secondary and (previous.secondary or limit.secondary))
-        ) and not had_conflict:
+        primary_conflict = (
+            previous.primary is not None
+            and limit.primary is not None
+            and previous.primary != limit.primary
+        )
+        secondary_conflict = (
+            previous.secondary is not None
+            and limit.secondary is not None
+            and previous.secondary != limit.secondary
+        )
+        if primary_conflict:
+            ambiguous_windows.add((limit.limit_id, "primary"))
+        if secondary_conflict:
+            ambiguous_windows.add((limit.limit_id, "secondary"))
+        primary = (
+            None
+            if (limit.limit_id, "primary") in ambiguous_windows
+            else (previous.primary or limit.primary)
+        )
+        secondary = (
+            None
+            if (limit.limit_id, "secondary") in ambiguous_windows
+            else (previous.secondary or limit.secondary)
+        )
+        if primary_conflict or secondary_conflict:
             conflicts += 1
         restrictive = previous.limit_reached is True or limit.limit_reached is True
         allowed_false = previous.allowed is False or limit.allowed is False

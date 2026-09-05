@@ -387,9 +387,11 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         self._window_name = window_name
         self._metric = metric
         window = self._window()
-        window_label = window.duration_label if window else "Usage window"
-        metric_label = {"usage": "usage", "remaining": "remaining", "reset": "reset"}[metric]
-        self._attr_name = f"{limit_name} {window_label} {metric_label}"
+        self._attr_translation_key = f"dynamic_limit_{metric}"
+        self._attr_translation_placeholders = {
+            "limit_name": limit_name,
+            "duration": _duration_placeholder(window),
+        }
         identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
         self._attr_unique_id = f"{identity}_{limit_id}_{window_name}_{metric}"
         if metric == "reset":
@@ -424,6 +426,18 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
     @property
     def available(self) -> bool:
         return super().available
+
+
+def _duration_placeholder(window: RateLimitWindow | None) -> str:
+    """Return a compact locale-neutral duration for translated entity names."""
+    if window is None or window.window_minutes is None:
+        return "—"
+    minutes = window.window_minutes
+    if minutes % (24 * 60) == 0:
+        return f"{minutes // (24 * 60)} d"
+    if minutes % 60 == 0:
+        return f"{minutes // 60} h"
+    return f"{minutes} min"
 
 
 class CodexProfileSensor(CodexUsageEntity, SensorEntity):

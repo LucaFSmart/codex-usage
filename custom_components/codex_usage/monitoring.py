@@ -77,6 +77,7 @@ def _restricted(limit: RateLimit) -> bool | None:
 
 
 def limit_statuses(usage: CodexUsageData) -> tuple[LimitStatus, ...]:
+    main_window_ids = {id(window) for _, window in usage.main_limit.windows}
     values = [
         LimitStatus(
             "codex",
@@ -89,7 +90,7 @@ def limit_statuses(usage: CodexUsageData) -> tuple[LimitStatus, ...]:
     values.extend(
         LimitStatus(x.limit_id, x.name[:120], "additional", x.allowed, _restricted(x))
         for x in usage.additional_limits
-        if not x.limit_id.startswith("codex_")
+        if not any(id(window) in main_window_ids for _, window in x.windows)
     )
     return tuple(values)
 
@@ -163,7 +164,10 @@ def reset_summary(
         details_updated_at and details_updated_at >= context_changed_at
     )
     expiry = None
-    if fresh and visible and count and consistent is not False and reconciled:
+    counts_match = bool(
+        visible and visible.available_count is not None and visible.available_count == count
+    )
+    if fresh and visible and count and counts_match and reconciled:
         expiry = min(
             (
                 x.expires_at
