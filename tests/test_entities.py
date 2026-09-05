@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from homeassistant.components.sensor import SensorStateClass
+
 from custom_components.codex_usage.api import parse_usage
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
 from custom_components.codex_usage.sensor import (
@@ -27,6 +29,19 @@ def test_missing_optional_value_is_unknown_without_making_entity_unavailable() -
 
     assert entity.native_value is None
     assert entity.available is True
+
+
+def test_reset_sensor_reads_the_shared_coordinator_summary() -> None:
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        data=SimpleNamespace(
+            usage=parse_usage({"rate_limit_reset_credits": {"available_count": 4}}),
+            reset_summary=SimpleNamespace(available_count=4),
+        )
+    )
+    entity.entity_description = descriptions["available_reset_credits"]
+    assert entity.native_value == 4
 
 
 def test_optional_detail_entities_are_disabled_by_default() -> None:
@@ -86,6 +101,7 @@ def test_existing_dynamic_limit_entities_are_recovered_from_unique_ids() -> None
             "identity_image_generation_secondary_reset",
             "identity_weekly_usage",
             "other_code_review_primary_usage",
+            "identity_feature_primary_name_secondary_budget",
         },
         "identity",
     )
@@ -93,7 +109,23 @@ def test_existing_dynamic_limit_entities_are_recovered_from_unique_ids() -> None
     assert keys == {
         ("code_review", "primary", "usage"),
         ("image_generation", "secondary", "reset"),
+        ("feature_primary_name", "secondary", "budget"),
     }
+
+
+def test_profile_state_classes_match_recorder_targets() -> None:
+    values = {item.key: item.state_class for item in PROFILE_SENSORS}
+    assert values["current_streak_days"] is SensorStateClass.MEASUREMENT
+    for key in ("lifetime_tokens", "total_threads", "total_skills_used", "unique_skills_used"):
+        assert values[key] is SensorStateClass.TOTAL
+    for key in (
+        "peak_daily_tokens",
+        "longest_streak_days",
+        "longest_running_turn",
+        "fast_mode_usage",
+        "most_used_reasoning_effort_percentage",
+    ):
+        assert values[key] is None
 
 
 def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:

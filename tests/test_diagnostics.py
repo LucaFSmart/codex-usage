@@ -60,8 +60,7 @@ def test_diagnostics_use_safe_allowlist() -> None:
         "plan": "plus",
         "limits": [
             {
-                "id": "codex",
-                "name": "Codex",
+                "source": "main",
                 "duration_minutes": 10_080,
                 "used_percent": 27.0,
                 "resets_at": usage.weekly_window.resets_at,
@@ -72,6 +71,16 @@ def test_diagnostics_use_safe_allowlist() -> None:
         "credit_available": True,
         "spend_limit_reached": None,
         "reset_credit_count": 1,
+        "limit_summary": {
+            "reached": None,
+            "reason": "none",
+            "affected_limit_count": 0,
+            "affected_limits_truncated": False,
+        },
+        "duplicate_limit_ids": 0,
+        "conflicting_windows": 0,
+        "reset_details_present": True,
+        "reset_malformed_rows": 0,
     }
     assert diagnostics["entry"] == {"expires_at": 1_800_000_000, "fedramp": False}
     assert diagnostics["options"] == {"update_interval": 300}

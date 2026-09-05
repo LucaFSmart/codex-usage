@@ -63,6 +63,22 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
             "available": True,
             "updated_at": "2026-07-15T08:30:00+00:00",
             "blocker": None,
+            "limit_statuses": [
+                {
+                    "id": "codex",
+                    "name": "Codex",
+                    "source": "main",
+                    "allowed": True,
+                    "reached": False,
+                }
+            ],
+            "limit_summary": {
+                "reached": False,
+                "reason": "none",
+                "affected_limits": [],
+                "affected_limits_truncated": False,
+            },
+            "sources": {},
             "limits": [
                 {
                     "id": "codex:primary:weekly",
@@ -87,6 +103,11 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
                 "available_count": 1,
                 "total_earned": 2,
                 "next_expiry": None,
+                "count_source": "reset_details",
+                "count_updated_at": snapshot["generated_at"],
+                "details_consistent": None,
+                "details_present": True,
+                "details_updated_at": snapshot["generated_at"],
             },
             "profile": {
                 "lifetime_tokens": 100,

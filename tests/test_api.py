@@ -1014,3 +1014,56 @@ def test_profile_request_reports_unavailable_endpoint(status: int) -> None:
 
     with pytest.raises(CodexProfileUnavailable):
         asyncio.run(CodexApiClient(session).async_get_profile(credentials))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [None, "false", 0, {}, []])
+def test_credit_flags_are_unknown_unless_actual_booleans(value):
+    credits = parse_usage({"credits": {"has_credits": value, "unlimited": value}}).credits
+    assert credits.has_credits is None
+    assert credits.unlimited is None
+
+
+def test_missing_credit_flags_and_reset_count_are_unknown():
+    credits = parse_usage({"credits": {}}).credits
+    assert credits.has_credits is None and credits.unlimited is None
+    assert parse_reset_credits({}).available_count is None
+    assert parse_reset_credits({"available_count": 0}).available_count == 0
+    assert (
+        parse_usage({"credits": {"has_credits": False, "unlimited": False}}).credits.has_credits
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload", "present", "malformed"),
+    [
+        ({}, False, 0),
+        ({"credits": None}, False, 0),
+        ({"credits": {}}, False, 0),
+        ({"credits": []}, True, 0),
+        ({"credits": [None, {}]}, True, 2),
+    ],
+)
+def test_reset_details_presence_is_independent_of_rows(payload, present, malformed):
+    details = parse_reset_credits(payload)
+    assert details.details_present is present
+    assert details.malformed_rows == malformed
+    assert details.credits == () and details.available_count is None
+
+
+def test_conflicting_duplicate_windows_are_unknown_but_restriction_survives():
+    def row(used, allowed):
+        return {
+            "metered_feature": "feature",
+            "rate_limit": {
+                "allowed": allowed,
+                "primary_window": {"used_percent": used, "limit_window_seconds": 3600},
+            },
+        }
+
+    usage = parse_usage({"additional_rate_limits": [row(1, True), row(20, False), row(1, True)]})
+    assert len(usage.additional_limits) == 1
+    assert usage.additional_limits[0].primary is None
+    assert usage.additional_limits[0].limit_reached is True
+    assert usage.duplicate_limit_ids == 2
+    assert usage.conflicting_windows == 1

@@ -5,6 +5,9 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
 from custom_components.codex_usage.api import (
     CodexConnectionError,
     CodexCredentials,
@@ -47,9 +50,12 @@ class _FakeClient:
         self.profile_result: CodexProfileStats | Exception = _profile(10)
         self.reset_calls = 0
         self.reset_result: ResetCredits | Exception = ResetCredits(1, 2, ())
+        self.usage_result = parse_usage({"plan_type": "plus", "rate_limit": None})
 
     async def async_get_usage(self, credentials: CodexCredentials):
-        return parse_usage({"plan_type": "plus", "rate_limit": None}), credentials
+        if isinstance(self.usage_result, Exception):
+            raise self.usage_result
+        return self.usage_result, credentials
 
     async def async_get_profile(self, credentials: CodexCredentials) -> CodexProfileStats:
         self.profile_calls += 1
@@ -174,3 +180,34 @@ def test_identical_usage_refreshes_still_produce_fresh_coordinator_data() -> Non
     assert first.refreshed_at == first_time
     assert second.refreshed_at == second_time
     assert first != second
+
+
+def test_core_failure_updates_live_source_and_retains_success_timestamp() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        asyncio.run(coordinator._async_update_data())
+    successful = coordinator.sources["usage"].last_success
+    client.usage_result = CodexConnectionError()
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["usage"].state == "error"
+    assert coordinator.sources["usage"].error_code == "connection"
+    assert coordinator.sources["usage"].last_success == successful
+
+
+def test_changed_usage_context_suppresses_unreconciled_detail_expiry() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 1}})
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        first = asyncio.run(coordinator._async_update_data())
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 2}})
+    coordinator._reset_next_attempt = 10_000
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=200.0):
+        second = asyncio.run(coordinator._async_update_data())
+    assert first.reset_summary is not None
+    assert second.reset_summary is not None
+    assert second.reset_summary.available_count == 2
+    assert second.reset_summary.details_consistent is False
+    assert second.reset_summary.next_expiry is None

@@ -17,6 +17,7 @@ from homeassistant.helpers import entity_registry as er
 from .api import RateLimit, RateLimitWindow
 from .const import CARD_VERSION, DOMAIN
 from .entry_title import safe_entry_title
+from .monitoring import limit_statuses, reset_summary, restriction_summary
 
 CARD_DATA_COMMAND = f"{DOMAIN}/card_data"
 EVENT_CARD_DATA_UPDATED = f"{DOMAIN}_card_data_updated"
@@ -28,6 +29,18 @@ def _iso(value: datetime | None) -> str | None:
 
 def _decimal_text(value: Decimal | None) -> str | None:
     return str(value) if value is not None else None
+
+
+def _source_payload(value: Any) -> dict[str, Any]:
+    return {
+        "state": value.state,
+        "last_attempt": _iso(value.last_attempt),
+        "last_success": _iso(value.last_success),
+        "retry_at": _iso(value.retry_at),
+        "error_code": value.error_code,
+        "refresh_mode": value.refresh_mode,
+        "expected_interval_seconds": value.expected_interval_seconds,
+    }
 
 
 def _limit_payload(
@@ -128,19 +141,20 @@ def _user_can_read_entry(user: User, registry: Any, entry_id: str) -> bool:
     )
 
 
-def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -> dict[str, Any]:
+def _account_payload(
+    entry: Any, coordinator: Any, entity_ids: dict[str, str], now: datetime
+) -> dict[str, Any]:
     data = coordinator.data
     usage = data.usage
     credits = usage.credits
     spend = usage.spend_limit
     reset = data.reset_credits
-    expiry = (
-        min(
-            (credit.expires_at for credit in reset.credits if credit.expires_at is not None),
-            default=None,
-        )
-        if reset
-        else None
+    normalized_reset = getattr(data, "reset_summary", None) or reset_summary(
+        usage,
+        reset,
+        now=now,
+        usage_updated_at=getattr(coordinator, "last_success", None),
+        details_updated_at=getattr(coordinator, "reset_last_success", now),
     )
     return {
         "id": entry.entry_id,
@@ -149,6 +163,15 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
         "available": bool(coordinator.last_update_success),
         "updated_at": _iso(getattr(coordinator, "last_success", None)),
         "blocker": usage.blocker_reason,
+        "limit_statuses": [asdict(item) for item in limit_statuses(usage)],
+        "limit_summary": {
+            **asdict(restriction_summary(usage)),
+            "affected_limits": list(restriction_summary(usage).affected_limits),
+        },
+        "sources": {
+            key: _source_payload(value)
+            for key, value in getattr(coordinator, "sources", {}).items()
+        },
         "limits": _limits(
             usage,
             entity_ids,
@@ -180,11 +203,17 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
         ),
         "reset_credits": (
             {
-                "available_count": reset.available_count,
-                "total_earned": reset.total_earned_count,
-                "next_expiry": _iso(expiry),
+                "available_count": normalized_reset.available_count,
+                "total_earned": normalized_reset.total_earned,
+                "next_expiry": _iso(normalized_reset.next_expiry),
+                "count_source": normalized_reset.count_source,
+                "count_updated_at": _iso(normalized_reset.count_updated_at),
+                "details_consistent": normalized_reset.details_consistent,
+                "details_present": normalized_reset.details_present,
+                "details_updated_at": _iso(normalized_reset.details_updated_at),
             }
-            if reset
+            if normalized_reset.available_count is not None
+            or normalized_reset.total_earned is not None
             else None
         ),
         "profile": asdict(data.profile) if data.profile else None,
@@ -199,12 +228,13 @@ def build_card_snapshot(hass: HomeAssistant, user: User) -> dict[str, Any]:
         registry = er.async_get(hass)
     except AttributeError, KeyError, TypeError:
         registry = None
+    now = datetime.now(UTC)
     return {
         "schema_version": 1,
         "integration_version": CARD_VERSION,
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": now.isoformat(),
         "accounts": [
-            _account_payload(entry, coordinator, entity_ids)
+            _account_payload(entry, coordinator, entity_ids, now)
             for entry, coordinator in entries.values()
             if coordinator.data is not None and _user_can_read_entry(user, registry, entry.entry_id)
         ],

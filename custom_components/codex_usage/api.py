@@ -159,8 +159,8 @@ class RateLimit:
 class CreditStatus:
     """ChatGPT credit status."""
 
-    has_credits: bool
-    unlimited: bool
+    has_credits: bool | None
+    unlimited: bool | None
     balance: Decimal | None
     overage_limit_reached: bool | None
 
@@ -190,6 +190,8 @@ class CodexUsageData:
     spend_limit_reached: bool | None
     blocker_reason: str | None
     available_reset_credits: int | None
+    duplicate_limit_ids: int = 0
+    conflicting_windows: int = 0
 
     def _main_window(self, duration_key: str) -> RateLimitWindow | None:
         return next(
@@ -252,9 +254,11 @@ class ResetCredit:
 class ResetCredits:
     """Aggregated reset-credit status."""
 
-    available_count: int
+    available_count: int | None
     total_earned_count: int | None
     credits: tuple[ResetCredit, ...]
+    details_present: bool = True
+    malformed_rows: int = 0
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
@@ -491,6 +495,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     raw_additional = payload.get("additional_rate_limits")
     if not isinstance(raw_additional, list):
         raw_additional = []
+    parsed_additional: list[RateLimit] = []
     for item in raw_additional[:MAX_ADDITIONAL_RATE_LIMITS]:
         if not isinstance(item, dict):
             continue
@@ -500,7 +505,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
             or "additional"
         )
         name = _display_text(item.get("limit_name")) or limit_id.replace("_", " ").title()
-        additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
+        parsed_additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
 
     # The current backend schema reports code review through
     # `additional_rate_limits`. This dedicated key is an older response shape
@@ -508,14 +513,58 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     code_review_payload = payload.get("code_review_rate_limit")
     if isinstance(code_review_payload, dict):
         details = code_review_payload.get("rate_limit", code_review_payload)
-        additional.append(_rate_limit("code_review", "Code review", details))
+        parsed_additional.append(_rate_limit("code_review", "Code review", details))
+
+    duplicates = 0
+    conflicts = 0
+    by_id: dict[str, RateLimit] = {}
+    for limit in parsed_additional:
+        previous = by_id.get(limit.limit_id)
+        if previous is None:
+            by_id[limit.limit_id] = limit
+            continue
+        duplicates += 1
+        primary = previous.primary if previous.primary == limit.primary else None
+        secondary = previous.secondary if previous.secondary == limit.secondary else None
+        had_conflict = previous.primary is None and limit.primary is not None
+        if (
+            (previous.primary != limit.primary and (previous.primary or limit.primary))
+            or (previous.secondary != limit.secondary and (previous.secondary or limit.secondary))
+        ) and not had_conflict:
+            conflicts += 1
+        restrictive = previous.limit_reached is True or limit.limit_reached is True
+        allowed_false = previous.allowed is False or limit.allowed is False
+        allowed = (
+            False
+            if allowed_false
+            else (True if previous.allowed is True and limit.allowed is True else None)
+        )
+        reached = (
+            True
+            if restrictive or allowed_false
+            else (
+                False if previous.limit_reached is False and limit.limit_reached is False else None
+            )
+        )
+        by_id[limit.limit_id] = RateLimit(
+            limit.limit_id, previous.name, allowed, reached, primary, secondary
+        )
+    additional.extend(by_id.values())
 
     credits_payload = payload.get("credits")
     credits = None
     if isinstance(credits_payload, dict):
         credits = CreditStatus(
-            has_credits=bool(credits_payload.get("has_credits", False)),
-            unlimited=bool(credits_payload.get("unlimited", False)),
+            has_credits=(
+                credits_payload.get("has_credits")
+                if isinstance(credits_payload.get("has_credits"), bool)
+                else None
+            ),
+            unlimited=(
+                credits_payload.get("unlimited")
+                if isinstance(credits_payload.get("unlimited"), bool)
+                else None
+            ),
             balance=_decimal(credits_payload.get("balance")),
             overage_limit_reached=(
                 credits_payload.get("overage_limit_reached")
@@ -526,7 +575,11 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
 
     spend_payload = payload.get("spend_control")
     spend_limit = None
-    spend_reached = None
+    spend_reached = (
+        payload.get("spend_limit_reached")
+        if isinstance(payload.get("spend_limit_reached"), bool)
+        else None
+    )
     if isinstance(spend_payload, dict):
         spend_reached = (
             spend_payload.get("reached") if isinstance(spend_payload.get("reached"), bool) else None
@@ -545,7 +598,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
 
     reached = payload.get("rate_limit_reached_type")
     reached_type = reached.get("type") if isinstance(reached, dict) else None
-    blocker_reason = _blocker_reason(reached_type)
+    blocker_reason = _blocker_reason(reached_type or payload.get("blocker_reason"))
     if blocker_reason is None and spend_reached is True:
         blocker_reason = "spend"
     if blocker_reason is None and credits is not None and credits.overage_limit_reached is True:
@@ -567,6 +620,8 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         spend_limit_reached=spend_reached,
         blocker_reason=blocker_reason,
         available_reset_credits=available_reset_credits,
+        duplicate_limit_ids=duplicates,
+        conflicting_windows=conflicts,
     )
 
 
@@ -626,17 +681,21 @@ def parse_accounts(payload: dict[str, Any]) -> tuple[AvailableAccount, ...]:
 
 def parse_reset_credits(payload: dict[str, Any]) -> ResetCredits:
     """Normalize reset-credit metadata and discard private descriptions and IDs."""
-    available_count = _non_negative_int(payload.get("available_count")) or 0
+    available_count = _non_negative_int(payload.get("available_count"))
     total_earned_count = _non_negative_int(payload.get("total_earned_count"))
     credits: list[ResetCredit] = []
     raw_credits = payload.get("credits")
-    if isinstance(raw_credits, list):
+    details_present = isinstance(raw_credits, list)
+    malformed_rows = 0
+    if details_present:
         for item in raw_credits:
             if not isinstance(item, dict):
+                malformed_rows += 1
                 continue
             reset_type = item.get("reset_type")
             status = item.get("status")
             if not isinstance(reset_type, str) or not isinstance(status, str):
+                malformed_rows += 1
                 continue
             credits.append(
                 ResetCredit(
@@ -646,7 +705,9 @@ def parse_reset_credits(payload: dict[str, Any]) -> ResetCredits:
                     expires_at=_date_time(item.get("expires_at")),
                 )
             )
-    return ResetCredits(available_count, total_earned_count, tuple(credits))
+    return ResetCredits(
+        available_count, total_earned_count, tuple(credits), details_present, malformed_rows
+    )
 
 
 def parse_profile(payload: dict[str, Any]) -> CodexProfileStats:

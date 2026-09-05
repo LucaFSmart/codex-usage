@@ -38,6 +38,14 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
+from .monitoring import (
+    ResetSummary,
+    SourceState,
+    initial_sources,
+    reset_context,
+    reset_context_changed,
+    reset_summary,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +61,7 @@ class CodexCoordinatorData:
     profile: CodexProfileStats | None
     reset_credits: ResetCredits | None
     refreshed_at: datetime
+    reset_summary: ResetSummary | None = None
 
 
 def credentials_from_entry(entry: ConfigEntry) -> CodexCredentials:
@@ -108,6 +117,9 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         self._reset_available: bool | None = None
         self._reset_last_error: str | None = None
         self._last_success: datetime | None = None
+        self.sources = initial_sources()
+        self._reset_reconciled_context: tuple | None = None
+        self._reset_context_changed_at: datetime | None = None
         interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         super().__init__(
             hass,
@@ -154,11 +166,23 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         return self._last_success
 
     async def _async_update_data(self) -> CodexCoordinatorData:
+        attempted_at = datetime.now(UTC)
+        if not hasattr(self, "sources"):
+            self.sources = initial_sources()
+            self._reset_reconciled_context = None
+            self._reset_context_changed_at = None
         try:
             data, credentials = await self.client.async_get_usage(self.credentials)
         except CodexAuthenticationError as err:
+            self.sources["usage"] = SourceState(
+                "error", attempted_at, self._last_success, error_code="authentication"
+            )
             raise ConfigEntryAuthFailed from err
         except (CodexConnectionError, CodexApiError) as err:
+            code = "connection" if isinstance(err, CodexConnectionError) else "invalid_response"
+            self.sources["usage"] = SourceState(
+                "error", attempted_at, self._last_success, error_code=code
+            )
             raise UpdateFailed(str(err)) from err
         if credentials != self.credentials:
             self.credentials = credentials
@@ -166,8 +190,14 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self.config_entry,
                 data={**self.config_entry.data, **credentials_to_entry_data(credentials)},
             )
-        refreshed_at = datetime.now(UTC)
+        refreshed_at = attempted_at
         self._last_success = refreshed_at
+        self.sources["usage"] = SourceState("ok", refreshed_at, refreshed_at)
+        current_context = reset_context(data)
+        if self._reset_reconciled_context is not None and reset_context_changed(
+            self._reset_reconciled_context, current_context
+        ):
+            self._reset_context_changed_at = refreshed_at
         now = monotonic()
         if now >= self._profile_next_attempt:
             try:
@@ -176,16 +206,28 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self._profile_available = False
                 self._profile_last_error = type(err).__name__
                 self._profile_next_attempt = now + PROFILE_UPDATE_SECONDS
+                self.sources["profile"] = SourceState(
+                    "unsupported", refreshed_at, self._profile_last_success
+                )
             except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
                 # Profile statistics are optional. A temporary failure must not make
                 # the independently fetched limit sensors unavailable.
                 self._profile_last_error = type(err).__name__
                 self._profile_next_attempt = now + PROFILE_RETRY_SECONDS
+                self.sources["profile"] = SourceState(
+                    "error",
+                    refreshed_at,
+                    self._profile_last_success,
+                    error_code="connection"
+                    if isinstance(err, CodexConnectionError)
+                    else "invalid_response",
+                )
             else:
                 self._profile_available = True
-                self._profile_last_success = datetime.now(UTC)
+                self._profile_last_success = refreshed_at
                 self._profile_last_error = None
                 self._profile_next_attempt = now + PROFILE_UPDATE_SECONDS
+                self.sources["profile"] = SourceState("ok", refreshed_at, refreshed_at)
 
         if now >= self._reset_next_attempt:
             try:
@@ -194,18 +236,41 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 self._reset_available = False
                 self._reset_last_error = type(err).__name__
                 self._reset_next_attempt = now + PROFILE_UPDATE_SECONDS
+                self.sources["reset_details"] = SourceState(
+                    "unsupported", refreshed_at, self._reset_last_success
+                )
             except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
                 self._reset_last_error = type(err).__name__
                 self._reset_next_attempt = now + PROFILE_RETRY_SECONDS
+                self.sources["reset_details"] = SourceState(
+                    "error",
+                    refreshed_at,
+                    self._reset_last_success,
+                    error_code="connection"
+                    if isinstance(err, CodexConnectionError)
+                    else "invalid_response",
+                )
             else:
                 self._reset_available = True
-                self._reset_last_success = datetime.now(UTC)
+                self._reset_last_success = refreshed_at
                 self._reset_last_error = None
                 self._reset_next_attempt = now + PROFILE_UPDATE_SECONDS
+                self.sources["reset_details"] = SourceState("ok", refreshed_at, refreshed_at)
+                self._reset_reconciled_context = current_context
+
+        summary = reset_summary(
+            data,
+            self._reset_credits,
+            now=refreshed_at,
+            usage_updated_at=refreshed_at,
+            details_updated_at=self._reset_last_success,
+            context_changed_at=self._reset_context_changed_at,
+        )
 
         return CodexCoordinatorData(
             usage=data,
             profile=self._profile_data,
             reset_credits=self._reset_credits,
             refreshed_at=refreshed_at,
+            reset_summary=summary,
         )

@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from . import CodexUsageConfigEntry
 from .const import CONF_EXPIRES_AT, CONF_FEDRAMP, CONF_UPDATE_INTERVAL
+from .monitoring import restriction_summary
 
 
 async def async_get_config_entry_diagnostics(
@@ -31,6 +32,18 @@ async def async_get_config_entry_diagnostics(
         "reset_available": coordinator.reset_available,
         "reset_last_success": coordinator.reset_last_success,
         "reset_last_error": coordinator.reset_last_error,
+        "sources": {
+            key: {
+                "state": value.state,
+                "last_attempt": value.last_attempt,
+                "last_success": value.last_success,
+                "retry_at": value.retry_at,
+                "error_code": value.error_code,
+                "refresh_mode": value.refresh_mode,
+                "expected_interval_seconds": value.expected_interval_seconds,
+            }
+            for key, value in getattr(coordinator, "sources", {}).items()
+        },
         "data": _safe_data(coordinator.data) if coordinator.data else None,
     }
 
@@ -43,8 +56,7 @@ def _safe_data(data: Any) -> dict[str, Any]:
         for _, window in limit.windows:
             limits.append(
                 {
-                    "id": limit.limit_id,
-                    "name": limit.name,
+                    "source": "main" if limit is usage.main_limit else "additional",
                     "duration_minutes": window.window_minutes,
                     "used_percent": window.used_percent,
                     "resets_at": window.resets_at,
@@ -52,6 +64,7 @@ def _safe_data(data: Any) -> dict[str, Any]:
                 }
             )
     reset_credits = data.reset_credits
+    restriction = restriction_summary(usage)
     return {
         "plan": usage.plan_type,
         "limits": limits,
@@ -59,4 +72,14 @@ def _safe_data(data: Any) -> dict[str, Any]:
         "credit_available": usage.credits.has_credits if usage.credits else None,
         "spend_limit_reached": usage.spend_limit_reached,
         "reset_credit_count": reset_credits.available_count if reset_credits else None,
+        "limit_summary": {
+            "reached": restriction.reached,
+            "reason": restriction.reason,
+            "affected_limit_count": len(restriction.affected_limits),
+            "affected_limits_truncated": restriction.affected_limits_truncated,
+        },
+        "duplicate_limit_ids": usage.duplicate_limit_ids,
+        "conflicting_windows": usage.conflicting_windows,
+        "reset_details_present": reset_credits.details_present if reset_credits else False,
+        "reset_malformed_rows": reset_credits.malformed_rows if reset_credits else 0,
     }
