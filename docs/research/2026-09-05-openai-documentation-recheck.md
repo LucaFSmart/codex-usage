@@ -104,3 +104,11 @@ The additional signed-balance, wording, detail-presence and transition fixtures 
 ## Verification boundaries
 
 Pages were opened, not assessed from search snippets alone. Conclusions separate official semantics, observed repository behavior and proposed changes. README updates describe current scope without advertising unimplemented 0.7 options. Documentation diff/links/fences are checked; runtime tests are not rerun for documentation-only changes. Application code, credentials and external accounts are untouched.
+
+## 2026-09-06 addendum
+
+OpenAI's current [Codex App Server reference](https://learn.chatgpt.com/docs/app-server) now specifies `rateLimitsByLimitId`, `rateLimitResetCredits`, `account/rateLimits/updated`, and `account/usage/read` with nullable summary values and daily token buckets. This confirms that a daily-data adapter is technically definable. It does not make App Server a suitable mandatory Home Assistant dependency: the App Server command and its WebSocket transport are still experimental, the Codex executable is not supplied by HACS, and externally managed ChatGPT-token login is also experimental.
+
+The recommended future shape is therefore an optional, separately configured JSON-RPC adapter or sidecar. It should prioritize `rateLimitsByLimitId`, reconcile notifications with full reads, preserve `null` versus empty reset details, and model daily values by their reported date. The existing WHAM transport remains the 0.7 default. Current-schema compatibility fixes for `spend_control_reached` and scalar or object `rate_limit_reached_type` are covered by parser regressions without mixing camelCase App Server payloads into the WHAM parser.
+
+The same reference now documents `account/rateLimitResetCredit/consume`, `account/sendAddCreditsNudgeEmail`, and `account/workspaceMessages/read`. The first two perform external actions and remain outside the integration's read-only contract. Workspace messages are read-only but are service announcements rather than usage telemetry; adding them would create new message-retention, redaction and notification behavior with little benefit to the core quota card. They are therefore deferred rather than folded into the 0.7 polling coordinator.

@@ -7,10 +7,10 @@
 [![GitHub Release](https://img.shields.io/github/v/release/LucaFSmart/codex-usage)](https://github.com/LucaFSmart/codex-usage/releases)
 [![License](https://img.shields.io/github/license/LucaFSmart/codex-usage)](LICENSE)
 
-Codex Usage is a read-only Home Assistant integration for Codex allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card.
+Codex Usage is a read-only Home Assistant integration for reported Codex and other eligible agentic allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card. A change cannot be attributed to a particular app, model, task or conversation.
 
 > [!IMPORTANT]
-> This independent community project is not affiliated with or supported by OpenAI. It uses authenticated ChatGPT backend endpoints that are not documented as a stable third-party API and may change.
+> This independent community project is not affiliated with or supported by OpenAI. It uses authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API and may change. OpenAI separately documents an experimental [Codex App Server RPC interface](https://learn.chatgpt.com/docs/app-server); this integration does not require or connect to that service.
 
 ![Codex Usage card overview](docs/images/card-overview-en.png)
 
@@ -18,7 +18,7 @@ Codex Usage is a read-only Home Assistant integration for Codex allowances inclu
 
 - OpenAI device-code login without passwords, copied cookies or API keys
 - Multiple accounts/workspaces with stable Home Assistant entity identities
-- Reported five-hour, weekly and additional feature windows without a hard-coded plan matrix
+- Reported five-hour, weekly and additional eligible-agent windows without a hard-coded plan matrix
 - Consistent unknown, zero, stale, blocked and optional-source behavior
 - Saved-reset counts and reconciled expiry details, including banked-reset date changes
 - Provider cooldown handling for HTTP 429 and 503, token refresh and reauthentication
@@ -94,7 +94,7 @@ The optional [warning Blueprint](blueprints/automation/codex_usage/usage_warning
 
 ## Data sources and privacy
 
-The integration reads the authenticated usage source plus optional profile and saved-reset details. Workspace discovery runs during setup and reauthentication. Usage defaults to a five-minute interval; optional sources default to hourly. Provider retry deadlines take priority over configured and manual refreshes.
+The integration reads the authenticated usage source plus optional profile and saved-reset details. These account-level observations do not identify which eligible agent surface, model or task consumed the allowance. Workspace discovery runs during setup and reauthentication. Usage defaults to a five-minute interval; optional sources default to hourly. Provider retry deadlines take priority over configured and manual refreshes.
 
 Tokens are stored in Home Assistant config entries. Card and diagnostic payloads use explicit allowlists and exclude credentials, backend account/user IDs, raw responses and arbitrary error text. See [privacy and data handling](docs/privacy.md) and [security reporting](SECURITY.md).
 

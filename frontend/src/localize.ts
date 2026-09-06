@@ -92,10 +92,10 @@ export const STRINGS = {
     // most-constrained callout
     mostConstrainedTightest: "{limit} is currently your tightest constraint.",
     mostConstrainedLowRemaining: "{limit} has only {percent}% remaining.",
-    mostConstrainedBlockedUsage: "Codex usage is currently blocked by your {limit}.",
-    mostConstrainedBlockedSpend: "Usage is currently blocked by your spending limit.",
-    mostConstrainedBlockedCredits: "Usage is currently blocked by your credit limit.",
-    mostConstrainedBlockedUnknown: "Codex usage is currently unavailable.",
+    mostConstrainedBlockedUsage: "The included usage limit for {limit} has been reached.",
+    mostConstrainedBlockedSpend: "The reported spending limit has been reached.",
+    mostConstrainedBlockedCredits: "The reported credit limit has been reached.",
+    mostConstrainedBlockedUnknown: "A usage restriction was reported.",
     // relative reset time
     resetsImminently: "Resets shortly",
     resetsInMinutes: "Resets in {minutes} min",
@@ -229,10 +229,10 @@ export const STRINGS = {
     // most-constrained callout
     mostConstrainedTightest: "{limit} ist derzeit dein engstes Limit.",
     mostConstrainedLowRemaining: "{limit} hat nur noch {percent}% übrig.",
-    mostConstrainedBlockedUsage: "Die Codex-Nutzung wird derzeit durch dein {limit} blockiert.",
-    mostConstrainedBlockedSpend: "Die Nutzung wird derzeit durch dein Ausgabenlimit blockiert.",
-    mostConstrainedBlockedCredits: "Die Nutzung wird derzeit durch dein Guthabenlimit blockiert.",
-    mostConstrainedBlockedUnknown: "Die Codex-Nutzung ist derzeit nicht verfügbar.",
+    mostConstrainedBlockedUsage: "Das enthaltene Nutzungslimit für {limit} ist erreicht.",
+    mostConstrainedBlockedSpend: "Das gemeldete Ausgabenlimit ist erreicht.",
+    mostConstrainedBlockedCredits: "Das gemeldete Guthabenlimit ist erreicht.",
+    mostConstrainedBlockedUnknown: "Eine Nutzungseinschränkung wurde gemeldet.",
     // relative reset time
     resetsImminently: "Setzt sich gleich zurück",
     resetsInMinutes: "Setzt sich in {minutes} Min. zurück",

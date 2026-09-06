@@ -565,7 +565,8 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await unknownCard.updateComplete;
     const unknownCallout = unknownCard.shadowRoot?.querySelector(".callout")?.textContent;
-    expect(unknownCallout).toContain("unavailable");
+    expect(unknownCallout).toContain("restriction was reported");
+    expect(unknownCallout).not.toContain("unavailable");
     expect(unknownCallout).not.toContain("Week");
   });
 
@@ -643,7 +644,7 @@ describe("CodexUsageCard", () => {
     expect(card.shadowRoot?.querySelector('[data-limit-id="code_review"] .ring')).toBeNull();
   });
 
-  it("does not duplicate the blocked message in a separate blocker note", async () => {
+  it("does not overstate or duplicate a reported usage-limit message", async () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     card.setConfig({ type: "custom:codex-usage-card" });
     card.hass = makeFakeHass({
@@ -654,7 +655,10 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
 
     expect(card.shadowRoot?.querySelector(".blocker-note")).toBeNull();
-    expect(card.shadowRoot?.querySelector(".callout")?.textContent).toContain("blocked");
+    const callout = card.shadowRoot?.querySelector(".callout")?.textContent;
+    expect(callout).toContain("limit");
+    expect(callout).toContain("reached");
+    expect(callout).not.toContain("blocked");
   });
 
   it("collapses details by default and expands only when compact is explicitly false", async () => {

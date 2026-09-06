@@ -2,6 +2,8 @@
 
 The card shows the account summary, main usage windows, named restrictions and available resets. Additional limits, credits, spend control, profile statistics and account details appear in the collapsible Details panel. Details start collapsed; `compact: false` starts them expanded.
 
+Reported allowances may be shared by Codex and other eligible agentic surfaces. The card cannot attribute a percentage change to an app, model, task or conversation. A reached-limit callout reports the provider classification without claiming that every current or future action is blocked.
+
 ## Visibility
 
 Each section has three modes: **Automatic** (`"auto"`), **Always show** (`true`), and **Hide** (`false`). In Automatic, missing optional values are omitted. Always show keeps one neutral placeholder if the whole section has no data. Hide removes the section; individual `values` settings can also hide specific metrics.
@@ -57,6 +59,8 @@ Color thresholds describe percentage **used**: the defaults are warning 75 and c
 - **Available resets:** saved one-time allowance resets. Usage-sourced count takes precedence over hourly details, including an explicit zero. **Next known expiry** describes a saved reset, not the next rolling-window reset, and does not promise a complete ledger.
 
 A full banked reset can change both five-hour and weekly reset dates. The card adopts dates returned by the next usage poll. Old expiry details may temporarily disappear until the hourly source catches up; this does not imply consumption or a locally changed reset count. See [OpenAI's banked-reset explanation](https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work).
+
+OpenAI's [Codex App Server reference](https://learn.chatgpt.com/docs/app-server) independently confirms that an available reset count is authoritative, that detail rows may be capped, and that `null` details differ from an empty fetched list. Codex Usage applies those semantics to the WHAM data it receives; it does not connect to App Server.
 
 [Paid instant resets](https://help.openai.com/en/articles/20001507-paid-weekly-work-and-codex-rate-limit-resets) are separate from saved resets and may leave the next weekly date temporarily absent until later activity. Automatic rolling-window resets are also provider events. The integration cannot identify the mechanism from a percentage drop, never increments/decrements the saved count from that drop, and exposes no purchase or redemption action.
 

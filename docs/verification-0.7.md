@@ -6,8 +6,8 @@ This file records the checks for the local 0.7 candidate. It is updated from fre
 
 | Target | Purpose | Result |
 | --- | --- | --- |
-| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 238 passed |
-| Home Assistant 2026.8.3 | Current development target; complete Python suite plus real runtime | 238 passed |
+| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 242 passed |
+| Home Assistant 2026.8.3 | Current development target; complete Python suite plus real runtime | 242 passed |
 | Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
 
 The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.8.3 job additionally installs `pytest-homeassistant-custom-component==0.13.357`.
@@ -24,14 +24,14 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 ## Final evidence
 
 - Ruff format check and lint: passed for `custom_components`, `tests` and `tests_integration`.
-- Python: 238 tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options reload, core-failure availability, unload, Repairs registry create/delete, Recorder metadata creation/validation and Blueprint Script/helper execution.
+- Python: 242 tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options reload, core-failure availability, unload, Repairs registry create/delete, Recorder metadata creation/validation and Blueprint Script/helper execution.
 - Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 131 Vitest tests passed.
 - Frontend coverage: 97.02% statements, 94.3% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
 - Dependency audit: zero vulnerabilities at npm's high severity threshold.
-- Vite production build: passed; bundle size 90.95 kB (23.82 kB gzip).
+- Vite production build: passed; bundle size 90.89 kB (23.84 kB gzip).
 - Playwright Chromium: 18 responsive, semantic-state and interaction tests passed from 320 to 1,200 pixels in light and dark modes.
 - Visual review: real card harness rendered and inspected as a wide English overview, wide English details and narrow German layout. Synthetic labels contain no provider account identifiers or credentials.
-- Markdown guide link check: ten public Markdown files checked with no missing relative targets.
+- Markdown link check: 36 repository Markdown files checked with no missing relative targets.
 
 The committed-bundle reproducibility check passed after the candidate commit: a fresh Vite build produced no difference from the committed Home Assistant card bundle.
 
@@ -39,4 +39,4 @@ HACS validation, hassfest and CodeQL are configured GitHub publication gates and
 
 ## Known limits
 
-The integration consumes authenticated OpenAI web-product endpoints that are not documented as a stable third-party API. Sanitized fixtures and graceful unknown/unsupported behavior reduce schema-change impact but cannot guarantee future compatibility. Live production credentials, purchases, reset redemption and external notification delivery are outside this verification.
+The integration consumes authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API. OpenAI separately documents a Codex App Server JSON-RPC surface for rate limits, earned resets and token-usage summaries, but its command and WebSocket transport remain experimental and are not part of this integration. Sanitized fixtures and graceful unknown/unsupported behavior reduce schema-change impact but cannot guarantee future compatibility. Live production credentials, purchases, reset redemption and external notification delivery are outside this verification.

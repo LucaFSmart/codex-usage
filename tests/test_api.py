@@ -620,6 +620,13 @@ def test_explicit_spend_limit_signal_sets_safe_blocker_reason() -> None:
     assert data.blocker_reason == "spend"
 
 
+def test_current_spend_control_reached_signal_sets_safe_blocker_reason() -> None:
+    data = parse_usage({"spend_control_reached": True})
+
+    assert data.spend_limit_reached is True
+    assert data.blocker_reason == "spend"
+
+
 @pytest.mark.parametrize(
     ("top_level", "nested", "expected"),
     (
@@ -880,6 +887,41 @@ def test_explicit_limit_state_is_reported() -> None:
         }
     )
     assert _limit_reached(data) is True
+
+
+@pytest.mark.parametrize("reached_type", [{"type": "rate_limit_reached"}, "rate_limit_reached"])
+def test_reported_reached_type_marks_main_limit_without_legacy_boolean(
+    reached_type: object,
+) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": True},
+            "rate_limit_reached_type": reached_type,
+        }
+    )
+
+    assert data.main_limit.limit_reached is True
+    assert data.blocker_reason == "usage_limit"
+
+
+def test_reported_reached_type_marks_additional_limit_without_legacy_boolean() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"limit_reached": False},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "code_review",
+                    "limit_name": "Code review",
+                    "rate_limit": {
+                        "rate_limit_reached_type": "rate_limit_reached",
+                    },
+                }
+            ],
+        }
+    )
+
+    assert data.additional_limits[0].limit_reached is True
+    assert data.blocker_reason is None
 
 
 def test_additional_limit_state_is_included_in_overall_status() -> None:

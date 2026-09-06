@@ -4,7 +4,9 @@ Codex Usage is an independent community integration using backend endpoints that
 
 Authorization stores access/refresh tokens and account identity in the Home Assistant config entry. Home Assistant needs these credentials to poll and refresh authorization. Protect the HA configuration and backups as you would other integration credentials. Device login does not require copying browser cookies or entering a password into this integration.
 
-The integration reads usage, optional profile aggregates, optional saved-reset details and workspace discovery during setup/reauthentication. It does not send prompts, conversations or code; purchase credits; redeem resets; change account limits; or select notification recipients.
+The integration reads account-level usage, optional profile aggregates, optional saved-reset details and workspace discovery during setup/reauthentication. Reported allowance changes cannot be assigned to a particular eligible agent surface, model, task or conversation. It does not send prompts, conversations or code; purchase credits; redeem resets; change account limits; or select notification recipients.
+
+Version 0.7 reads authenticated ChatGPT WHAM HTTP endpoints. OpenAI now documents a separate Codex App Server JSON-RPC interface for rate limits, earned resets and token-usage summaries. App Server is not contacted, installed or required by this integration.
 
 Usage/profile/reset caches and polling source states are memory-only. Restart clears them until a real fetch succeeds. Only successful workspace-discovery time is persisted as additional entry metadata; it does not indicate continuous account availability. HA may independently record enabled sensor states under your Recorder configuration.
 

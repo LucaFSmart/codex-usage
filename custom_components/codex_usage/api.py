@@ -480,17 +480,34 @@ def _window(payload: Any) -> RateLimitWindow | None:
     )
 
 
-def _rate_limit(limit_id: str, name: str, payload: Any) -> RateLimit:
+def _reported_reached_reason(value: Any) -> str | None:
+    """Normalize both historical object and current scalar reached-type shapes."""
+    if isinstance(value, dict):
+        value = value.get("type")
+    return _blocker_reason(value)
+
+
+def _rate_limit(
+    limit_id: str,
+    name: str,
+    payload: Any,
+    *,
+    reached_reason: str | None = None,
+) -> RateLimit:
     details = payload if isinstance(payload, dict) else {}
     allowed = details.get("allowed") if isinstance(details.get("allowed"), bool) else None
     reported_reached = (
         details.get("limit_reached") if isinstance(details.get("limit_reached"), bool) else None
     )
+    reached_by_type = (
+        reached_reason == "usage_limit"
+        or _reported_reached_reason(details.get("rate_limit_reached_type")) == "usage_limit"
+    )
     return RateLimit(
         limit_id=limit_id,
         name=name,
         allowed=allowed,
-        limit_reached=True if allowed is False else reported_reached,
+        limit_reached=True if allowed is False or reached_by_type else reported_reached,
         primary=_window(details.get("primary_window")),
         secondary=_window(details.get("secondary_window")),
     )
@@ -498,7 +515,13 @@ def _rate_limit(limit_id: str, name: str, payload: Any) -> RateLimit:
 
 def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     """Normalize the Codex usage response."""
-    main = _rate_limit("codex", "Codex", payload.get("rate_limit"))
+    main_reached_reason = _reported_reached_reason(payload.get("rate_limit_reached_type"))
+    main = _rate_limit(
+        "codex",
+        "Codex",
+        payload.get("rate_limit"),
+        reached_reason=main_reached_reason,
+    )
     additional: list[RateLimit] = []
 
     for position, window in main.windows:
@@ -620,11 +643,15 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
 
     spend_payload = payload.get("spend_control")
     spend_limit = None
-    spend_reached = (
-        payload.get("spend_limit_reached")
-        if isinstance(payload.get("spend_limit_reached"), bool)
-        else None
-    )
+    spend_signals = [
+        value
+        for value in (
+            payload.get("spend_limit_reached"),
+            payload.get("spend_control_reached"),
+        )
+        if isinstance(value, bool)
+    ]
+    spend_reached = True if True in spend_signals else (False if False in spend_signals else None)
     if isinstance(spend_payload, dict):
         nested_spend_reached = (
             spend_payload.get("reached") if isinstance(spend_payload.get("reached"), bool) else None
@@ -646,9 +673,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 resets_at=_reset_time(item),
             )
 
-    reached = payload.get("rate_limit_reached_type")
-    reached_type = reached.get("type") if isinstance(reached, dict) else None
-    blocker_reason = _blocker_reason(reached_type or payload.get("blocker_reason"))
+    blocker_reason = main_reached_reason or _blocker_reason(payload.get("blocker_reason"))
     if blocker_reason is None and spend_reached is True:
         blocker_reason = "spend"
     if blocker_reason is None and credits is not None and credits.overage_limit_reached is True:
