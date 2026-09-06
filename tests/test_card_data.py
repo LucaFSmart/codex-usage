@@ -1,10 +1,11 @@
 """Tests for the token-free internal card snapshot."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from custom_components.codex_usage.api import CodexProfileStats, ResetCredits, parse_usage
+from custom_components.codex_usage.budget import UsageBudget
 from custom_components.codex_usage.card_data import build_card_snapshot, websocket_card_data
 from custom_components.codex_usage.const import DOMAIN
 
@@ -90,6 +91,8 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
                     "resets_at": usage.weekly_window.resets_at.isoformat(),
                     "reached": False,
                     "entity_id": None,
+                    "budget_pph": None,
+                    "budget_calculated_at": None,
                 }
             ],
             "credits": {
@@ -299,3 +302,75 @@ def test_websocket_handler_passes_the_authenticated_user() -> None:
 
     builder.assert_called_once_with(hass, user)
     connection.send_result.assert_called_once_with(7, snapshot)
+
+
+def test_card_serializes_the_cached_budget_without_recalculating_it() -> None:
+    observed_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    usage = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (observed_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(
+            usage=usage,
+            profile=None,
+            reset_credits=None,
+            budgets={"weekly": UsageBudget(123.0, observed_at)},
+        ),
+        last_update_success=True,
+        last_success=observed_at,
+        update_interval=timedelta(minutes=5),
+        sources={},
+    )
+    entry = SimpleNamespace(entry_id="entry-a", title="Alpha", unique_id="identity", data={})
+    hass = SimpleNamespace(data={DOMAIN: {"entries": {"entry-a": (entry, coordinator)}}})
+
+    with patch("custom_components.codex_usage.card_data.datetime") as datetime_mock:
+        datetime_mock.now.return_value = observed_at + timedelta(minutes=10)
+        limit = build_card_snapshot(hass, ADMIN_USER)["accounts"][0]["limits"][0]
+
+    assert limit["budget_pph"] == 123.0
+    assert limit["budget_calculated_at"] == observed_at.isoformat()
+
+
+def test_card_suppresses_cached_budget_during_core_failure() -> None:
+    observed_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    usage = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (observed_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(
+            usage=usage,
+            profile=None,
+            reset_credits=None,
+            budgets={"weekly": UsageBudget(0.25, observed_at)},
+        ),
+        last_update_success=False,
+        last_success=observed_at,
+        update_interval=timedelta(minutes=5),
+        sources={},
+    )
+    entry = SimpleNamespace(entry_id="entry-a", title="Alpha", unique_id="identity", data={})
+    hass = SimpleNamespace(data={DOMAIN: {"entries": {"entry-a": (entry, coordinator)}}})
+
+    with patch("custom_components.codex_usage.card_data.datetime") as datetime_mock:
+        datetime_mock.now.return_value = observed_at + timedelta(minutes=1)
+        limit = build_card_snapshot(hass, ADMIN_USER)["accounts"][0]["limits"][0]
+
+    assert limit["budget_pph"] is None
+    assert limit["budget_calculated_at"] is None

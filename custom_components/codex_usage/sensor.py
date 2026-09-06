@@ -21,8 +21,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CodexUsageConfigEntry
 from .api import CodexProfileStats, CodexUsageData, RateLimit, RateLimitWindow
-from .const import CONF_ACCOUNT_ID
+from .budget import budget_key, cached_budget_is_valid
+from .const import CONF_ACCOUNT_ID, DEFAULT_UPDATE_INTERVAL
 from .coordinator import CodexUsageCoordinator
+from .diagnostic_sensor import source_timestamp_entities
 from .entity import CodexUsageEntity
 
 
@@ -81,6 +83,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         value_fn=lambda data: data.five_hour_window.resets_at if data.five_hour_window else None,
     ),
     CodexSensorDescription(
+        key="five_hour_budget",
+        translation_key="five_hour_budget",
+        native_unit_of_measurement="pp/h",
+        suggested_display_precision=3,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: None,
+    ),
+    CodexSensorDescription(
         key="weekly_usage",
         translation_key="weekly_usage",
         native_unit_of_measurement=PERCENTAGE,
@@ -101,6 +111,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         translation_key="weekly_reset",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.weekly_window.resets_at if data.weekly_window else None,
+    ),
+    CodexSensorDescription(
+        key="weekly_budget",
+        translation_key="weekly_budget",
+        native_unit_of_measurement="pp/h",
+        suggested_display_precision=3,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: None,
     ),
     CodexSensorDescription(
         key="weekly_pace",
@@ -301,6 +319,7 @@ async def async_setup_entry(
     )
     async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in descriptions)
     async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
+    async_add_entities(source_timestamp_entities(coordinator, entry))
 
     known = _existing_additional_keys(existing_unique_ids, identity)
     if known:
@@ -325,7 +344,10 @@ async def async_setup_entry(
             for window_name, window in (("primary", limit.primary), ("secondary", limit.secondary)):
                 if window is None:
                     continue
-                for metric in ("usage", "remaining", "reset"):
+                metrics = ["usage", "remaining", "reset"]
+                if type(window.window_minutes) is int and window.window_minutes > 0:
+                    metrics.append("budget")
+                for metric in metrics:
                     key = (limit.limit_id, window_name, metric)
                     if key not in known:
                         known.add(key)
@@ -363,6 +385,10 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
             summary = getattr(self.coordinator.data, "reset_summary", None)
             if summary is not None:
                 return summary.available_count
+        if self.entity_description.key in ("five_hour_budget", "weekly_budget"):
+            window_key = self.entity_description.key.removesuffix("_budget")
+            window = getattr(self.coordinator.data.usage, f"{window_key}_window")
+            return _cached_budget_value(self.coordinator, window_key, window)
         return self.entity_description.value_fn(self.coordinator.data.usage)
 
     @property
@@ -396,6 +422,10 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         self._attr_unique_id = f"{identity}_{limit_id}_{window_name}_{metric}"
         if metric == "reset":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        elif metric == "budget":
+            self._attr_native_unit_of_measurement = "pp/h"
+            self._attr_suggested_display_precision = 3
+            self._attr_entity_registry_enabled_default = False
         else:
             self._attr_native_unit_of_measurement = PERCENTAGE
             self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -421,6 +451,18 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
             return window.used_percent
         if self._metric == "remaining":
             return window.remaining_percent
+        if self._metric == "budget":
+            key = budget_key(
+                next(
+                    item
+                    for item in self.coordinator.data.usage.additional_limits
+                    if item.limit_id == self._limit_id
+                ),
+                self._window_name,
+                window,
+                source="additional",
+            )
+            return _cached_budget_value(self.coordinator, key, window)
         return window.resets_at
 
     @property
@@ -438,6 +480,28 @@ def _duration_placeholder(window: RateLimitWindow | None) -> str:
     if minutes % 60 == 0:
         return f"{minutes // 60} h"
     return f"{minutes} min"
+
+
+def _cached_budget_value(
+    coordinator: CodexUsageCoordinator, key: str, window: RateLimitWindow | None
+) -> float | None:
+    """Return the stored observation while its source tuple remains usable."""
+    budget = getattr(coordinator.data, "budgets", {}).get(key)
+    if budget is None:
+        return None
+    interval = getattr(coordinator, "update_interval", None)
+    interval_seconds = (
+        interval.total_seconds() if isinstance(interval, timedelta) else DEFAULT_UPDATE_INTERVAL
+    )
+    if not cached_budget_is_valid(
+        window,
+        now=datetime.now(UTC),
+        last_success=getattr(coordinator, "last_success", None),
+        update_interval_seconds=interval_seconds,
+        core_available=bool(getattr(coordinator, "last_update_success", False)),
+    ):
+        return None
+    return budget.budget_pph
 
 
 class CodexProfileSensor(CodexUsageEntity, SensorEntity):

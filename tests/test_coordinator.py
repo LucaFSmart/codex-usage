@@ -255,3 +255,72 @@ def test_changed_usage_context_suppresses_unreconciled_detail_expiry() -> None:
     assert second.reset_summary.available_count == 2
     assert second.reset_summary.details_consistent is False
     assert second.reset_summary.next_expiry is None
+
+
+def test_successful_refresh_stores_one_canonical_budget_observation() -> None:
+    client = _FakeClient()
+    observed_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    client.usage_result = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (observed_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = _coordinator(client)
+
+    with (
+        patch("custom_components.codex_usage.coordinator.datetime") as datetime_mock,
+        patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0),
+    ):
+        datetime_mock.now.return_value = observed_at
+        data = asyncio.run(coordinator._async_update_data())
+
+    assert data.budgets["weekly"].budget_pph == pytest.approx(0.25)
+    assert data.budgets["weekly"].calculated_at == observed_at
+
+
+def test_changed_window_tuple_replaces_budget_atomically() -> None:
+    client = _FakeClient()
+    first_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    second_at = first_at + timedelta(minutes=5)
+    client.usage_result = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (first_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = _coordinator(client)
+
+    with (
+        patch("custom_components.codex_usage.coordinator.datetime") as datetime_mock,
+        patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0),
+    ):
+        datetime_mock.now.return_value = first_at
+        first = asyncio.run(coordinator._async_update_data())
+        client.usage_result = parse_usage(
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 0,
+                        "limit_window_seconds": 604_800,
+                        "reset_at": (second_at + timedelta(days=7)).timestamp(),
+                    }
+                }
+            }
+        )
+        datetime_mock.now.return_value = second_at
+        second = asyncio.run(coordinator._async_update_data())
+
+    assert first.budgets["weekly"].budget_pph == pytest.approx(0.25)
+    assert second.budgets["weekly"].budget_pph == pytest.approx(100 / 168)
+    assert second.budgets["weekly"].calculated_at == second_at

@@ -5,9 +5,11 @@
       "five_hour_usage": {"default": "mdi:timer-sand"},
       "five_hour_remaining": {"default": "mdi:timer-outline"},
       "five_hour_reset": {"default": "mdi:timer-refresh"},
+      "five_hour_budget": {"default": "mdi:scale-balance"},
       "weekly_usage": {"default": "mdi:calendar-week"},
       "weekly_remaining": {"default": "mdi:calendar-clock-outline"},
       "weekly_reset": {"default": "mdi:calendar-refresh"},
+      "weekly_budget": {"default": "mdi:scale-balance"},
       "weekly_pace": {"default": "mdi:speedometer"},
       "available_reset_credits": {"default": "mdi:backup-restore"},
       "credit_balance": {"default": "mdi:credit-card-outline"},
@@ -26,7 +28,11 @@
       "total_skills_used": {"default": "mdi:tools"},
       "unique_skills_used": {"default": "mdi:toolbox-outline"},
       "most_used_reasoning_effort": {"default": "mdi:head-cog-outline"},
-      "most_used_reasoning_effort_percentage": {"default": "mdi:chart-donut"}
+      "most_used_reasoning_effort_percentage": {"default": "mdi:chart-donut"},
+      "usage_last_success": {"default": "mdi:update"},
+      "profile_last_success": {"default": "mdi:account-clock-outline"},
+      "reset_details_last_success": {"default": "mdi:backup-restore"},
+      "workspace_discovery_last_success": {"default": "mdi:account-search-outline"}
     },
     "binary_sensor": {
       "limit_reached": {"default": "mdi:speedometer-slow"},

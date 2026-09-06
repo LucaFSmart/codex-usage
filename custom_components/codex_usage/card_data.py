@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -15,7 +15,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .api import RateLimit, RateLimitWindow
-from .const import CARD_VERSION, DOMAIN
+from .budget import UsageBudget, budget_key, cached_budget_is_valid
+from .const import CARD_VERSION, DEFAULT_UPDATE_INTERVAL, DOMAIN
 from .entry_title import safe_entry_title
 from .monitoring import limit_statuses, reset_summary, restriction_summary
 
@@ -50,6 +51,7 @@ def _limit_payload(
     *,
     source: str,
     entity_id: str | None,
+    budget: UsageBudget | None,
 ) -> dict[str, Any]:
     return {
         "id": f"{limit.limit_id}:{position}:{window.duration_key}",
@@ -61,10 +63,19 @@ def _limit_payload(
         "resets_at": _iso(window.resets_at),
         "reached": limit.limit_reached,
         "entity_id": entity_id,
+        "budget_pph": budget.budget_pph if budget else None,
+        "budget_calculated_at": _iso(budget.calculated_at) if budget else None,
     }
 
 
-def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> list[dict[str, Any]]:
+def _limits(
+    usage: Any,
+    entity_ids: dict[str, str],
+    identity: str | None,
+    *,
+    coordinator: Any,
+    now: datetime,
+) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     main_window_ids: set[int] = set()
     for position, window in usage.main_limit.windows:
@@ -89,6 +100,12 @@ def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> lis
                 window,
                 source="main",
                 entity_id=entity_ids.get(unique_id) if unique_id else None,
+                budget=_current_budget(
+                    coordinator,
+                    budget_key(usage.main_limit, position, window, source="main"),
+                    window,
+                    now,
+                ),
             )
         )
     for limit in usage.additional_limits:
@@ -103,9 +120,37 @@ def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> lis
                     window,
                     source="additional",
                     entity_id=entity_ids.get(unique_id) if unique_id else None,
+                    budget=_current_budget(
+                        coordinator,
+                        budget_key(limit, position, window, source="additional"),
+                        window,
+                        now,
+                    ),
                 )
             )
     return result
+
+
+def _current_budget(
+    coordinator: Any, key: str, window: RateLimitWindow, now: datetime
+) -> UsageBudget | None:
+    """Return only the coordinator's still-valid canonical budget."""
+    budget = getattr(coordinator.data, "budgets", {}).get(key)
+    if budget is None:
+        return None
+    interval = getattr(coordinator, "update_interval", None)
+    interval_seconds = (
+        interval.total_seconds() if isinstance(interval, timedelta) else DEFAULT_UPDATE_INTERVAL
+    )
+    if not cached_budget_is_valid(
+        window,
+        now=now,
+        last_success=getattr(coordinator, "last_success", None),
+        update_interval_seconds=interval_seconds,
+        core_available=bool(getattr(coordinator, "last_update_success", False)),
+    ):
+        return None
+    return budget
 
 
 def _active_entity_ids(hass: HomeAssistant) -> dict[str, str]:
@@ -176,6 +221,8 @@ def _account_payload(
             usage,
             entity_ids,
             entry.unique_id or entry.data.get("account_id"),
+            coordinator=coordinator,
+            now=now,
         ),
         "credits": (
             {

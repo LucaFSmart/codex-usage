@@ -77,6 +77,9 @@
       "five_hour_reset": {
         "name": "5-hour reset"
       },
+      "five_hour_budget": {
+        "name": "5-hour usage budget"
+      },
       "weekly_usage": {
         "name": "Weekly usage"
       },
@@ -85,6 +88,9 @@
       },
       "weekly_reset": {
         "name": "Weekly reset"
+      },
+      "weekly_budget": {
+        "name": "Weekly usage budget"
       },
       "weekly_pace": {
         "name": "Weekly usage pace"
@@ -154,6 +160,18 @@
       },
       "dynamic_limit_budget": {
         "name": "{limit_name} {duration} budget"
+      },
+      "usage_last_success": {
+        "name": "Last usage update"
+      },
+      "profile_last_success": {
+        "name": "Last profile update"
+      },
+      "reset_details_last_success": {
+        "name": "Last reset-details update"
+      },
+      "workspace_discovery_last_success": {
+        "name": "Last workspace discovery"
       }
     },
     "binary_sensor": {

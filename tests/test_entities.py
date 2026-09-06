@@ -4,11 +4,12 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from homeassistant.components.sensor import SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 
 from custom_components.codex_usage.api import parse_usage
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
 from custom_components.codex_usage.entity import CodexUsageEntity
+from custom_components.codex_usage.monitoring import SourceState
 from custom_components.codex_usage.sensor import (
     PROFILE_SENSORS,
     SENSORS,
@@ -178,3 +179,78 @@ def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:
     with patch("custom_components.codex_usage.sensor.datetime") as datetime_mock:
         datetime_mock.now.return_value = now
         assert _weekly_pace(data) is None
+
+
+def test_budget_entities_are_disabled_diagnostics_without_state_class() -> None:
+    descriptions = {description.key: description for description in SENSORS}
+    for key in ("five_hour_budget", "weekly_budget"):
+        description = descriptions[key]
+        assert description.entity_registry_enabled_default is False
+        assert description.native_unit_of_measurement == "pp/h"
+        assert description.state_class is None
+        assert description.device_class is None
+
+
+def test_budget_sensor_uses_cached_observation_until_it_becomes_invalid() -> None:
+    from custom_components.codex_usage.budget import UsageBudget
+
+    descriptions = {description.key: description for description in SENSORS}
+    observed_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    usage = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (observed_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=True,
+        last_success=observed_at,
+        update_interval=timedelta(minutes=5),
+        data=SimpleNamespace(
+            usage=usage,
+            budgets={"weekly": UsageBudget(123.0, observed_at)},
+        ),
+    )
+    entity.entity_description = descriptions["weekly_budget"]
+
+    with patch("custom_components.codex_usage.sensor.datetime") as datetime_mock:
+        datetime_mock.now.return_value = observed_at + timedelta(minutes=10)
+        assert entity.native_value == 123.0
+        datetime_mock.now.return_value = observed_at + timedelta(hours=73)
+        assert entity.native_value is None
+    entity.coordinator.last_update_success = False
+    assert entity.native_value is None
+
+
+def test_source_timestamps_remain_available_after_core_failure() -> None:
+    from custom_components.codex_usage.diagnostic_sensor import (
+        SOURCE_TIMESTAMP_SENSORS,
+        CodexSourceTimestampSensor,
+    )
+
+    successful = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    descriptions = {item.key: item for item in SOURCE_TIMESTAMP_SENSORS}
+    assert set(descriptions) == {
+        "usage_last_success",
+        "profile_last_success",
+        "reset_details_last_success",
+        "workspace_discovery_last_success",
+    }
+    assert all(item.entity_registry_enabled_default is False for item in descriptions.values())
+    assert all(item.device_class is SensorDeviceClass.TIMESTAMP for item in descriptions.values())
+    coordinator = SimpleNamespace(
+        last_update_success=False,
+        sources={"usage": SourceState("error", last_success=successful)},
+    )
+    entity = object.__new__(CodexSourceTimestampSensor)
+    entity.coordinator = coordinator
+    entity.entity_description = descriptions["usage_last_success"]
+
+    assert entity.native_value == successful
+    assert entity.available is True

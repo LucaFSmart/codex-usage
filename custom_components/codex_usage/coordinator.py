@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from time import monotonic
 
@@ -26,6 +26,7 @@ from .api import (
     CodexUsageData,
     ResetCredits,
 )
+from .budget import UsageBudget, collect_usage_budgets
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_ID,
@@ -67,6 +68,7 @@ class CodexCoordinatorData:
     reset_credits: ResetCredits | None
     refreshed_at: datetime
     reset_summary: ResetSummary | None = None
+    budgets: dict[str, UsageBudget] = field(default_factory=dict)
 
 
 def credentials_from_entry(entry: ConfigEntry) -> CodexCredentials:
@@ -390,6 +392,13 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
             context_changed_at=self._reset_context_changed_at,
             details_enabled=self.config_entry.options.get(CONF_FETCH_RESET_DETAILS, True),
         )
+        budgets = collect_usage_budgets(
+            data,
+            now=refreshed_at,
+            last_success=refreshed_at,
+            update_interval_seconds=interval,
+            core_available=True,
+        )
 
         return CodexCoordinatorData(
             usage=data,
@@ -397,6 +406,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
             reset_credits=self._reset_credits,
             refreshed_at=refreshed_at,
             reset_summary=summary,
+            budgets=budgets,
         )
 
     def _persist_credentials(self, credentials: CodexCredentials) -> None:

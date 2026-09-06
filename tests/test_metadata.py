@@ -7,6 +7,7 @@ from typing import Any
 from PIL import Image
 
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
+from custom_components.codex_usage.diagnostic_sensor import SOURCE_TIMESTAMP_SENSORS
 from custom_components.codex_usage.sensor import PROFILE_SENSORS, SENSORS
 
 ROOT = Path(__file__).parents[1]
@@ -33,7 +34,9 @@ def test_translations_match_canonical_strings() -> None:
 def test_entity_icons_cover_static_entities() -> None:
     icons = _load_json(COMPONENT / "icons.json")["entity"]
 
-    assert set(icons["sensor"]) == {item.translation_key for item in (*SENSORS, *PROFILE_SENSORS)}
+    assert set(icons["sensor"]) == {
+        item.translation_key for item in (*SENSORS, *PROFILE_SENSORS, *SOURCE_TIMESTAMP_SENSORS)
+    }
     assert set(icons["binary_sensor"]) == {item.translation_key for item in BINARY_SENSORS}
 
 
