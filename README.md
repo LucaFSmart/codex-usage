@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/LucaFSmart/codex-usage)](https://github.com/LucaFSmart/codex-usage/releases)
 [![License](https://img.shields.io/github/license/LucaFSmart/codex-usage)](LICENSE)
 
-Codex Usage is a read-only Home Assistant integration for reported Codex and other eligible agentic allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card. A change cannot be attributed to a particular app, model, task or conversation.
+Codex Usage is a read-only Home Assistant integration for reported Codex and other eligible agentic allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card. Depending on the plan, [Codex, ChatGPT Work, ChatGPT for Excel, ChatGPT for PowerPoint and Workspace Agents may draw from the same allowance and credit pool](https://help.openai.com/en/articles/11369540). A change cannot be attributed to a particular app, model, task or conversation.
 
 > [!IMPORTANT]
 > This independent community project is not affiliated with or supported by OpenAI. It uses authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API and may change. OpenAI separately documents an experimental [Codex App Server RPC interface](https://learn.chatgpt.com/docs/app-server); this integration does not require or connect to that service.

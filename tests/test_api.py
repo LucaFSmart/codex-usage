@@ -169,6 +169,22 @@ def test_parse_sparse_usage_response() -> None:
     assert data.spend_limit is None
 
 
+def test_negative_credit_balance_is_preserved() -> None:
+    data = parse_usage(
+        {
+            "credits": {
+                "has_credits": False,
+                "unlimited": False,
+                "balance": "-5.25",
+            }
+        }
+    )
+
+    assert data.credits is not None
+    assert data.credits.has_credits is False
+    assert data.credits.balance == Decimal("-5.25")
+
+
 @pytest.mark.parametrize(
     "plan",
     [

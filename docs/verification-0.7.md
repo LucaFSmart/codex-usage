@@ -6,8 +6,8 @@ This file records the checks for the local 0.7 candidate. It is updated from fre
 
 | Target | Purpose | Result |
 | --- | --- | --- |
-| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 242 passed |
-| Home Assistant 2026.8.3 | Current development target; complete Python suite plus real runtime | 242 passed |
+| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 243 passed |
+| Home Assistant 2026.8.3 | Current development target; complete Python suite plus real runtime | 243 passed |
 | Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
 
 The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.8.3 job additionally installs `pytest-homeassistant-custom-component==0.13.357`.
@@ -24,7 +24,7 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 ## Final evidence
 
 - Ruff format check and lint: passed for `custom_components`, `tests` and `tests_integration`.
-- Python: 242 tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options reload, core-failure availability, unload, Repairs registry create/delete, Recorder metadata creation/validation and Blueprint Script/helper execution.
+- Python: 243 tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options reload, core-failure availability, unload, Repairs registry create/delete, Recorder metadata creation/validation and Blueprint Script/helper execution.
 - Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 131 Vitest tests passed.
 - Frontend coverage: 97.02% statements, 94.3% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
 - Dependency audit: zero vulnerabilities at npm's high severity threshold.
