@@ -21,6 +21,25 @@ function isStale(value: string | null, minutes: number, now: Date): boolean {
   return updated === null || now.getTime() - updated.getTime() > minutes * 60_000;
 }
 
+export function isActionablyStaleSource(
+  source: NonNullable<CardAccount["sources"]>["usage"],
+  now: Date,
+): boolean {
+  if (
+    !source ||
+    source.refresh_mode !== "poll" ||
+    source.state === "disabled" ||
+    source.state === "unsupported"
+  )
+    return false;
+  if (source.state === "error" || source.state === "never") return true;
+  if (!source.last_success || !source.expected_interval_seconds) return false;
+  return (
+    now.getTime() - new Date(source.last_success).getTime() >
+    source.expected_interval_seconds * 2_000
+  );
+}
+
 function pace(limit: CardAccount["limits"][number], now: Date): number | null {
   if (!limit.duration_seconds || !limit.resets_at || limit.used_percent === null) return null;
   const reset = parsedDate(limit.resets_at);
@@ -65,9 +84,8 @@ export function isSectionVisible(
         (item) => item.budget_pph !== null && item.budget_pph !== undefined,
       );
     case "sources":
-      return Object.values(account.sources ?? {}).some(
-        (source) =>
-          source.state === "error" || (source.state === "never" && source.refresh_mode === "poll"),
+      return Object.values(account.sources ?? {}).some((source) =>
+        isActionablyStaleSource(source, new Date()),
       );
     default:
       return true;

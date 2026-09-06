@@ -27,6 +27,164 @@ afterEach(() => {
 });
 
 describe("CodexUsageCard", () => {
+  it("retains standard main slots as neutral rows when a snapshot omits them", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [] }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"]')?.textContent,
+    ).toContain("—");
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+    ).toContain("—");
+  });
+
+  it("does not draw unknown quota progress as zero", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          limits: [
+            { ...SNAPSHOT.accounts[0]!.limits[0]!, used_percent: null, remaining_percent: null },
+          ],
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const row = card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector(".bar span")).toBeNull();
+    expect(row?.querySelector(".ring")?.classList.contains("unknown")).toBe(true);
+  });
+
+  it("shows available resets in compact layout without turning an unknown count into zero", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: true });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          reset_credits: { available_count: null, total_earned: 3, next_expiry: null },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector('[data-core="resets"]')?.textContent).toContain("—");
+  });
+
+  it("keeps a single neutral row for forced-empty optional sections unless all values are explicitly hidden", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: {
+        spending: { visible: true, values: {} },
+        credits: { visible: true, values: { balance: false } },
+      },
+    });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, spend: null, credits: null }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      card.shadowRoot?.querySelector('[data-empty-section="spending"]')?.textContent,
+    ).toContain("—");
+    expect(card.shadowRoot?.querySelector('[data-empty-section="credits"]')).toBeNull();
+  });
+
+  it("suppresses canonical budget values when core data or its observation is stale", async () => {
+    const limit = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      duration_seconds: 604800,
+      resets_at: "2026-07-18T10:00:00Z",
+      budget_pph: 0.25,
+      budget_calculated_at: "2026-07-15T09:00:00Z",
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: false });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [limit] }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector("[data-budget-id]")).toBeNull();
+  });
+
+  it("marks retained profile data as historical without exposing sources", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: false });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          profile: { lifetime_tokens: 1 },
+          sources: {
+            profile: {
+              state: "ok",
+              last_attempt: null,
+              last_success: "2026-07-01T10:00:00Z",
+              retry_at: null,
+              error_code: null,
+              refresh_mode: "poll",
+              expected_interval_seconds: 3600,
+            },
+          },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector("[data-profile-historical]")?.textContent).toContain(
+      "Historical",
+    );
+  });
+
+  it("renders bilingual source lifecycle labels instead of transport enums", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: { sources: { visible: true, values: {} } },
+    });
+    card.hass = {
+      ...makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...SNAPSHOT.accounts[0]!,
+            sources: {
+              workspace_discovery: {
+                state: "never",
+                last_attempt: null,
+                last_success: null,
+                retry_at: null,
+                error_code: null,
+                refresh_mode: "on_auth",
+                expected_interval_seconds: null,
+              },
+            },
+          },
+        ],
+      }),
+      language: "de",
+      locale: { language: "de-DE" },
+    };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const source = card.shadowRoot?.querySelector(
+      '[data-source="workspace_discovery"]',
+    )?.textContent;
+    expect(source).toContain("Letzte Workspace-Erkennung");
+    expect(source).toContain("Bei Anmeldung");
+  });
   it("owns one local minute timer across disconnect and reconnect without timer networking", async () => {
     const timer = vi.spyOn(globalThis, "setInterval");
     const hass = makeFakeHass();

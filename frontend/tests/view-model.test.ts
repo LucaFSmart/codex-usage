@@ -274,4 +274,33 @@ describe("isSectionVisible", () => {
   it("treats auto as true for keys with no auto-specific rule", () => {
     expect(isSectionVisible("limits", "auto", baseAccount)).toBe(true);
   });
+
+  it("shows stale polling sources automatically but ignores discovery age", () => {
+    const staleProfile = {
+      ...baseAccount,
+      sources: {
+        profile: {
+          state: "ok" as const,
+          last_attempt: null,
+          last_success: "2026-07-15T08:00:00Z",
+          retry_at: null,
+          error_code: null,
+          refresh_mode: "poll" as const,
+          expected_interval_seconds: 300,
+        },
+      },
+    };
+    expect(isSectionVisible("sources", "auto", staleProfile)).toBe(true);
+    expect(
+      isSectionVisible("sources", "auto", {
+        ...staleProfile,
+        sources: {
+          workspace_discovery: {
+            ...staleProfile.sources.profile!,
+            refresh_mode: "on_auth" as const,
+          },
+        },
+      }),
+    ).toBe(false);
+  });
 });
