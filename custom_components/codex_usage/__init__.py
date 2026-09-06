@@ -105,4 +105,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
 
 async def _async_update_listener(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> None:
     """Reload so optional caches, source states and schedules match the options."""
+    if entry.runtime_data._loaded_options == dict(entry.options):
+        return
     await hass.config_entries.async_reload(entry.entry_id)

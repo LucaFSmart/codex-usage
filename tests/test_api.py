@@ -15,6 +15,7 @@ from custom_components.codex_usage.api import (
     CodexApiClient,
     CodexAuthenticationError,
     CodexCredentials,
+    CodexHttpError,
     CodexOptionalEndpointUnavailable,
     CodexProfileUnavailable,
     DeviceCode,
@@ -816,6 +817,28 @@ def test_credentials_refresh_disables_redirects() -> None:
 
     assert session.last_kwargs is not None
     assert session.last_kwargs.get("allow_redirects") is False
+
+
+@pytest.mark.parametrize("status", [429, 503])
+def test_credentials_refresh_preserves_provider_retry_deadline(status: int) -> None:
+    response = _FakeResponse(status, None)
+    response.headers = {"Retry-After": "172800"}
+    credentials = CodexCredentials(
+        access_token="old-access",
+        refresh_token="old-refresh",
+        id_token="old-id",
+        expires_at=0,
+        account_id="workspace-1",
+    )
+    started_at = datetime.now(UTC)
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(
+            CodexApiClient(_FakeSession(response)).async_refresh_credentials(credentials)  # type: ignore[arg-type]
+        )
+
+    assert caught.value.status == status
+    assert caught.value.retry_at >= started_at + timedelta(hours=47, minutes=59)
 
 
 def test_missing_limit_state_stays_unavailable() -> None:

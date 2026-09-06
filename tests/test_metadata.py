@@ -25,9 +25,11 @@ def _leaf_paths(value: Any, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]
 
 
 def test_translations_match_canonical_strings() -> None:
+    canonical = _load_json(COMPONENT / "strings.json")
     english = _load_json(COMPONENT / "translations" / "en.json")
     german = _load_json(COMPONENT / "translations" / "de.json")
 
+    assert canonical == english
     assert _leaf_paths(german) == _leaf_paths(english)
 
 

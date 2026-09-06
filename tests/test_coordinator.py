@@ -9,8 +9,10 @@ import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.codex_usage.api import (
+    CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
+    CodexHttpError,
     CodexProfileStats,
     ResetCredits,
     parse_usage,
@@ -123,8 +125,6 @@ def test_optional_429_stops_further_reads_and_manual_refresh():
 
 
 def test_optional_503_does_not_stop_other_endpoint():
-    from custom_components.codex_usage.api import CodexHttpError
-
     client = _FakeClient()
     client.profile_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
     coordinator = _coordinator(client)
@@ -133,6 +133,38 @@ def test_optional_503_does_not_stop_other_endpoint():
     assert client.profile_calls == 1
     assert client.reset_calls == 1
     assert client.usage_calls == 2
+
+
+def test_usage_503_cooldown_keeps_http_error_cause():
+    client = _FakeClient()
+    client.usage_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
+    coordinator = _coordinator(client)
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    attempted_at = coordinator.sources["usage"].last_attempt
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.sources["usage"].error_code == "http_error"
+    assert coordinator.sources["usage"].last_attempt == attempted_at
+
+
+@pytest.mark.parametrize(
+    ("result_attribute", "source"),
+    [("profile_result", "profile"), ("reset_result", "reset_details")],
+)
+def test_optional_authentication_failure_keeps_authentication_cause(
+    result_attribute: str, source: str
+):
+    client = _FakeClient()
+    setattr(client, result_attribute, CodexAuthenticationError())
+    coordinator = _coordinator(client)
+
+    data = asyncio.run(coordinator._async_update_data())
+
+    assert data.usage is client.usage_result
+    assert coordinator.sources[source].error_code == "authentication"
 
 
 def test_profile_is_fetched_at_start_and_then_hourly() -> None:

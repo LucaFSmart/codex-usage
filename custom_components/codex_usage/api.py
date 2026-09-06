@@ -878,6 +878,7 @@ class CodexApiClient:
             ) as response:
                 if response.status in (400, 401, 403):
                     raise CodexAuthenticationError("The OpenAI session can no longer be refreshed")
+                _check_retry(response)
                 if response.status >= 400:
                     raise CodexApiError(f"Token refresh failed ({response.status})")
                 payload = await self._async_decode_json(response)

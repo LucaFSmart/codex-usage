@@ -100,6 +100,14 @@ def credentials_to_entry_data(credentials: CodexCredentials) -> dict[str, object
     }
 
 
+def _optional_error_code(err: CodexApiError) -> str:
+    if isinstance(err, CodexAuthenticationError):
+        return "authentication"
+    if isinstance(err, CodexConnectionError):
+        return "connection"
+    return "invalid_response"
+
+
 class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
     """Fetch and normalize Codex usage data."""
 
@@ -113,6 +121,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
     ) -> None:
         self.client = client
         self.credentials = credentials_from_entry(entry)
+        self._loaded_options = dict(entry.options)
         self._profile_data: CodexProfileStats | None = None
         self._profile_next_attempt = 0.0
         self._profile_last_success: datetime | None = None
@@ -207,21 +216,22 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 setattr(self, payload, None)
                 self.sources[source] = SourceState("disabled", expected_interval_seconds=3600)
         deadlines = [
-            value
-            for value in (
-                getattr(self, "_read_retry_at", None),
-                getattr(self, "_usage_retry_at", None),
+            (value, error_code)
+            for value, error_code in (
+                (getattr(self, "_read_retry_at", None), "rate_limited"),
+                (getattr(self, "_usage_retry_at", None), "http_error"),
             )
             if value is not None and value > attempted_at
         ]
         if deadlines:
+            retry_at, error_code = max(deadlines, key=lambda item: item[0])
             previous = self.sources["usage"]
             self.sources["usage"] = SourceState(
                 "error",
                 previous.last_attempt,
                 self._last_success,
-                max(deadlines),
-                "rate_limited",
+                retry_at,
+                error_code,
                 expected_interval_seconds=interval,
             )
             raise UpdateFailed("Waiting for the provider retry deadline")
@@ -308,9 +318,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     "error",
                     refreshed_at,
                     self._profile_last_success,
-                    error_code="connection"
-                    if isinstance(err, CodexConnectionError)
-                    else "invalid_response",
+                    error_code=_optional_error_code(err),
                 )
             else:
                 self._profile_available = True
@@ -356,9 +364,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     "error",
                     refreshed_at,
                     self._reset_last_success,
-                    error_code="connection"
-                    if isinstance(err, CodexConnectionError)
-                    else "invalid_response",
+                    error_code=_optional_error_code(err),
                 )
             else:
                 self._reset_available = True

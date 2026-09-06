@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import time
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -17,7 +18,10 @@ from custom_components.codex_usage.config_flow import (
     preserve_reauth_workspace,
     workspace_choices,
 )
-from custom_components.codex_usage.coordinator import credentials_to_entry_data
+from custom_components.codex_usage.coordinator import (
+    CodexUsageCoordinator,
+    credentials_to_entry_data,
+)
 
 
 def test_options_offer_enabled_optional_sources_for_existing_entries():
@@ -32,13 +36,49 @@ def test_options_offer_enabled_optional_sources_for_existing_entries():
     assert values == {"update_interval": 300, "fetch_profile": True, "fetch_reset_details": True}
 
 
-def test_optional_options_update_reloads_entry():
+def test_credential_persistence_does_not_reload_but_option_change_does():
     from custom_components.codex_usage import _async_update_listener
 
-    hass = SimpleNamespace(config_entries=SimpleNamespace(async_reload=AsyncMock()))
-    entry = SimpleNamespace(entry_id="test-entry", options={"fetch_profile": False})
-    asyncio.run(_async_update_listener(hass, entry))
-    hass.config_entries.async_reload.assert_awaited_once_with("test-entry")
+    async def exercise_listener() -> AsyncMock:
+        reload_entry = AsyncMock()
+        config_entries = SimpleNamespace(
+            async_reload=reload_entry,
+            async_update_entry=lambda entry, **changes: setattr(entry, "data", changes["data"]),
+        )
+        hass = SimpleNamespace(config_entries=config_entries)
+        entry = SimpleNamespace(
+            entry_id="test-entry",
+            data=credentials_to_entry_data(
+                CodexCredentials("old", "old-refresh", "id", 0, "workspace")
+            ),
+            options={"fetch_profile": True},
+        )
+        with patch(
+            "custom_components.codex_usage.coordinator.DataUpdateCoordinator.__init__",
+            return_value=None,
+        ):
+            coordinator = CodexUsageCoordinator(hass, entry, MagicMock())
+        coordinator.config_entry = entry
+        coordinator.hass = hass  # type: ignore[assignment]
+        entry.runtime_data = coordinator
+
+        coordinator._persist_credentials(
+            replace(
+                coordinator.credentials,
+                access_token="new",
+                refresh_token="new-refresh",
+                expires_at=9_999_999_999,
+            )
+        )
+        await _async_update_listener(hass, entry)
+        reload_entry.assert_not_awaited()
+
+        entry.options = {"fetch_profile": False}
+        await _async_update_listener(hass, entry)
+        return reload_entry
+
+    reload_entry = asyncio.run(exercise_listener())
+    reload_entry.assert_awaited_once_with("test-entry")
 
 
 def _jwt(payload: dict[str, object]) -> str:
