@@ -33,7 +33,7 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 - Visual review: real card harness rendered and inspected as a wide English overview, wide English details and narrow German layout. Synthetic labels contain no provider account identifiers or credentials.
 - Markdown guide link check: ten public Markdown files checked with no missing relative targets.
 
-The committed-bundle reproducibility check is repeated after the candidate commit, because its clean-tree assertion must compare generated output with that commit rather than the preceding 0.6 baseline.
+The committed-bundle reproducibility check passed after the candidate commit: a fresh Vite build produced no difference from the committed Home Assistant card bundle.
 
 HACS validation, hassfest and CodeQL are configured GitHub publication gates and remain pending until the branch is intentionally pushed. No live OpenAI credentials were used.
 
