@@ -6,6 +6,8 @@ const query = new URLSearchParams(location.search);
 const requestedState = query.get("state") ?? "normal";
 const accountCount = Number(query.get("accounts") ?? "1");
 const compact = query.get("mode") === "compact";
+const language = query.get("lang") === "de" ? "de" : "en";
+const showSources = query.get("sources") === "1";
 document.body.className = query.get("theme") === "light" ? "light" : "dark";
 
 const usage =
@@ -19,7 +21,7 @@ const usage =
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.6.5",
+  integration_version: "0.7.0",
   generated_at: new Date().toISOString(),
   accounts: Array.from({ length: accountCount }, (_, index) => ({
     id: `entry-${index}`,
@@ -42,6 +44,8 @@ const snapshot: CardSnapshot = {
               resets_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
               reached: requestedState === "blocked",
               entity_id: "sensor.codex_five_hour_usage",
+              budget_pph: 7.5,
+              budget_calculated_at: updated,
             },
           ]),
       {
@@ -54,6 +58,8 @@ const snapshot: CardSnapshot = {
         resets_at: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
         reached: requestedState === "blocked",
         entity_id: "sensor.codex_weekly_usage",
+        budget_pph: 0.625,
+        budget_calculated_at: updated,
       },
       ...(requestedState === "weekly-only"
         ? []
@@ -68,6 +74,8 @@ const snapshot: CardSnapshot = {
               resets_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
               reached: false,
               entity_id: null,
+              budget_pph: 1.1,
+              budget_calculated_at: updated,
             },
           ]),
     ],
@@ -82,7 +90,16 @@ const snapshot: CardSnapshot = {
       resets_at: null,
       reached: false,
     },
-    reset_credits: { available_count: 1, total_earned: 3, next_expiry: null },
+    reset_credits: {
+      available_count: 1,
+      total_earned: 3,
+      next_expiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      count_source: "usage",
+      count_updated_at: updated,
+      details_consistent: true,
+      details_present: true,
+      details_updated_at: updated,
+    },
     profile: {
       lifetime_tokens: 2860000000,
       peak_daily_tokens: 184000000,
@@ -96,13 +113,57 @@ const snapshot: CardSnapshot = {
       most_used_reasoning_effort: "high",
       most_used_reasoning_effort_percentage: 72,
     },
+    limit_summary: {
+      reached: requestedState === "blocked",
+      reason: requestedState === "blocked" ? "usage_limit" : "none",
+      affected_limits: requestedState === "blocked" ? ["codex:primary:five_hour"] : [],
+      affected_limits_truncated: false,
+    },
+    sources: {
+      usage: {
+        state: "ok",
+        last_attempt: updated,
+        last_success: updated,
+        retry_at: null,
+        error_code: null,
+        refresh_mode: "poll",
+        expected_interval_seconds: 300,
+      },
+      profile: {
+        state: "ok",
+        last_attempt: updated,
+        last_success: updated,
+        retry_at: null,
+        error_code: null,
+        refresh_mode: "poll",
+        expected_interval_seconds: 3600,
+      },
+      reset_details: {
+        state: "ok",
+        last_attempt: updated,
+        last_success: updated,
+        retry_at: null,
+        error_code: null,
+        refresh_mode: "poll",
+        expected_interval_seconds: 3600,
+      },
+      workspace_discovery: {
+        state: "ok",
+        last_attempt: updated,
+        last_success: updated,
+        retry_at: null,
+        error_code: null,
+        refresh_mode: "on_auth",
+        expected_interval_seconds: null,
+      },
+    },
   })),
 };
 
 const hass: HomeAssistant = {
   states: {},
-  language: "en",
-  locale: { language: "en-US" },
+  language,
+  locale: { language: language === "de" ? "de-DE" : "en-US" },
   async callWS<T>(): Promise<T> {
     return structuredClone(snapshot) as T;
   },
@@ -117,6 +178,10 @@ const card = document.createElement("codex-usage-card") as HTMLElement & {
   hass: HomeAssistant;
   setConfig(config: Record<string, unknown>): void;
 };
-card.setConfig({ type: "custom:codex-usage-card", compact });
+card.setConfig({
+  type: "custom:codex-usage-card",
+  compact,
+  ...(showSources ? { sections: { sources: { visible: true, values: {} } } } : {}),
+});
 card.hass = hass;
 document.body.append(card);

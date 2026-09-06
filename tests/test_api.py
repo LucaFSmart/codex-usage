@@ -620,6 +620,32 @@ def test_explicit_spend_limit_signal_sets_safe_blocker_reason() -> None:
     assert data.blocker_reason == "spend"
 
 
+@pytest.mark.parametrize(
+    ("top_level", "nested", "expected"),
+    (
+        (True, None, True),
+        (True, False, True),
+        (False, True, True),
+        (False, None, False),
+        (None, False, False),
+        (None, None, None),
+    ),
+)
+def test_spend_restriction_combines_explicit_sources_with_true_precedence(
+    top_level: bool | None, nested: bool | None, expected: bool | None
+) -> None:
+    payload: dict[str, object] = {"spend_control": {}}
+    if top_level is not None:
+        payload["spend_limit_reached"] = top_level
+    if nested is not None:
+        payload["spend_control"] = {"reached": nested}
+
+    data = parse_usage(payload)
+
+    assert data.spend_limit_reached is expected
+    assert data.blocker_reason == ("spend" if expected is True else None)
+
+
 def test_explicit_credit_limit_signal_sets_safe_blocker_reason() -> None:
     data = parse_usage(
         {
@@ -887,7 +913,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "X-OpenAI-Fedramp": "true",
     }
 
@@ -985,7 +1011,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1010,7 +1036,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "Cache-Control": "no-store",
     }
 

@@ -21,6 +21,7 @@ import aiohttp
 
 from .const import (
     ACCOUNTS_API_URL,
+    CARD_VERSION,
     DEVICE_CODE_URL,
     DEVICE_TOKEN_URL,
     DEVICE_VERIFICATION_URL,
@@ -34,7 +35,7 @@ from .const import (
 from .retry import retry_deadline
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.6.5"
+USER_AGENT = f"HomeAssistant-CodexUsage/{CARD_VERSION}"
 MAX_ADDITIONAL_RATE_LIMITS = 50
 
 
@@ -625,8 +626,13 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         else None
     )
     if isinstance(spend_payload, dict):
-        spend_reached = (
+        nested_spend_reached = (
             spend_payload.get("reached") if isinstance(spend_payload.get("reached"), bool) else None
+        )
+        spend_reached = (
+            True
+            if spend_reached is True or nested_spend_reached is True
+            else (False if spend_reached is False or nested_spend_reached is False else None)
         )
         item = spend_payload.get("individual_limit")
         if isinstance(item, dict):

@@ -205,6 +205,7 @@ export class CodexUsageCardEditor extends LitElement {
     if (section === "credits") {
       return [
         { key: "balance", label: this.t("balance") },
+        { key: "unlimited", label: this.t("unlimited") },
         { key: "reset_credits", label: this.t("resetCredits") },
         { key: "total_earned", label: this.t("totalEarned") },
         { key: "next_expiry", label: this.t("nextExpiry") },
