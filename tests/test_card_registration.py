@@ -303,6 +303,8 @@ def test_two_entries_share_registration_until_final_unload() -> None:
     registration.async_register.assert_awaited_once()
     registration.async_unregister.assert_awaited_once()
     assert hass.data[DOMAIN]["loaded_entry_ids"] == set()
+    for entry in entries:
+        entry.add_update_listener.assert_not_called()
 
 
 def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> None:

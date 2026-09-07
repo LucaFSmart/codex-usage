@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
-      - run: pip install homeassistant==2026.8.3 pytest ruff
+      - run: pip install homeassistant==2026.9.1 pytest ruff
       - run: ruff format --check .
       - run: ruff check .
       - run: pytest
@@ -42,8 +42,8 @@ jobs:
         include:
           - ha_version: "2026.3.0"
             harness: ""
-          - ha_version: "2026.8.3"
-            harness: "pytest-homeassistant-custom-component==0.13.357"
+          - ha_version: "2026.9.1"
+            harness: "pytest-homeassistant-custom-component==0.13.364"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0

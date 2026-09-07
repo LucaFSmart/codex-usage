@@ -113,7 +113,7 @@ Diagnostics are available from **Settings → Devices & services → Codex Usage
 ```bash
 python -m venv .venv
 .venv/Scripts/activate
-pip install homeassistant==2026.8.3 pytest ruff
+pip install homeassistant==2026.9.1 pytest ruff
 ruff format --check .
 ruff check .
 pytest

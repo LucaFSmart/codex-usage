@@ -10,9 +10,11 @@ Large consistency, resilience and dashboard update.
 - Normalize main and feature-specific blockers without marking unrelated limits exhausted; preserve ambiguous and newly discovered provider windows safely.
 - Reconcile saved-reset counts and expiry details across sources, including changed reset dates after banked resets.
 - Isolate optional profile/reset reads, honor provider cooldowns across usage and token refresh, and expose safe source status and last-success timestamps.
+- Accept reauthentication when an optional user claim appears or disappears while still rejecting a different verified user, and preserve the entry's established unique ID.
+- Use Home Assistant's automatic options-flow reload without the update-listener pattern that becomes invalid in Home Assistant 2026.12.
 - Add disabled-by-default usage-budget and diagnostic entities, correct Recorder metadata for aggregate statistics, and preserve existing entity identities.
 - Add an optional persisted-hysteresis warning Blueprint, focused guides, upgrade notes and responsive card screenshots.
-- Validate the full integration against Home Assistant 2026.3.0 and 2026.8.3 and expand frontend unit, coverage and Playwright checks.
+- Validate the full integration against Home Assistant 2026.3.0 and 2026.9.1 and expand frontend unit, coverage and Playwright checks.
 
 ## 0.6.5 - 2026-08-30
 

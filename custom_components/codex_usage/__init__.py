@@ -64,7 +64,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: hass.bus.async_fire(EVENT_CARD_DATA_UPDATED))
     )
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     domain_data = hass.data.setdefault(DOMAIN, {})
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
@@ -101,10 +100,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
             except Exception:  # noqa: BLE001
                 _LOGGER.warning("Unable to unregister the Codex Usage Lovelace card", exc_info=True)
     return True
-
-
-async def _async_update_listener(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> None:
-    """Reload so optional caches, source states and schedules match the options."""
-    if entry.runtime_data._loaded_options == dict(entry.options):
-        return
-    await hass.config_entries.async_reload(entry.entry_id)

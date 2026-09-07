@@ -180,7 +180,10 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
                 return_value=None,
             ),
         ):
-            hass.config_entries.async_update_entry(entry, options={CONF_UPDATE_INTERVAL: 60})
+            options_flow = await hass.config_entries.options.async_init(entry.entry_id)
+            await hass.config_entries.options.async_configure(
+                options_flow["flow_id"], {CONF_UPDATE_INTERVAL: 60}
+            )
             await hass.async_block_till_done()
         assert entry.runtime_data is not previous_coordinator
         assert entry.runtime_data.update_interval == timedelta(seconds=60)

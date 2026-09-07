@@ -11,11 +11,13 @@
 - Public copy now describes shared eligible-agent allowances and reports reached-limit classifications without claiming that every action is blocked. Negative provider credit balances remain valid account states rather than being clamped to zero.
 - Provider `Retry-After` for HTTP 429 and 503 is honored across usage, optional reads and credential refresh. Manual refresh cannot bypass the cooldown.
 - Optional profile and reset failures are isolated from main usage. Source state, last success and safe error categories are available without exposing raw responses.
+- Reauthentication tolerates optional user-claim drift while preserving the configured workspace and stable entry identity; a different verified user is still rejected.
+- Options changes use Home Assistant's supported automatic reload flow, avoiding the update-listener/reloading combination removed in Home Assistant 2026.12.
 - New disabled-by-default usage-budget sensors show remaining percentage points per hour. The card converts long windows to pp/day and suppresses stale or invalid calculations.
 - Four disabled diagnostic timestamp sensors expose the last successful usage, profile, reset-detail and workspace-discovery observations.
 - The documentation distinguishes the WHAM HTTP transport used by this integration from OpenAI's separately documented experimental Codex App Server RPC interface.
 - An optional warning Blueprint provides persisted hysteresis with a user-selected action and Toggle helper.
-- Recorder metadata for aggregate counters was corrected, English canonical strings were added, and tests now cover Home Assistant 2026.3.0 and 2026.8.3.
+- Recorder metadata for aggregate counters was corrected, English canonical strings were added, and tests now cover Home Assistant 2026.3.0 and 2026.9.1.
 
 Read [upgrading to 0.7](upgrading-to-0.7.md) before updating. Installation, entity, card, automation, privacy and troubleshooting guides are linked from the [README](../README.md).
 

@@ -7,7 +7,13 @@ from datetime import UTC, datetime
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+    OptionsFlowWithReload,
+)
 from homeassistant.core import callback
 from homeassistant.helpers import aiohttp_client
 
@@ -160,8 +166,16 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if reauth:
             entry = self._reauth_entry or self._get_reauth_entry()
-            if credentials.user_id != entry.data.get(CONF_USER_ID):
+            existing_user_id = entry.data.get(CONF_USER_ID)
+            if (
+                isinstance(existing_user_id, str)
+                and existing_user_id
+                and credentials.user_id
+                and credentials.user_id != existing_user_id
+            ):
                 return self.async_abort(reason="wrong_account")
+            if not credentials.user_id and isinstance(existing_user_id, str) and existing_user_id:
+                credentials = replace(credentials, user_id=existing_user_id)
             existing_account = entry.data.get(CONF_ACCOUNT_ID)
             matching = next(
                 (account for account in accounts if account.account_id == existing_account), None
@@ -223,14 +237,15 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         except CodexApiError:
             return self.async_abort(reason="unknown")
 
-        await self.async_set_unique_id(self._unique_id(credentials))
         entry_data = credentials_to_entry_data(credentials)
         if self._workspace_discovered_at is not None:
             entry_data[CONF_WORKSPACE_DISCOVERY] = self._workspace_discovered_at.isoformat()
         if reauth:
             entry = self._reauth_entry or self._get_reauth_entry()
+            await self.async_set_unique_id(entry.unique_id)
             self._abort_if_unique_id_mismatch()
             return self.async_update_reload_and_abort(entry, data_updates=entry_data)
+        await self.async_set_unique_id(self._unique_id(credentials))
         self._abort_if_unique_id_configured()
         title = name or "Codex Usage"
         return self.async_create_entry(
@@ -256,7 +271,7 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         return CodexUsageOptionsFlow()
 
 
-class CodexUsageOptionsFlow(OptionsFlow):
+class CodexUsageOptionsFlow(OptionsFlowWithReload):
     """Handle Codex Usage options."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
