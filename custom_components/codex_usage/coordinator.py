@@ -136,6 +136,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         self.sources = initial_sources()
         self._read_retry_at: datetime | None = None
         self._usage_retry_at: datetime | None = None
+        self._profile_retry_at: datetime | None = None
         discovery = entry.data.get(CONF_WORKSPACE_DISCOVERY)
         if isinstance(discovery, str):
             try:
@@ -202,10 +203,6 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
 
     async def _async_fetch_data(self) -> CodexCoordinatorData:
         attempted_at = datetime.now(UTC)
-        if not hasattr(self, "sources"):
-            self.sources = initial_sources()
-            self._reset_reconciled_context = None
-            self._reset_context_changed_at = None
         interval = self.config_entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         self.client.on_credentials_refresh = self._persist_credentials
         for source, option, payload in (
@@ -218,8 +215,8 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         deadlines = [
             (value, error_code)
             for value, error_code in (
-                (getattr(self, "_read_retry_at", None), "rate_limited"),
-                (getattr(self, "_usage_retry_at", None), "http_error"),
+                (self._read_retry_at, "rate_limited"),
+                (self._usage_retry_at, "http_error"),
             )
             if value is not None and value > attempted_at
         ]
@@ -308,7 +305,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     expected_interval_seconds=PROFILE_UPDATE_SECONDS,
                 )
                 if err.status == 429:
-                    self._read_retry_at = deadline
+                    self._profile_retry_at = deadline
             except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
                 # Profile statistics are optional. A temporary failure must not make
                 # the independently fetched limit sensors unavailable.
@@ -330,7 +327,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
         if (
             self.sources["reset_details"].state != "disabled"
             and now >= self._reset_next_attempt
-            and not (getattr(self, "_read_retry_at", None) and self._read_retry_at > refreshed_at)
+            and not (self._profile_retry_at and self._profile_retry_at > refreshed_at)
         ):
             try:
                 self._reset_credits = await self.client.async_get_reset_credits(self.credentials)
@@ -355,8 +352,6 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     "rate_limited" if err.status == 429 else "http_error",
                     expected_interval_seconds=PROFILE_UPDATE_SECONDS,
                 )
-                if err.status == 429:
-                    self._read_retry_at = deadline
             except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:
                 self._reset_last_error = type(err).__name__
                 self._reset_next_attempt = now + PROFILE_RETRY_SECONDS

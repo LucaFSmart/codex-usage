@@ -89,6 +89,14 @@ def _safe_data(data: Any) -> dict[str, Any]:
             "reason": restriction.reason,
             "affected_limit_count": len(restriction.affected_limits),
             "affected_limits_truncated": restriction.affected_limits_truncated,
+            **(
+                {
+                    "fallback_available": restriction.fallback_available,
+                    "fallback_limit_id": restriction.fallback_limit_id,
+                }
+                if restriction.fallback_limit_id
+                else {}
+            ),
         },
         "duplicate_limit_ids": usage.duplicate_limit_ids,
         "conflicting_windows": usage.conflicting_windows,

@@ -68,6 +68,7 @@ export function isSectionVisible(
   key: SectionKey,
   visible: boolean | "auto",
   account: AccountViewModel,
+  now: Date,
 ): boolean {
   if (visible !== "auto") return visible;
   switch (key) {
@@ -85,7 +86,7 @@ export function isSectionVisible(
       );
     case "sources":
       return Object.values(account.sources ?? {}).some((source) =>
-        isActionablyStaleSource(source, new Date()),
+        isActionablyStaleSource(source, now),
       );
     default:
       return true;
@@ -103,9 +104,14 @@ function accountModel(
     severity: evaluateLimit(item.used_percent, item.reached, config.thresholds),
     pace: pace(item, now),
   }));
+  const reserveFallback =
+    account.limit_summary?.reason === "usage_limit" &&
+    account.limit_summary.fallback_available === true;
   const severity: Severity =
     account.blocker !== null || account.limit_summary?.reached === true
-      ? "blocked"
+      ? reserveFallback
+        ? "critical"
+        : "blocked"
       : worstSeverity(limits.map((item) => item.severity));
   return {
     ...account,

@@ -66,6 +66,8 @@ class RestrictionSummary:
     reason: str
     affected_limits: tuple[str, ...]
     affected_limits_truncated: bool = False
+    fallback_available: bool | None = None
+    fallback_limit_id: str | None = None
 
 
 def _restricted(limit: RateLimit) -> bool | None:
@@ -88,7 +90,13 @@ def limit_statuses(usage: CodexUsageData) -> tuple[LimitStatus, ...]:
         )
     ]
     values.extend(
-        LimitStatus(x.limit_id, x.name[:120], "additional", x.allowed, _restricted(x))
+        LimitStatus(
+            x.limit_id,
+            x.name[:120],
+            "additional",
+            x.allowed,
+            _restricted(x),
+        )
         for x in usage.additional_limits
         if not any(id(window) in main_window_ids for _, window in x.windows)
     )
@@ -117,7 +125,29 @@ def restriction_summary(usage: CodexUsageData) -> RestrictionSummary:
     reached = (
         True if reason != "none" else (False if all(x.reached is False for x in statuses) else None)
     )
-    return RestrictionSummary(reached, reason, tuple(affected[:50]), len(affected) > 50)
+    reserve = next(
+        (
+            item
+            for item in statuses[1:]
+            if item.id == "base_model_inference" and item.name == "Luna Reserve"
+        ),
+        None,
+    )
+    fallback_available = None
+    fallback_limit_id = reserve.id if reserve else None
+    if reason == "usage_limit" and reserve:
+        if reserve.allowed is True and reserve.reached is False:
+            fallback_available = True
+        elif reserve.allowed is False or reserve.reached is True:
+            fallback_available = False
+    return RestrictionSummary(
+        reached,
+        reason,
+        tuple(affected[:50]),
+        len(affected) > 50,
+        fallback_available,
+        fallback_limit_id,
+    )
 
 
 @dataclass(frozen=True, slots=True)

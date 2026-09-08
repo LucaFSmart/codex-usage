@@ -18,6 +18,7 @@ from custom_components.codex_usage.api import (
     parse_usage,
 )
 from custom_components.codex_usage.coordinator import CodexUsageCoordinator
+from custom_components.codex_usage.monitoring import initial_sources
 
 
 def _credentials() -> CodexCredentials:
@@ -93,6 +94,12 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator._reset_available = None
     coordinator._reset_last_error = None
     coordinator._last_success = None
+    coordinator.sources = initial_sources()
+    coordinator._read_retry_at = None
+    coordinator._usage_retry_at = None
+    coordinator._profile_retry_at = None
+    coordinator._reset_reconciled_context = None
+    coordinator._reset_context_changed_at = None
     return coordinator
 
 
@@ -108,7 +115,8 @@ def test_disabled_optional_sources_skip_reads_and_keep_usage_reset_count():
     assert coordinator.sources["profile"].state == "disabled"
 
 
-def test_optional_429_stops_further_reads_and_manual_refresh():
+def test_optional_429_does_not_stop_core_usage_reads():
+    """A profile-endpoint 429 must not block the independently-fetched usage sensors."""
     from custom_components.codex_usage.api import CodexHttpError
 
     client = _FakeClient()
@@ -119,9 +127,14 @@ def test_optional_429_stops_further_reads_and_manual_refresh():
     assert data.usage is client.usage_result
     assert client.reset_calls == 0
     assert coordinator.sources["profile"].retry_at == until
-    with pytest.raises(UpdateFailed):
-        asyncio.run(coordinator._async_update_data())
-    assert client.usage_calls == 1
+
+    # Usage keeps updating on later cycles; only the rate-limited profile (and the
+    # reset_details read that voluntarily defers to it) stay backed off.
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.usage_calls == 2
+    assert client.profile_calls == 1
+    assert client.reset_calls == 0
 
 
 def test_optional_503_does_not_stop_other_endpoint():

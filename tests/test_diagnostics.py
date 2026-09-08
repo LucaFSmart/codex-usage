@@ -4,7 +4,7 @@ import asyncio
 from types import SimpleNamespace
 
 from custom_components.codex_usage.api import ResetCredit, ResetCredits, parse_usage
-from custom_components.codex_usage.diagnostics import async_get_config_entry_diagnostics
+from custom_components.codex_usage.diagnostics import _safe_data, async_get_config_entry_diagnostics
 
 
 def test_diagnostics_use_safe_allowlist() -> None:
@@ -93,3 +93,31 @@ def test_diagnostics_use_safe_allowlist() -> None:
     assert "future-entry-secret" not in rendered
     assert "future-option-secret" not in rendered
     assert "weekly" not in rendered
+
+
+def test_diagnostics_report_luna_fallback_without_model_metadata() -> None:
+    usage = parse_usage(
+        {
+            "rate_limit": {"allowed": False},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {"allowed": True},
+                }
+            ],
+        }
+    )
+
+    diagnostics = _safe_data(SimpleNamespace(usage=usage, reset_credits=None, reset_summary=None))
+
+    assert diagnostics["limit_summary"] == {
+        "reached": True,
+        "reason": "usage_limit",
+        "affected_limit_count": 1,
+        "affected_limits_truncated": False,
+        "fallback_available": True,
+        "fallback_limit_id": "base_model_inference",
+    }
+    assert "gpt-5.6-luna" not in repr(diagnostics)

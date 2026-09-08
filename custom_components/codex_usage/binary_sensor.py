@@ -97,11 +97,15 @@ class CodexUsageBinarySensor(CodexUsageEntity, BinarySensorEntity):
         if self.entity_description.key != "limit_reached":
             return None
         value = restriction_summary(self.coordinator.data.usage)
-        return {
+        attributes: dict[str, object] = {
             "reason": value.reason,
             "affected_limits": list(value.affected_limits),
             "affected_limits_truncated": value.affected_limits_truncated,
         }
+        if value.fallback_limit_id:
+            attributes["fallback_available"] = value.fallback_available
+            attributes["fallback_limit_id"] = value.fallback_limit_id
+        return attributes
 
     @property
     def available(self) -> bool:

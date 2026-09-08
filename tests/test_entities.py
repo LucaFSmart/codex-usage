@@ -7,7 +7,7 @@ from unittest.mock import patch
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 
 from custom_components.codex_usage.api import parse_usage
-from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
+from custom_components.codex_usage.binary_sensor import BINARY_SENSORS, CodexUsageBinarySensor
 from custom_components.codex_usage.entity import CodexUsageEntity
 from custom_components.codex_usage.monitoring import SourceState
 from custom_components.codex_usage.sensor import (
@@ -160,6 +160,70 @@ def test_dynamic_limit_name_uses_translation_key_and_neutral_duration_placeholde
         )
     assert entity._attr_translation_key == "dynamic_limit_usage"
     assert entity._attr_translation_placeholders == {"limit_name": "Images", "duration": "90 min"}
+
+
+def test_dynamic_limit_attributes_expose_safe_quota_metadata() -> None:
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {
+                        "allowed": True,
+                        "limit_reached": False,
+                        "primary_window": {
+                            "used_percent": 20,
+                            "limit_window_seconds": 18_000,
+                        },
+                    },
+                }
+            ]
+        }
+    )
+    coordinator = SimpleNamespace(data=SimpleNamespace(usage=usage))
+    entity = object.__new__(CodexAdditionalLimitSensor)
+    entity.coordinator = coordinator
+    entity._limit_id = "base_model_inference"
+    entity._window_name = "primary"
+    entity._metric = "usage"
+
+    assert entity.extra_state_attributes == {
+        "allowed": True,
+        "limit_reached": False,
+        "normal_model_slug": "gpt-5.6-luna",
+    }
+
+    entity._metric = "remaining"
+    assert entity.extra_state_attributes is None
+
+
+def test_limit_reached_entity_keeps_regular_limit_on_and_explains_luna_fallback() -> None:
+    usage = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                }
+            ],
+        }
+    )
+    entity = object.__new__(CodexUsageBinarySensor)
+    entity.coordinator = SimpleNamespace(data=SimpleNamespace(usage=usage))
+    entity.entity_description = next(item for item in BINARY_SENSORS if item.key == "limit_reached")
+
+    assert entity.is_on is True
+    assert entity.extra_state_attributes == {
+        "reason": "usage_limit",
+        "affected_limits": ["codex"],
+        "affected_limits_truncated": False,
+        "fallback_available": True,
+        "fallback_limit_id": "base_model_inference",
+    }
 
 
 def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:

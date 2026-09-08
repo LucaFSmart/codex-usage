@@ -1,9 +1,13 @@
 """Pure allocation budgets, expressed in percentage points per hour."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import isfinite
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from .const import DEFAULT_UPDATE_INTERVAL
 
 if TYPE_CHECKING:
     from .api import CodexUsageData, RateLimit, RateLimitWindow
@@ -134,3 +138,25 @@ def cached_budget_is_valid(
         )
         is not None
     )
+
+
+def current_budget(
+    coordinator: Any, key: str, window: RateLimitWindow | None, *, now: datetime
+) -> UsageBudget | None:
+    """Return the coordinator's still-valid canonical budget for a limit window."""
+    budget = getattr(coordinator.data, "budgets", {}).get(key)
+    if budget is None:
+        return None
+    interval = getattr(coordinator, "update_interval", None)
+    interval_seconds = (
+        interval.total_seconds() if isinstance(interval, timedelta) else DEFAULT_UPDATE_INTERVAL
+    )
+    if not cached_budget_is_valid(
+        window,
+        now=now,
+        last_success=getattr(coordinator, "last_success", None),
+        update_interval_seconds=interval_seconds,
+        core_available=bool(getattr(coordinator, "last_update_success", False)),
+    ):
+        return None
+    return budget

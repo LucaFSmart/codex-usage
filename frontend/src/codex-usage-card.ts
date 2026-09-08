@@ -188,7 +188,13 @@ export class CodexUsageCard extends LitElement {
     return this.hass?.locale?.language ?? this.hass?.language;
   }
 
-  private statusLabel(severity: Severity): string {
+  private statusLabel(severity: Severity, account?: AccountViewModel | null): string {
+    if (
+      account?.limit_summary?.reason === "usage_limit" &&
+      account.limit_summary.fallback_available === true
+    ) {
+      return this.t("severityReserveFallback");
+    }
     return this.t(STATUS_LABEL_KEY[severity]);
   }
 
@@ -237,6 +243,12 @@ export class CodexUsageCard extends LitElement {
     if (account.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
     if (account.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
     if (account.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
+    if (
+      account.limit_summary?.reason === "usage_limit" &&
+      account.limit_summary.fallback_available === true
+    ) {
+      return this.t("regularUsageReachedReserveAvailable");
+    }
     if (account.limit_summary?.reason === "additional_limit") {
       const restricted = account.limit_statuses?.find((item) => item.reached === true);
       return restricted
@@ -304,7 +316,7 @@ export class CodexUsageCard extends LitElement {
         pace: null,
       },
       {
-        id: "codex:primary:weekly",
+        id: "codex:secondary:weekly",
         name: "Codex",
         source: "main",
         duration_seconds: 604_800,
@@ -320,17 +332,21 @@ export class CodexUsageCard extends LitElement {
     const reported = account.limits.filter((item) => item.source === "main");
     const selected = new Set<string>();
     const standard = defaults.flatMap((slot) => {
+      const compatibleIds =
+        slot.duration_seconds === 604_800 ? [slot.id, "codex:primary:weekly"] : [slot.id];
       const match =
         reported.find((item) => item.id === slot.id) ??
         reported.find(
           (item) => !selected.has(item.id) && item.duration_seconds === slot.duration_seconds,
         );
-      if (!match) {
-        return this.config.sections.limits.values[slot.id] === false ? [] : [slot];
-      }
+      if (!match)
+        return compatibleIds.some((id) => this.config.sections.limits.values[id] === false)
+          ? []
+          : [slot];
       selected.add(match.id);
-      return this.config.sections.limits.values[slot.id] === false ||
-        this.config.sections.limits.values[match.id] === false
+      return [...compatibleIds, match.id].some(
+        (id) => this.config.sections.limits.values[id] === false,
+      )
         ? []
         : [match];
     });
@@ -420,7 +436,8 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderBudgetRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("budget", this.config.sections.budget.visible, account)) return nothing;
+    if (!isSectionVisible("budget", this.config.sections.budget.visible, account, this.now))
+      return nothing;
     const rows =
       account.stale || !account.available
         ? []
@@ -465,7 +482,8 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderSources(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("sources", this.config.sections.sources.visible, account)) return nothing;
+    if (!isSectionVisible("sources", this.config.sections.sources.visible, account, this.now))
+      return nothing;
     const labels: Record<string, TranslationKey> = {
       usage: "sourceUsage",
       profile: "sourceProfile",
@@ -509,6 +527,7 @@ export class CodexUsageCard extends LitElement {
         "additional_limits",
         this.config.sections.additional_limits.visible,
         account,
+        this.now,
       )
     ) {
       return nothing;
@@ -539,7 +558,7 @@ export class CodexUsageCard extends LitElement {
     if (
       !account.reset_credits ||
       !this.valueVisible("credits", "reset_credits") ||
-      !isSectionVisible("credits", this.config.sections.credits.visible, account)
+      !isSectionVisible("credits", this.config.sections.credits.visible, account, this.now)
     )
       return nothing;
     const count = account.reset_credits.available_count;
@@ -554,7 +573,8 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderCreditsRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("credits", this.config.sections.credits.visible, account)) return nothing;
+    if (!isSectionVisible("credits", this.config.sections.credits.visible, account, this.now))
+      return nothing;
     if (!account.credits) {
       return account.reset_credits && this.valueVisible("credits", "reset_credits")
         ? nothing
@@ -595,7 +615,7 @@ export class CodexUsageCard extends LitElement {
 
   private renderResetCreditsRows(account: AccountViewModel): TemplateResult | typeof nothing {
     if (
-      !isSectionVisible("credits", this.config.sections.credits.visible, account) ||
+      !isSectionVisible("credits", this.config.sections.credits.visible, account, this.now) ||
       !account.reset_credits ||
       !this.valueVisible("credits", "reset_credits")
     ) {
@@ -633,7 +653,7 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderSpendingRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("spending", this.config.sections.spending.visible, account))
+    if (!isSectionVisible("spending", this.config.sections.spending.visible, account, this.now))
       return nothing;
     if (!account.spend) return this.emptyOptional("spending");
     const spend = account.spend;
@@ -715,7 +735,8 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderProfileRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("profile", this.config.sections.profile.visible, account)) return nothing;
+    if (!isSectionVisible("profile", this.config.sections.profile.visible, account, this.now))
+      return nothing;
     if (!account.profile) return this.emptyOptional("profile");
     const rows = PROFILE_FIELDS.flatMap((field) => {
       if (!this.valueVisible("profile", field.key)) return [];
@@ -748,7 +769,8 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderAccountRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("account", this.config.sections.account.visible, account)) return nothing;
+    if (!isSectionVisible("account", this.config.sections.account.visible, account, this.now))
+      return nothing;
     const rows: TemplateResult[] = [];
     if (this.valueVisible("account", "plan") && account.plan) {
       rows.push(
@@ -842,7 +864,10 @@ export class CodexUsageCard extends LitElement {
             ${subtitle ? html`<p>${subtitle}</p>` : nothing}
           </div>
           <span class="status"
-            >${multipleAccounts ? `${this.t("overall")} · ` : ""}${this.statusLabel(severity)}</span
+            >${multipleAccounts ? `${this.t("overall")} · ` : ""}${this.statusLabel(
+              severity,
+              multipleAccounts ? null : account,
+            )}</span
           >
         </header>
         ${

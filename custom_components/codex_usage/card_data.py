@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -15,8 +15,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .api import RateLimit, RateLimitWindow
-from .budget import UsageBudget, budget_key, cached_budget_is_valid
-from .const import CARD_VERSION, DEFAULT_UPDATE_INTERVAL, DOMAIN
+from .budget import UsageBudget, budget_key, current_budget
+from .const import CARD_VERSION, DOMAIN
 from .entry_title import safe_entry_title
 from .monitoring import limit_statuses, reset_summary, restriction_summary
 
@@ -100,11 +100,11 @@ def _limits(
                 window,
                 source="main",
                 entity_id=entity_ids.get(unique_id) if unique_id else None,
-                budget=_current_budget(
+                budget=current_budget(
                     coordinator,
                     budget_key(usage.main_limit, position, window, source="main"),
                     window,
-                    now,
+                    now=now,
                 ),
             )
         )
@@ -120,37 +120,15 @@ def _limits(
                     window,
                     source="additional",
                     entity_id=entity_ids.get(unique_id) if unique_id else None,
-                    budget=_current_budget(
+                    budget=current_budget(
                         coordinator,
                         budget_key(limit, position, window, source="additional"),
                         window,
-                        now,
+                        now=now,
                     ),
                 )
             )
     return result
-
-
-def _current_budget(
-    coordinator: Any, key: str, window: RateLimitWindow, now: datetime
-) -> UsageBudget | None:
-    """Return only the coordinator's still-valid canonical budget."""
-    budget = getattr(coordinator.data, "budgets", {}).get(key)
-    if budget is None:
-        return None
-    interval = getattr(coordinator, "update_interval", None)
-    interval_seconds = (
-        interval.total_seconds() if isinstance(interval, timedelta) else DEFAULT_UPDATE_INTERVAL
-    )
-    if not cached_budget_is_valid(
-        window,
-        now=now,
-        last_success=getattr(coordinator, "last_success", None),
-        update_interval_seconds=interval_seconds,
-        core_available=bool(getattr(coordinator, "last_update_success", False)),
-    ):
-        return None
-    return budget
 
 
 def _active_entity_ids(hass: HomeAssistant) -> dict[str, str]:
@@ -201,6 +179,7 @@ def _account_payload(
         usage_updated_at=getattr(coordinator, "last_success", None),
         details_updated_at=getattr(coordinator, "reset_last_success", now),
     )
+    restriction = restriction_summary(usage)
     return {
         "id": entry.entry_id,
         "name": safe_entry_title(entry),
@@ -208,10 +187,29 @@ def _account_payload(
         "available": bool(coordinator.last_update_success),
         "updated_at": _iso(getattr(coordinator, "last_success", None)),
         "blocker": usage.blocker_reason,
-        "limit_statuses": [asdict(item) for item in limit_statuses(usage)],
+        "limit_statuses": [
+            {
+                "id": item.id,
+                "name": item.name,
+                "source": item.source,
+                "allowed": item.allowed,
+                "reached": item.reached,
+            }
+            for item in limit_statuses(usage)
+        ],
         "limit_summary": {
-            **asdict(restriction_summary(usage)),
-            "affected_limits": list(restriction_summary(usage).affected_limits),
+            "reached": restriction.reached,
+            "reason": restriction.reason,
+            "affected_limits": list(restriction.affected_limits),
+            "affected_limits_truncated": restriction.affected_limits_truncated,
+            **(
+                {
+                    "fallback_available": restriction.fallback_available,
+                    "fallback_limit_id": restriction.fallback_limit_id,
+                }
+                if restriction.fallback_limit_id
+                else {}
+            ),
         },
         "sources": {
             key: _source_payload(value)
@@ -261,6 +259,7 @@ def _account_payload(
             }
             if normalized_reset.available_count is not None
             or normalized_reset.total_earned is not None
+            or normalized_reset.details_present
             else None
         ),
         "profile": asdict(data.profile) if data.profile else None,

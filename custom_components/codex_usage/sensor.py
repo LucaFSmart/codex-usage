@@ -21,8 +21,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CodexUsageConfigEntry
 from .api import CodexProfileStats, CodexUsageData, RateLimit, RateLimitWindow
-from .budget import budget_key, cached_budget_is_valid
-from .const import CONF_ACCOUNT_ID, DEFAULT_UPDATE_INTERVAL
+from .budget import budget_key, current_budget
+from .const import CONF_ACCOUNT_ID
 from .coordinator import CodexUsageCoordinator
 from .diagnostic_sensor import source_timestamp_entities
 from .entity import CodexUsageEntity
@@ -388,7 +388,8 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
         if self.entity_description.key in ("five_hour_budget", "weekly_budget"):
             window_key = self.entity_description.key.removesuffix("_budget")
             window = getattr(self.coordinator.data.usage, f"{window_key}_window")
-            return _cached_budget_value(self.coordinator, window_key, window)
+            budget = current_budget(self.coordinator, window_key, window, now=datetime.now(UTC))
+            return budget.budget_pph if budget else None
         return self.entity_description.value_fn(self.coordinator.data.usage)
 
     @property
@@ -431,8 +432,8 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_suggested_display_precision = 0
 
-    def _window(self) -> RateLimitWindow | None:
-        limit: RateLimit | None = next(
+    def _limit(self) -> RateLimit | None:
+        return next(
             (
                 item
                 for item in self.coordinator.data.usage.additional_limits
@@ -440,7 +441,23 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
             ),
             None,
         )
+
+    def _window(self) -> RateLimitWindow | None:
+        limit = self._limit()
         return getattr(limit, self._window_name) if limit else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        limit = self._limit()
+        if limit is None or self._metric != "usage":
+            return None
+        attributes: dict[str, object] = {
+            "allowed": limit.allowed,
+            "limit_reached": limit.limit_reached,
+        }
+        if limit.normal_model_slug:
+            attributes["normal_model_slug"] = limit.normal_model_slug
+        return attributes
 
     @property
     def native_value(self) -> datetime | float | Decimal | None:
@@ -462,7 +479,8 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
                 window,
                 source="additional",
             )
-            return _cached_budget_value(self.coordinator, key, window)
+            budget = current_budget(self.coordinator, key, window, now=datetime.now(UTC))
+            return budget.budget_pph if budget else None
         return window.resets_at
 
     @property
@@ -480,28 +498,6 @@ def _duration_placeholder(window: RateLimitWindow | None) -> str:
     if minutes % 60 == 0:
         return f"{minutes // 60} h"
     return f"{minutes} min"
-
-
-def _cached_budget_value(
-    coordinator: CodexUsageCoordinator, key: str, window: RateLimitWindow | None
-) -> float | None:
-    """Return the stored observation while its source tuple remains usable."""
-    budget = getattr(coordinator.data, "budgets", {}).get(key)
-    if budget is None:
-        return None
-    interval = getattr(coordinator, "update_interval", None)
-    interval_seconds = (
-        interval.total_seconds() if isinstance(interval, timedelta) else DEFAULT_UPDATE_INTERVAL
-    )
-    if not cached_budget_is_valid(
-        window,
-        now=datetime.now(UTC),
-        last_success=getattr(coordinator, "last_success", None),
-        update_interval_seconds=interval_seconds,
-        core_available=bool(getattr(coordinator, "last_update_success", False)),
-    ):
-        return None
-    return budget.budget_pph
 
 
 class CodexProfileSensor(CodexUsageEntity, SensorEntity):

@@ -122,6 +122,94 @@ def test_main_aliases_are_not_additional_statuses():
     assert monitoring.restriction_summary(usage).affected_limits == ("codex",)
 
 
+def test_luna_reserve_reports_fallback_without_clearing_the_regular_limit() -> None:
+    usage = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                }
+            ],
+        }
+    )
+
+    result = monitoring.restriction_summary(usage)
+    assert result.reached is True
+    assert result.reason == "usage_limit"
+    assert result.affected_limits == ("codex",)
+    assert result.fallback_available is True
+    assert result.fallback_limit_id == "base_model_inference"
+
+
+def test_luna_reserve_absence_or_unknown_state_does_not_claim_fallback() -> None:
+    absent = monitoring.restriction_summary(
+        parse_usage({"rate_limit": {"allowed": False, "limit_reached": True}})
+    )
+    unknown = monitoring.restriction_summary(
+        parse_usage(
+            {
+                "rate_limit": {"allowed": False, "limit_reached": True},
+                "additional_rate_limits": [
+                    {
+                        "metered_feature": "base_model_inference",
+                        "limit_name": "gpt-reserve",
+                        "rate_limit": {},
+                    }
+                ],
+            }
+        )
+    )
+
+    assert absent.fallback_available is None
+    assert absent.fallback_limit_id is None
+    assert unknown.fallback_available is None
+    assert unknown.fallback_limit_id == "base_model_inference"
+
+
+def test_exhausted_luna_reserve_is_reported_as_unavailable() -> None:
+    result = monitoring.restriction_summary(
+        parse_usage(
+            {
+                "rate_limit": {"allowed": False, "limit_reached": True},
+                "additional_rate_limits": [
+                    {
+                        "metered_feature": "base_model_inference",
+                        "limit_name": "gpt-reserve",
+                        "rate_limit": {"allowed": False, "limit_reached": True},
+                    }
+                ],
+            }
+        )
+    )
+
+    assert result.fallback_available is False
+    assert result.fallback_limit_id == "base_model_inference"
+
+
+def test_future_base_model_bucket_is_not_mislabeled_as_luna_reserve() -> None:
+    result = monitoring.restriction_summary(
+        parse_usage(
+            {
+                "rate_limit": {"allowed": False},
+                "additional_rate_limits": [
+                    {
+                        "metered_feature": "base_model_inference",
+                        "limit_name": "future-quota",
+                        "rate_limit": {"allowed": True},
+                    }
+                ],
+            }
+        )
+    )
+
+    assert result.fallback_available is None
+    assert result.fallback_limit_id is None
+
+
 def test_real_codex_prefixed_additional_limit_is_not_treated_as_main_alias():
     usage = parse_usage(
         {

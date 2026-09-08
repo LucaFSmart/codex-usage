@@ -19,6 +19,7 @@ Codex Usage is a read-only Home Assistant integration for reported Codex and oth
 - OpenAI device-code login without passwords, copied cookies or API keys
 - Multiple accounts/workspaces with stable Home Assistant entity identities
 - Reported five-hour, weekly and additional eligible-agent windows without a hard-coded plan matrix
+- Luna Reserve quota metadata when OpenAI reports the separate `base_model_inference` bucket
 - Consistent unknown, zero, stale, blocked and optional-source behavior
 - Saved-reset counts and reconciled expiry details, including banked-reset date changes
 - Provider cooldown handling for HTTP 429 and 503, token refresh and reauthentication
@@ -85,6 +86,8 @@ Read the [complete card guide](docs/card.md) for account selection, individual v
 Core plan, usage, remaining, reset, pace, available-reset and blocker entities are enabled when their corresponding main windows exist. Credits, spend control, profile aggregates, budgets and source timestamps are disabled by default. Additional feature-window entities are discovered from provider data and retain their identities if the feature later disappears.
 
 Unknown is never converted to zero. A named feature restriction remains visible without making unrelated healthy windows look exhausted. Optional profile/reset errors retain healthy main usage. Budget is a planning rate in percentage points per hour or day, calculated from one successful observation and hidden when stale or invalid.
+
+For selected eligible accounts, OpenAI may report Luna Reserve as a separate additional allowance after regular usage is exhausted. The integration labels the `gpt-reserve` quota as **Luna Reserve**, preserves its associated `normal_model_slug` on the dynamic usage sensor, and distinguishes an available fallback from a fully exhausted state in the card. Absence of this bucket does not prove that an account is ineligible. Codex Usage remains a passive monitor and does not advertise the client capability that authorizes an app to switch models automatically.
 
 See the [entity reference](docs/entities.md) for every key, unit, state class, default and absence rule.
 

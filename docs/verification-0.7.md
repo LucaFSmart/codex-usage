@@ -6,8 +6,8 @@ This file records the checks for the local 0.7 candidate. It is updated from fre
 
 | Target | Purpose | Result |
 | --- | --- | --- |
-| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 244 unit/component tests and 7 runtime/Blueprint tests passed |
-| Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 244 unit/component tests and 7 runtime/Blueprint tests passed |
+| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 254 unit/component, 4 Blueprint and 3 runtime tests passed |
+| Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 254 unit/component, 4 Blueprint and 3 runtime tests passed |
 | Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
 
 The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.9.1 Linux job additionally installs `pytest-homeassistant-custom-component==0.13.364`; local Windows verification uses the portable harness because the plugin imports the Unix-only `fcntl` module.
@@ -24,16 +24,16 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 ## Final evidence
 
 - Ruff format check and lint: passed for `custom_components`, `tests` and `tests_integration`.
-- Python: 244 unit/component tests and 7 runtime/Blueprint tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete, Recorder metadata creation/validation and Blueprint Script/helper execution.
-- Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 131 Vitest tests passed.
-- Frontend coverage: 97.02% statements, 94.3% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
+- Python: 254 unit/component tests, 4 Blueprint tests and 3 runtime tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. The Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
+- Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 137 Vitest tests passed.
+- Frontend coverage: 97.03% statements, 94.44% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
 - Dependency audit: zero vulnerabilities at npm's high severity threshold.
-- Vite production build: passed; bundle size 90.89 kB (23.84 kB gzip).
+- Vite production build: passed; bundle size 91.96 kB (24.18 kB gzip).
 - Playwright Chromium: 18 responsive, semantic-state and interaction tests passed from 320 to 1,200 pixels in light and dark modes.
 - Visual review: real card harness rendered and inspected as a wide English overview, wide English details and narrow German layout. Synthetic labels contain no provider account identifiers or credentials.
-- Markdown link check: 37 repository Markdown files checked with no missing relative targets.
+- Markdown link check: all 22 Git-tracked Markdown files checked with no missing relative targets.
 
-The committed-bundle reproducibility check passed after the candidate commit: a fresh Vite build produced no difference from the committed Home Assistant card bundle.
+The bundle reproducibility check passed: a repeated Vite build produced the same SHA-256 hash for the Home Assistant card bundle.
 
 HACS validation, hassfest and CodeQL are configured GitHub publication gates and remain pending until the branch is intentionally pushed. No live OpenAI credentials were used.
 

@@ -7,6 +7,7 @@
 - A redesigned bilingual card keeps the standard five-hour and weekly positions stable, uses neutral placeholders for missing values, and moves optional data into configurable sections.
 - Card configuration now controls each section and individual metric with Automatic, Always show and Hide modes. Source diagnostics remain hidden by default.
 - Main, additional, credit and spend blockers are normalized without making unrelated healthy windows appear exhausted.
+- Luna Reserve is recognized as a separate additional allowance. Its model metadata is preserved on the dynamic usage sensor, and exhausted regular usage with an explicitly available Reserve fallback is no longer styled as fully blocked.
 - Saved-reset counts use one priority rule across sensors and card. Expiry is shown only when detail and usage sources agree, matching OpenAI's clarified banked-reset behavior.
 - Public copy now describes shared eligible-agent allowances and reports reached-limit classifications without claiming that every action is blocked. Negative provider credit balances remain valid account states rather than being clamped to zero.
 - Provider `Retry-After` for HTTP 429 and 503 is honored across usage, optional reads and credential refresh. Manual refresh cannot bypass the cooldown.

@@ -4,6 +4,8 @@ The card shows the account summary, main usage windows, named restrictions and a
 
 Reported allowances may be shared by Codex and other eligible agentic surfaces. The card cannot attribute a percentage change to an app, model, task or conversation. A reached-limit callout reports the provider classification without claiming that every current or future action is blocked.
 
+When OpenAI explicitly reports an allowed Luna Reserve bucket alongside exhausted regular usage, the card says that the fallback is available and uses critical rather than blocked styling. Reserve percentages and reset timing appear in **Additional limits**, subject to the normal section and per-value visibility settings. The section remains Automatic by default and the Details panel remains collapsed by default.
+
 ## Visibility
 
 Each section has three modes: **Automatic** (`"auto"`), **Always show** (`true`), and **Hide** (`false`). In Automatic, missing optional values are omitted. Always show keeps one neutral placeholder if the whole section has no data. Hide removes the section; individual `values` settings can also hide specific metrics.
@@ -54,6 +56,7 @@ Color thresholds describe percentage **used**: the defaults are warning 75 and c
 ## Interpreting the values
 
 - **Usage/remaining:** percentages of the reported included allowance. A named feature restriction does not make another healthy window exhausted. A reached included quota is not a promise that all ongoing work stopped.
+- **Luna Reserve:** a separate, account-dependent fallback allowance for Luna. Its presence and status are accepted only when explicitly reported. A missing bucket is unknown, not unavailable. The card never infers Reserve from plan name, ordinary percentages, reset dates or a model slug.
 - **Usage budget:** remaining percentage points divided by time until the reported reset. The sensor uses pp/h; the card displays pp/day for windows whose full duration is at least one day. For example, 18 points over 72 hours means 6 pp/day. It is an allocation guide, not an exhaustion forecast, prompt count or money balance. It disappears for stale/failed usage, invalid/reset windows, and immediately before reset.
 - **Credit balance:** credits, including zero and negative values. Availability flags do not replace a known balance. Spend percentages may be present while an administrator hides absolute amounts. No currency or hidden invoice amount is reconstructed.
 - **Available resets:** saved one-time allowance resets. Usage-sourced count takes precedence over hourly details, including an explicit zero. **Next known expiry** describes a saved reset, not the next rolling-window reset, and does not promise a complete ledger.

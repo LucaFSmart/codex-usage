@@ -87,6 +87,7 @@ export const STRINGS = {
     severityWarning: "Low usage remaining",
     severityCritical: "Critically low usage remaining",
     severityBlocked: "Limit reached",
+    severityReserveFallback: "Luna Reserve available",
     // freshness
     dataMayBeOutdated: "Data may be outdated",
     // most-constrained callout
@@ -96,6 +97,8 @@ export const STRINGS = {
     mostConstrainedBlockedSpend: "The reported spending limit has been reached.",
     mostConstrainedBlockedCredits: "The reported credit limit has been reached.",
     mostConstrainedBlockedUnknown: "A usage restriction was reported.",
+    regularUsageReachedReserveAvailable:
+      "Regular usage is exhausted. Luna Reserve is reported available.",
     // relative reset time
     resetsImminently: "Resets shortly",
     resetsInMinutes: "Resets in {minutes} min",
@@ -224,6 +227,7 @@ export const STRINGS = {
     severityWarning: "Wenig Nutzung übrig",
     severityCritical: "Kritisch wenig Nutzung übrig",
     severityBlocked: "Limit erreicht",
+    severityReserveFallback: "Luna Reserve verfügbar",
     // freshness
     dataMayBeOutdated: "Daten könnten veraltet sein",
     // most-constrained callout
@@ -233,6 +237,8 @@ export const STRINGS = {
     mostConstrainedBlockedSpend: "Das gemeldete Ausgabenlimit ist erreicht.",
     mostConstrainedBlockedCredits: "Das gemeldete Guthabenlimit ist erreicht.",
     mostConstrainedBlockedUnknown: "Eine Nutzungseinschränkung wurde gemeldet.",
+    regularUsageReachedReserveAvailable:
+      "Die reguläre Nutzung ist ausgeschöpft. Luna Reserve wird als verfügbar gemeldet.",
     // relative reset time
     resetsImminently: "Setzt sich gleich zurück",
     resetsInMinutes: "Setzt sich in {minutes} Min. zurück",

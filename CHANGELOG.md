@@ -8,6 +8,7 @@ Large consistency, resilience and dashboard update.
 
 - Redesign the bundled English/German card with stable standard rows, neutral unknown states, configurable optional sections, source diagnostics and observed usage budgets.
 - Normalize main and feature-specific blockers without marking unrelated limits exhausted; preserve ambiguous and newly discovered provider windows safely.
+- Recognize OpenAI's separate Luna Reserve quota, retain its normal-model metadata on the dynamic usage sensor, and show an explicitly available fallback without treating the account as fully blocked.
 - Reconcile saved-reset counts and expiry details across sources, including changed reset dates after banked resets.
 - Isolate optional profile/reset reads, honor provider cooldowns across usage and token refresh, and expose safe source status and last-success timestamps.
 - Accept reauthentication when an optional user claim appears or disappears while still rejecting a different verified user, and preserve the entry's established unique ID.

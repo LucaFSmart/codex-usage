@@ -87,6 +87,8 @@ export interface CardLimitSummary {
   reason: RestrictionReason;
   affected_limits: string[];
   affected_limits_truncated: boolean;
+  fallback_available?: boolean | null;
+  fallback_limit_id?: string | null;
 }
 
 export interface CardSource {

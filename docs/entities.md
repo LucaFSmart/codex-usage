@@ -19,7 +19,7 @@ An enabled entity becomes `unknown` when its required value is absent. It become
 | `weekly_budget` | Weekly usage budget | `pp/h` | No | Same budget rule as the five-hour entity. |
 | `weekly_pace` | Weekly usage pace | `%`, measurement | Yes when weekly window exists, or retained | Used percentage minus elapsed-window percentage; `unknown` if duration/reset is missing or outside the window. |
 | `available_reset_credits` | Available resets | `resets` | Yes | Explicit usage count has priority over reconciled hourly reset details. Missing is unknown; zero remains zero. |
-| `limit_reached` | Rate limit reached | binary | Yes | On when a reported main/additional limit, credit control or spend control blocks usage. A feature restriction does not rewrite healthy windows as exhausted. |
+| `limit_reached` | Rate limit reached | binary | Yes | On when a reported main/additional limit, credit control or spend control is reached. This does not claim every supported action is unavailable. Attributes list affected limits and, when explicitly reported, whether a fallback allowance remains available. |
 
 ## Credits and spend control
 
@@ -71,7 +71,9 @@ These timestamp sensors are disabled by default. They show the last successful o
 
 ## Dynamic additional limits
 
-For every reported additional feature window, the integration creates `usage`, `remaining` and `reset` sensors. A disabled `budget` sensor is also created when the provider supplies a valid duration. Their names contain the provider's feature label and duration; their unique IDs use the stable limit identifier and `primary` or `secondary` window. Entities remain registered if the feature later disappears so Recorder history and automations keep their identity. Missing values then become `unknown`.
+For every reported additional feature window, the integration creates `usage`, `remaining` and `reset` sensors. A disabled `budget` sensor is also created when the provider supplies a valid duration. Their names contain the provider's feature label and duration; their unique IDs use the stable limit identifier and `primary` or `secondary` window. The dynamic `usage` sensor exposes the provider's nullable `allowed` and `limit_reached` status as attributes. When supplied, it also retains `normal_model_slug` as bounded display metadata; the integration never uses that field to select a model or infer entitlement. Entities remain registered if the feature later disappears so Recorder history and automations keep their identity. Missing values then become `unknown`.
+
+OpenAI currently identifies Luna Reserve with the additional limit ID `base_model_inference` and quota alias `gpt-reserve`. Codex Usage displays that exact known alias as **Luna Reserve**. If its ordinary allowance is reached while this bucket is explicitly allowed, the aggregate binary sensor remains on because a rate limit really was reached; its `fallback_available: true` and `fallback_limit_id` attributes explain why supported Luna work may still continue.
 
 ## Card and entity registry
 

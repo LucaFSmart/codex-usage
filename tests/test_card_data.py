@@ -132,6 +132,74 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
     assert "access_token" not in rendered
 
 
+def test_card_snapshot_shows_reset_credits_row_when_fetched_but_empty() -> None:
+    """A successfully fetched but empty reset-credits response must still show a row.
+
+    Regression test: the row must not silently disappear just because the
+    endpoint reported no earned/available counts for this account.
+    """
+    usage = parse_usage({"rate_limit": None})
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(usage=usage, profile=None, reset_credits=ResetCredits(None, None, ())),
+        last_update_success=True,
+        last_success=datetime(2026, 7, 15, 8, 30, tzinfo=UTC),
+        reset_last_success=datetime(2026, 7, 15, 8, 30, tzinfo=UTC),
+    )
+    entry = SimpleNamespace(entry_id="entry-a", title="Codex Usage", unique_id=None, data={})
+    hass = SimpleNamespace(data={DOMAIN: {"entries": {"entry-a": (entry, coordinator)}}})
+
+    reset_credits = build_card_snapshot(hass, ADMIN_USER)["accounts"][0]["reset_credits"]
+
+    assert reset_credits is not None
+    assert reset_credits["available_count"] is None
+    assert reset_credits["total_earned"] is None
+    assert reset_credits["details_present"] is True
+
+
+def test_card_snapshot_exposes_luna_reserve_as_an_available_fallback() -> None:
+    usage = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {
+                        "allowed": True,
+                        "limit_reached": False,
+                        "primary_window": {
+                            "used_percent": 20,
+                            "limit_window_seconds": 18_000,
+                        },
+                    },
+                }
+            ],
+        }
+    )
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(usage=usage, profile=None, reset_credits=None, budgets={}),
+        last_update_success=True,
+        last_success=datetime(2026, 7, 15, 8, 30, tzinfo=UTC),
+        sources={},
+    )
+    entry = SimpleNamespace(entry_id="entry-a", title="Codex Usage", unique_id=None, data={})
+    hass = SimpleNamespace(data={DOMAIN: {"entries": {"entry-a": (entry, coordinator)}}})
+
+    account = build_card_snapshot(hass, ADMIN_USER)["accounts"][0]
+
+    reserve = next(item for item in account["limit_statuses"] if item["name"] == "Luna Reserve")
+    assert "normal_model_slug" not in reserve
+    assert account["limit_summary"] == {
+        "reached": True,
+        "reason": "usage_limit",
+        "affected_limits": ["codex"],
+        "affected_limits_truncated": False,
+        "fallback_available": True,
+        "fallback_limit_id": "base_model_inference",
+    }
+
+
 def test_card_snapshot_preserves_unknown_windows_without_duplicates() -> None:
     usage = parse_usage(
         {"rate_limit": {"primary_window": {"used_percent": 10, "reset_at": 1_800_000_000}}}

@@ -664,7 +664,9 @@ function Ge(e) {
 		reached: V(t.reached),
 		reason: t.reason,
 		affected_limits: n,
-		affected_limits_truncated: t.affected_limits_truncated === !0
+		affected_limits_truncated: t.affected_limits_truncated === !0,
+		...Object.hasOwn(t, "fallback_available") ? { fallback_available: V(t.fallback_available) } : {},
+		...Object.hasOwn(t, "fallback_limit_id") ? { fallback_limit_id: R(t.fallback_limit_id) } : {}
 	};
 }
 function Ke(e) {
@@ -1083,6 +1085,7 @@ var yt = {
 		severityWarning: "Low usage remaining",
 		severityCritical: "Critically low usage remaining",
 		severityBlocked: "Limit reached",
+		severityReserveFallback: "Luna Reserve available",
 		dataMayBeOutdated: "Data may be outdated",
 		mostConstrainedTightest: "{limit} is currently your tightest constraint.",
 		mostConstrainedLowRemaining: "{limit} has only {percent}% remaining.",
@@ -1090,6 +1093,7 @@ var yt = {
 		mostConstrainedBlockedSpend: "The reported spending limit has been reached.",
 		mostConstrainedBlockedCredits: "The reported credit limit has been reached.",
 		mostConstrainedBlockedUnknown: "A usage restriction was reported.",
+		regularUsageReachedReserveAvailable: "Regular usage is exhausted. Luna Reserve is reported available.",
 		resetsImminently: "Resets shortly",
 		resetsInMinutes: "Resets in {minutes} min",
 		resetsInHours: "Resets in {hours}h",
@@ -1213,6 +1217,7 @@ var yt = {
 		severityWarning: "Wenig Nutzung übrig",
 		severityCritical: "Kritisch wenig Nutzung übrig",
 		severityBlocked: "Limit erreicht",
+		severityReserveFallback: "Luna Reserve verfügbar",
 		dataMayBeOutdated: "Daten könnten veraltet sein",
 		mostConstrainedTightest: "{limit} ist derzeit dein engstes Limit.",
 		mostConstrainedLowRemaining: "{limit} hat nur noch {percent}% übrig.",
@@ -1220,6 +1225,7 @@ var yt = {
 		mostConstrainedBlockedSpend: "Das gemeldete Ausgabenlimit ist erreicht.",
 		mostConstrainedBlockedCredits: "Das gemeldete Guthabenlimit ist erreicht.",
 		mostConstrainedBlockedUnknown: "Eine Nutzungseinschränkung wurde gemeldet.",
+		regularUsageReachedReserveAvailable: "Die reguläre Nutzung ist ausgeschöpft. Luna Reserve wird als verfügbar gemeldet.",
 		resetsImminently: "Setzt sich gleich zurück",
 		resetsInMinutes: "Setzt sich in {minutes} Min. zurück",
 		resetsInHours: "Setzt sich in {hours}h zurück",
@@ -1305,7 +1311,7 @@ function Dt(e, t) {
 function Ot(e) {
 	return e.length === 0 ? null : e.reduce((e, t) => Dt(t, e) ? t : e);
 }
-function Y(e, t, n) {
+function Y(e, t, n, r) {
 	if (t !== "auto") return t;
 	switch (e) {
 		case "credits": return n.credits !== null || n.reset_credits !== null;
@@ -1313,7 +1319,7 @@ function Y(e, t, n) {
 		case "profile": return n.profile !== null;
 		case "additional_limits": return n.limits.some((e) => e.source === "additional");
 		case "budget": return n.limits.some((e) => e.budget_pph !== null && e.budget_pph !== void 0);
-		case "sources": return Object.values(n.sources ?? {}).some((e) => Tt(e, /* @__PURE__ */ new Date()));
+		case "sources": return Object.values(n.sources ?? {}).some((e) => Tt(e, r));
 		default: return !0;
 	}
 }
@@ -1322,11 +1328,11 @@ function kt(e, t, n) {
 		...e,
 		severity: xt(e.used_percent, e.reached, t.thresholds),
 		pace: Et(e, n)
-	})), a = e.blocker !== null || e.limit_summary?.reached === !0 ? "blocked" : St(i.map((e) => e.severity));
+	})), a = e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0, o = e.blocker !== null || e.limit_summary?.reached === !0 ? a ? "critical" : "blocked" : St(i.map((e) => e.severity));
 	return {
 		...e,
 		limits: i,
-		severity: a,
+		severity: o,
 		stale: r,
 		mostConstrainedLimit: Ot(i)
 	};
@@ -1543,8 +1549,8 @@ var Q = class extends P {
 	get locale() {
 		return this.hass?.locale?.language ?? this.hass?.language;
 	}
-	statusLabel(e) {
-		return this.t(Nt[e]);
+	statusLabel(e, t) {
+		return t?.limit_summary?.reason === "usage_limit" && t.limit_summary.fallback_available === !0 ? this.t("severityReserveFallback") : this.t(Nt[e]);
 	}
 	limitLabel(e) {
 		let t = (t) => e.duration_seconds !== null && e.duration_seconds >= t * .95 && e.duration_seconds <= t * 1.05, n = t(18e3) ? this.t("fiveHours") : t(604800) ? this.t("week") : e.duration_seconds && e.duration_seconds % 86400 == 0 ? `${e.duration_seconds / 86400} ${this.t("days")}` : null;
@@ -1569,6 +1575,7 @@ var Q = class extends P {
 		if (e.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
 		if (e.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
 		if (e.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
+		if (e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0) return this.t("regularUsageReachedReserveAvailable");
 		if (e.limit_summary?.reason === "additional_limit") {
 			let t = e.limit_statuses?.find((e) => e.reached === !0);
 			return t ? this.t("restrictionNamed", { limit: t.name }) : this.t("restrictionSomeLimit");
@@ -1607,7 +1614,7 @@ var Q = class extends P {
 			severity: "unknown",
 			pace: null
 		}, {
-			id: "codex:primary:weekly",
+			id: "codex:secondary:weekly",
 			name: "Codex",
 			source: "main",
 			duration_seconds: 604800,
@@ -1620,8 +1627,8 @@ var Q = class extends P {
 			pace: null
 		}], n = e.limits.filter((e) => e.source === "main"), r = /* @__PURE__ */ new Set();
 		return [...t.flatMap((e) => {
-			let t = n.find((t) => t.id === e.id) ?? n.find((t) => !r.has(t.id) && t.duration_seconds === e.duration_seconds);
-			return t ? (r.add(t.id), this.config.sections.limits.values[e.id] === !1 || this.config.sections.limits.values[t.id] === !1 ? [] : [t]) : this.config.sections.limits.values[e.id] === !1 ? [] : [e];
+			let t = e.duration_seconds === 604800 ? [e.id, "codex:primary:weekly"] : [e.id], i = n.find((t) => t.id === e.id) ?? n.find((t) => !r.has(t.id) && t.duration_seconds === e.duration_seconds);
+			return i ? (r.add(i.id), [...t, i.id].some((e) => this.config.sections.limits.values[e] === !1) ? [] : [i]) : t.some((e) => this.config.sections.limits.values[e] === !1) ? [] : [e];
 		}), ...n.filter((e) => !r.has(e.id) && this.config.sections.limits.values[e.id] !== !1)];
 	}
 	renderLimitRow(e, t) {
@@ -1673,7 +1680,7 @@ var Q = class extends P {
         </button>` : T`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
 	}
 	renderBudgetRows(e) {
-		if (!Y("budget", this.config.sections.budget.visible, e)) return D;
+		if (!Y("budget", this.config.sections.budget.visible, e, this.now)) return D;
 		let t = e.stale || !e.available ? [] : e.limits.flatMap((e) => {
 			if (!this.valueVisible("budget", e.id) || e.budget_pph === null || e.budget_pph === void 0) return [];
 			let t = e.budget_calculated_at ? new Date(e.budget_calculated_at) : null;
@@ -1695,7 +1702,7 @@ var Q = class extends P {
           ${n}`;
 	}
 	renderSources(e) {
-		if (!Y("sources", this.config.sections.sources.visible, e)) return D;
+		if (!Y("sources", this.config.sections.sources.visible, e, this.now)) return D;
 		let t = {
 			usage: "sourceUsage",
 			profile: "sourceProfile",
@@ -1724,7 +1731,7 @@ var Q = class extends P {
           ${i}`;
 	}
 	renderAdditionalLimits(e) {
-		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e)) return D;
+		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e, this.now)) return D;
 		let t = this.eligibleLimits(e, "additional");
 		if (!t.length) {
 			let e = this.emptyOptional("additional_limits");
@@ -1741,7 +1748,7 @@ var Q = class extends P {
     </div>`;
 	}
 	renderResetSummary(e) {
-		if (!e.reset_credits || !this.valueVisible("credits", "reset_credits") || !Y("credits", this.config.sections.credits.visible, e)) return D;
+		if (!e.reset_credits || !this.valueVisible("credits", "reset_credits") || !Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
 		let t = e.reset_credits.available_count, n = t === null ? "—" : this.t(t === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: t });
 		return T`<div class="info-row" data-core="resets">
       <span class="info-label">${this.t("availableResets")}</span
@@ -1749,7 +1756,7 @@ var Q = class extends P {
     </div>`;
 	}
 	renderCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e)) return D;
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
 		if (!e.credits) return e.reset_credits && this.valueVisible("credits", "reset_credits") ? D : this.emptyOptional("credits");
 		let t = e.credits, n = [];
 		if (this.valueVisible("credits", "balance")) {
@@ -1765,7 +1772,7 @@ var Q = class extends P {
         </div>`), n.length ? T`${n}` : D;
 	}
 	renderResetCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return D;
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return D;
 		let t = e.reset_credits, n = t.available_count, r = [T`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
@@ -1783,7 +1790,7 @@ var Q = class extends P {
         </div>`), T`${r}`;
 	}
 	renderSpendingRows(e) {
-		if (!Y("spending", this.config.sections.spending.visible, e)) return D;
+		if (!Y("spending", this.config.sections.spending.visible, e, this.now)) return D;
 		if (!e.spend) return this.emptyOptional("spending");
 		let t = e.spend, n = [
 			["remaining", t.remaining],
@@ -1824,7 +1831,7 @@ var Q = class extends P {
         </div>`), T`${a}`;
 	}
 	renderProfileRows(e) {
-		if (!Y("profile", this.config.sections.profile.visible, e)) return D;
+		if (!Y("profile", this.config.sections.profile.visible, e, this.now)) return D;
 		if (!e.profile) return this.emptyOptional("profile");
 		let t = Mt.flatMap((t) => {
 			if (!this.valueVisible("profile", t.key)) return [];
@@ -1841,7 +1848,7 @@ var Q = class extends P {
 		return T`${n && (n.state !== "ok" || n.last_success && new Date(n.last_success).getTime() < this.now.getTime() - (n.expected_interval_seconds ?? 3600) * 2e3) ? T`<small data-profile-historical>${this.t("historical")}</small>` : D}${t}`;
 	}
 	renderAccountRows(e) {
-		if (!Y("account", this.config.sections.account.visible, e)) return D;
+		if (!Y("account", this.config.sections.account.visible, e, this.now)) return D;
 		let t = [];
 		return this.valueVisible("account", "plan") && e.plan && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("planLabel")}</span>
@@ -1880,7 +1887,7 @@ var Q = class extends P {
             ${o ? T`<p>${o}</p>` : D}
           </div>
           <span class="status"
-            >${i ? `${this.t("overall")} · ` : ""}${this.statusLabel(n)}</span
+            >${i ? `${this.t("overall")} · ` : ""}${this.statusLabel(n, i ? null : t)}</span
           >
         </header>
         ${r ? T`<p class="freshness">

@@ -37,7 +37,7 @@ describe("CodexUsageCard", () => {
       card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"]')?.textContent,
     ).toContain("—");
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
     ).toContain("—");
   });
 
@@ -90,7 +90,25 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')).toBeNull();
-    expect(card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')).toBeNull();
+  });
+
+  it("keeps the legacy primary-weekly hide setting effective for the stable weekly slot", async () => {
+    const weekly = SNAPSHOT.accounts[0]!.limits[0]!;
+    for (const limits of [[], [weekly]]) {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({
+        type: "custom:codex-usage-card",
+        account_mode: "single",
+        sections: { limits: { visible: true, values: { "codex:primary:weekly": false } } },
+      });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [{ ...SNAPSHOT.accounts[0]!, limits }],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')).toBeNull();
+    }
   });
 
   it("keeps a feature name on an additional window with a standard duration", async () => {
@@ -134,7 +152,7 @@ describe("CodexUsageCard", () => {
       ],
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const row = card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]');
+    const row = card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]');
     expect(row).not.toBeNull();
     expect(row?.querySelector(".bar span")).toBeNull();
     expect(row?.querySelector(".ring")?.classList.contains("unknown")).toBe(true);
@@ -372,10 +390,10 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
     // alpha: used_percent 40, remaining_percent 60 -> remaining is now the primary metric
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
     ).toContain("60%");
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
     ).toContain("40% used");
   });
 
@@ -639,7 +657,7 @@ describe("CodexUsageCard", () => {
       card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"] .ring'),
     ).not.toBeNull();
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"] .ring'),
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"] .ring'),
     ).not.toBeNull();
     expect(card.shadowRoot?.querySelector('[data-limit-id="code_review"] .ring')).toBeNull();
   });
@@ -659,6 +677,115 @@ describe("CodexUsageCard", () => {
     expect(callout).toContain("limit");
     expect(callout).toContain("reached");
     expect(callout).not.toContain("blocked");
+  });
+
+  it("explains when Luna Reserve remains available after regular usage is exhausted", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          blocker: "usage_limit",
+          limits: [
+            {
+              ...SNAPSHOT.accounts[0]!.limits[0]!,
+              reached: true,
+              used_percent: 100,
+              remaining_percent: 0,
+            },
+          ],
+          limit_summary: {
+            reached: true,
+            reason: "usage_limit",
+            affected_limits: ["codex"],
+            affected_limits_truncated: false,
+            fallback_available: true,
+            fallback_limit_id: "base_model_inference",
+          },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const callout = card.shadowRoot?.querySelector(".callout")?.textContent;
+    const status = card.shadowRoot?.querySelector(".status")?.textContent;
+    expect(callout).toContain("Regular usage");
+    expect(callout).toContain("Luna Reserve");
+    expect(callout).toContain("available");
+    expect(status).toContain("Luna Reserve");
+    expect(status).not.toContain("Critically low");
+  });
+
+  it.each([false, null])(
+    "does not claim Luna Reserve when fallback availability is %s",
+    async (fallbackAvailable) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card" });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...SNAPSHOT.accounts[0]!,
+            blocker: "usage_limit",
+            limit_summary: {
+              reached: true,
+              reason: "usage_limit",
+              affected_limits: ["codex"],
+              affected_limits_truncated: false,
+              fallback_available: fallbackAvailable,
+              fallback_limit_id: "base_model_inference",
+            },
+          },
+        ],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector(".callout")?.textContent).not.toContain("Luna Reserve");
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).not.toContain("Luna Reserve");
+    },
+  );
+
+  it("keeps an overall blocked status when the selected account has Luna Reserve", async () => {
+    const reserveAccount = {
+      ...SNAPSHOT.accounts[0]!,
+      blocker: "usage_limit" as const,
+      limit_summary: {
+        reached: true,
+        reason: "usage_limit" as const,
+        affected_limits: ["codex"],
+        affected_limits_truncated: false,
+        fallback_available: true,
+        fallback_limit_id: "base_model_inference",
+      },
+    };
+    const blockedAccount = {
+      ...SNAPSHOT.accounts[1]!,
+      blocker: "credits" as const,
+      limit_summary: {
+        reached: true,
+        reason: "credits" as const,
+        affected_limits: [],
+        affected_limits_truncated: false,
+      },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      selected_entry_id: "entry-a",
+      stale_after_minutes: 1440,
+    });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [reserveAccount, blockedAccount] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const status = card.shadowRoot?.querySelector(".status")?.textContent;
+    expect(status).toContain("Overall");
+    expect(status).toContain("Limit reached");
+    expect(status).not.toContain("Luna Reserve");
   });
 
   it("collapses details by default and expands only when compact is explicitly false", async () => {
@@ -705,7 +832,9 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
 
-    expect(card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')).not.toBeNull();
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]'),
+    ).not.toBeNull();
   });
 
   it("auto-hides the credits section when the account has no credits data", async () => {

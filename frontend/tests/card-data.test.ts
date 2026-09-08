@@ -139,18 +139,21 @@ describe("normalizeCardSnapshot", () => {
           ...sourceAccount,
           limit_statuses: [
             {
-              id: "code_review",
-              name: "Code review",
+              id: "base_model_inference",
+              name: "Luna Reserve",
               source: "additional",
-              allowed: false,
-              reached: true,
+              allowed: true,
+              reached: false,
+              normal_model_slug: "gpt-5.6-luna",
             },
             { id: "private", name: "Private", source: "unknown", allowed: "no", reached: false },
           ],
           limit_summary: {
-            reason: "additional_limit",
-            affected_limits: ["code_review"],
+            reason: "usage_limit",
+            affected_limits: ["codex"],
             affected_limits_truncated: false,
+            fallback_available: true,
+            fallback_limit_id: "base_model_inference",
           },
           sources: {
             usage: {
@@ -187,13 +190,18 @@ describe("normalizeCardSnapshot", () => {
       Record<string, unknown>;
     expect(account.limit_statuses).toEqual([
       {
-        id: "code_review",
-        name: "Code review",
+        id: "base_model_inference",
+        name: "Luna Reserve",
         source: "additional",
-        allowed: false,
-        reached: true,
+        allowed: true,
+        reached: false,
       },
     ]);
+    expect(account.limit_statuses?.[0]).not.toHaveProperty("normal_model_slug");
+    expect(account.limit_summary).toMatchObject({
+      fallback_available: true,
+      fallback_limit_id: "base_model_inference",
+    });
     expect(account.sources).toEqual({
       usage: expect.objectContaining({ state: "error", error_code: "connection" }),
     });

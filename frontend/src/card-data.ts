@@ -152,6 +152,12 @@ function limitSummary(value: unknown): CardLimitSummary | undefined {
     reason: source.reason as CardLimitSummary["reason"],
     affected_limits: affected,
     affected_limits_truncated: source.affected_limits_truncated === true,
+    ...(Object.hasOwn(source, "fallback_available")
+      ? { fallback_available: nullableBoolean(source.fallback_available) }
+      : {}),
+    ...(Object.hasOwn(source, "fallback_limit_id")
+      ? { fallback_limit_id: text(source.fallback_limit_id) }
+      : {}),
   };
 }
 

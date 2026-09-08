@@ -169,6 +169,85 @@ def test_parse_sparse_usage_response() -> None:
     assert data.spend_limit is None
 
 
+def test_luna_reserve_metadata_is_preserved_and_named_for_people() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {
+                        "allowed": True,
+                        "limit_reached": False,
+                        "primary_window": {
+                            "used_percent": 20,
+                            "limit_window_seconds": 18_000,
+                        },
+                    },
+                }
+            ],
+        }
+    )
+
+    reserve = data.additional_limits[0]
+    assert reserve.limit_id == "base_model_inference"
+    assert reserve.name == "Luna Reserve"
+    assert reserve.normal_model_slug == "gpt-5.6-luna"
+
+
+def test_luna_reserve_model_metadata_is_bounded_and_type_safe() -> None:
+    invalid = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": {"private": "value"},
+                }
+            ]
+        }
+    )
+    bounded = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "x" * 200,
+                }
+            ]
+        }
+    )
+
+    assert invalid.additional_limits[0].normal_model_slug is None
+    assert bounded.additional_limits[0].normal_model_slug is None
+
+
+def test_reserve_label_requires_the_official_id_and_alias_pair() -> None:
+    wrong_id = parse_usage(
+        {
+            "additional_rate_limits": [
+                {"metered_feature": "future_quota", "limit_name": "gpt-reserve"}
+            ]
+        }
+    )
+    wrong_alias = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "future-quota",
+                }
+            ]
+        }
+    )
+
+    assert wrong_id.additional_limits[0].name == "gpt-reserve"
+    assert wrong_alias.additional_limits[0].name == "future-quota"
+
+
 def test_negative_credit_balance_is_preserved() -> None:
     data = parse_usage(
         {
@@ -974,6 +1053,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
         "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "X-OpenAI-Fedramp": "true",
     }
+    assert "x-openai-codex-luna-reserve" not in session.last_headers
 
 
 def test_parse_profile_keeps_only_supported_aggregate_statistics() -> None:
@@ -1196,6 +1276,50 @@ def test_conflicting_duplicate_windows_are_unknown_but_restriction_survives():
     assert usage.additional_limits[0].limit_reached is True
     assert usage.duplicate_limit_ids == 2
     assert usage.conflicting_windows == 1
+
+
+def test_conflicting_duplicate_model_slugs_are_not_published():
+    def row(slug):
+        return {
+            "metered_feature": "base_model_inference",
+            "limit_name": "gpt-reserve",
+            "normal_model_slug": slug,
+            "rate_limit": {"allowed": True, "limit_reached": False},
+        }
+
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                row("gpt-5.6-luna"),
+                row("future-model"),
+                row("gpt-5.6-luna"),
+            ]
+        }
+    )
+
+    assert len(usage.additional_limits) == 1
+    assert usage.additional_limits[0].normal_model_slug is None
+
+
+def test_conflicting_duplicate_alias_does_not_claim_luna_reserve():
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                },
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "future-quota",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                },
+            ]
+        }
+    )
+
+    assert usage.additional_limits[0].name == "Base Model Inference"
 
 
 @pytest.mark.parametrize("rows", [(None, 20), (20, None)])

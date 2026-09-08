@@ -143,6 +143,8 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
         registry = entity_registry.async_get(hass)
         entities = entity_registry.async_entries_for_config_entry(registry, entry.entry_id)
         unique_ids = {item.unique_id for item in entities}
+        # Regression guard: catches an accidental add/remove of an entity.
+        assert len(entities) == 37
         for suffix in (
             "_five_hour_budget",
             "_weekly_budget",
@@ -160,6 +162,19 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             item for item in entities if item.unique_id.endswith("_five_hour_budget")
         )
         assert hass.states.get(budget_entity.entity_id) is None
+
+        def _state_for(suffix: str) -> str | None:
+            item = next(e for e in entities if e.unique_id.endswith(suffix))
+            state = hass.states.get(item.entity_id)
+            return state.state if state else None
+
+        assert _state_for("_limit_reached") == "off"
+        # Disabled-by-default entities: registered, but no live state.
+        assert _state_for("_credits_available") is None
+        assert _state_for("_spend_used") is None
+        assert _state_for("_lifetime_tokens") is None
+        assert _state_for("_total_threads") is None
+        assert _state_for("_most_used_reasoning_effort") is None
 
         previous_coordinator = entry.runtime_data
         with (

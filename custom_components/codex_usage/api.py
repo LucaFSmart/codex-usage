@@ -167,6 +167,7 @@ class RateLimit:
     limit_reached: bool | None
     primary: RateLimitWindow | None
     secondary: RateLimitWindow | None
+    normal_model_slug: str | None = None
 
     @property
     def windows(self) -> tuple[tuple[str, RateLimitWindow], ...]:
@@ -493,6 +494,7 @@ def _rate_limit(
     payload: Any,
     *,
     reached_reason: str | None = None,
+    normal_model_slug: str | None = None,
 ) -> RateLimit:
     details = payload if isinstance(payload, dict) else {}
     allowed = details.get("allowed") if isinstance(details.get("allowed"), bool) else None
@@ -510,6 +512,7 @@ def _rate_limit(
         limit_reached=True if allowed is False or reached_by_type else reported_reached,
         primary=_window(details.get("primary_window")),
         secondary=_window(details.get("secondary_window")),
+        normal_model_slug=normal_model_slug,
     )
 
 
@@ -553,8 +556,22 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
             or _display_text(item.get("limit_name"), max_length=80)
             or "additional"
         )
-        name = _display_text(item.get("limit_name")) or limit_id.replace("_", " ").title()
-        parsed_additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
+        reported_name = _display_text(item.get("limit_name"))
+        name = (
+            "Luna Reserve"
+            if limit_id == "base_model_inference"
+            and reported_name
+            and reported_name.casefold() == "gpt-reserve"
+            else reported_name or limit_id.replace("_", " ").title()
+        )
+        parsed_additional.append(
+            _rate_limit(
+                limit_id,
+                name,
+                item.get("rate_limit"),
+                normal_model_slug=_display_text(item.get("normal_model_slug"), max_length=80),
+            )
+        )
 
     # The current backend schema reports code review through
     # `additional_rate_limits`. This dedicated key is an older response shape
@@ -568,6 +585,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     conflicts = 0
     by_id: dict[str, RateLimit] = {}
     ambiguous_windows: set[tuple[str, str]] = set()
+    ambiguous_model_slugs: set[str] = set()
     for limit in parsed_additional:
         previous = by_id.get(limit.limit_id)
         if previous is None:
@@ -614,8 +632,31 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 False if previous.limit_reached is False and limit.limit_reached is False else None
             )
         )
+        slug_conflict = (
+            previous.normal_model_slug is not None
+            and limit.normal_model_slug is not None
+            and previous.normal_model_slug != limit.normal_model_slug
+        )
+        if slug_conflict:
+            ambiguous_model_slugs.add(limit.limit_id)
+        normal_model_slug = (
+            None
+            if limit.limit_id in ambiguous_model_slugs
+            else previous.normal_model_slug or limit.normal_model_slug
+        )
+        name = (
+            previous.name
+            if previous.name == limit.name
+            else limit.limit_id.replace("_", " ").title()
+        )
         by_id[limit.limit_id] = RateLimit(
-            limit.limit_id, previous.name, allowed, reached, primary, secondary
+            limit.limit_id,
+            name,
+            allowed,
+            reached,
+            primary,
+            secondary,
+            normal_model_slug,
         )
     additional.extend(by_id.values())
 
