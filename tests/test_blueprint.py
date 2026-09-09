@@ -66,7 +66,7 @@ def test_warning_hysteresis_runs_real_actions(tmp_path):
         hass.states.async_set("sensor.usage", "0", {"unit_of_measurement": "credits"})
         await script.async_run(variables, context=Context())
         assert hass.states.get("input_boolean.warned").state == "on"
-        await hass.async_stop()
+        await hass.async_stop(force=True)
 
     asyncio.run(scenario())
 
@@ -88,7 +88,7 @@ def test_failed_action_does_not_consume_warning_and_can_retry(tmp_path):
         await script.async_run(variables, context=Context())
         assert len(attempts) == 2
         assert hass.states.get("input_boolean.warned").state == "on"
-        await hass.async_stop()
+        await hass.async_stop(force=True)
 
     asyncio.run(scenario())
 
@@ -104,7 +104,7 @@ def test_restored_helper_and_shifted_reset_do_not_repeat_warning(tmp_path):
         hass.states.async_set("sensor.usage", "85", {"unit_of_measurement": "%"})
         await script.async_run(variables, context=Context())
         await restore_state.async_get(hass).async_dump_states()
-        await hass.async_stop()
+        await hass.async_stop(force=True)
         restored, script, variables = await setup_script(tmp_path, count)
         assert restored.states.get("input_boolean.warned").state == "on"
         restored.states.async_set(
@@ -142,6 +142,6 @@ def test_zero_hysteresis_does_not_toggle_at_the_warning_threshold(tmp_path):
         hass.states.async_set("sensor.usage", "79", {"unit_of_measurement": "%"})
         await script.async_run(variables, context=Context())
         assert hass.states.get("input_boolean.warned").state == "off"
-        await hass.async_stop()
+        await hass.async_stop(force=True)
 
     asyncio.run(scenario())

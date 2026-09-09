@@ -215,7 +215,7 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.state.value == "not_loaded"
-        await hass.async_stop()
+        await hass.async_stop(force=True)
 
     asyncio.run(scenario())
 
@@ -233,7 +233,7 @@ def test_real_issue_registry_records_and_clears_card_repair(tmp_path):
 
         registration_recovered(hass)
         assert registry.async_get_issue(DOMAIN, ISSUE_ID) is None
-        await hass.async_stop()
+        await hass.async_stop(force=True)
 
     asyncio.run(scenario())
 
@@ -308,6 +308,6 @@ def test_real_recorder_accepts_total_and_reports_removed_measurement_metadata(tm
                 for issue in issues["sensor.codex_peak_daily_tokens"]
             )
         finally:
-            await hass.async_stop()
+            await hass.async_stop(force=True)
 
     asyncio.run(scenario())
