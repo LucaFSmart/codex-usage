@@ -85,6 +85,11 @@ jobs:
       - run: npm run test:coverage
       - run: npm run check:bundle
       - name: Remove unrelated Chrome APT source
-        run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.list.save
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/google-chrome.list \
+            /etc/apt/sources.list.d/google-chrome.list.save \
+            /etc/apt/sources.list.d/google-chrome.sources \
+            /etc/apt/sources.list.d/google-chrome.sources.save
       - run: npx playwright install --with-deps chromium
       - run: npm run test:visual
