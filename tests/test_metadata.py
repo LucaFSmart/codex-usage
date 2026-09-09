@@ -54,7 +54,7 @@ def test_hacs_and_manifest_metadata() -> None:
     frontend_package = _load_json(ROOT / "frontend" / "package.json")
     frontend_lock = _load_json(ROOT / "frontend" / "package-lock.json")
 
-    assert manifest["version"] == "0.7.0"
+    assert manifest["version"] == "0.7.1"
     assert CARD_VERSION == manifest["version"]
     assert frontend_package["version"] == manifest["version"]
     assert frontend_lock["version"] == manifest["version"]

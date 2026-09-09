@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.7.1 - 2026-09-09
+
+Independent post-release audit of 0.7.0. Fixes two real defects and adds targeted regression coverage; no user-facing behavior changes beyond the fixes below.
+
+- Recognize Luna Reserve by the provider's stable `base_model_inference` feature id alone, not also its display label, so a future rename of that label can no longer silently and permanently disable the fallback-available signal.
+- Restore the `id`/`name` fields on each entry of the diagnostics `limits` list, which 0.7.0 had replaced with `source` instead of adding it alongside; a saved 0.6.5 diagnostics export or external tooling reading those fields would otherwise find them missing in 0.7.0.
+- Add regression tests: a core usage 429 correctly gates later polling cycles, a `reset_details` 429 does not affect usage or profile polling, a core usage authentication failure raises `ConfigEntryAuthFailed`, a request timeout on any endpoint is reported as a connection error, and a token rotated during the usage fetch reaches the profile/reset_details fetches in the same cycle.
+
 ## 0.7.0 - 2026-09-09
 
 Large consistency, resilience and dashboard update.
