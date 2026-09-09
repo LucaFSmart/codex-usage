@@ -125,12 +125,12 @@ def restriction_summary(usage: CodexUsageData) -> RestrictionSummary:
     reached = (
         True if reason != "none" else (False if all(x.reached is False for x in statuses) else None)
     )
+    # Match on the provider's stable feature id alone. `limit_name` is a
+    # cosmetic display string ("gpt-reserve") the provider can rename freely;
+    # requiring it too would silently and permanently disable the fallback
+    # signal on any rename, with no error or log to notice it by.
     reserve = next(
-        (
-            item
-            for item in statuses[1:]
-            if item.id == "base_model_inference" and item.name == "Luna Reserve"
-        ),
+        (item for item in statuses[1:] if item.id == "base_model_inference"),
         None,
     )
     fallback_available = None

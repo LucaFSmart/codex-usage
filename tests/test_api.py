@@ -14,6 +14,7 @@ from custom_components.codex_usage.api import (
     AvailableAccount,
     CodexApiClient,
     CodexAuthenticationError,
+    CodexConnectionError,
     CodexCredentials,
     CodexHttpError,
     CodexOptionalEndpointUnavailable,
@@ -67,6 +68,40 @@ class _FakeSession:
         self.last_headers = kwargs.get("headers")
         self.last_kwargs = kwargs
         return self.response
+
+
+class _TimeoutSession:
+    """A session whose requests always time out before a response arrives."""
+
+    def get(self, url: str, **kwargs: object) -> _TimeoutResponse:
+        return _TimeoutResponse()
+
+    def post(self, url: str, **kwargs: object) -> _TimeoutResponse:
+        return _TimeoutResponse()
+
+
+class _TimeoutResponse:
+    async def __aenter__(self) -> _TimeoutResponse:
+        raise TimeoutError
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+@pytest.mark.parametrize(
+    "make_call",
+    [
+        lambda client, credentials: client.async_get_usage(credentials),
+        lambda client, credentials: client.async_get_profile(credentials),
+        lambda client, credentials: client.async_get_reset_credits(credentials),
+    ],
+)
+def test_request_timeout_is_reported_as_connection_error(make_call) -> None:
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_TimeoutSession())
+
+    with pytest.raises(CodexConnectionError):
+        asyncio.run(make_call(client, credentials))
 
 
 @pytest.mark.parametrize("status", [429, 503, 200])
@@ -1050,7 +1085,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1149,7 +1184,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1174,7 +1209,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
         "Cache-Control": "no-store",
     }
 

@@ -56,6 +56,8 @@ def _safe_data(data: Any) -> dict[str, Any]:
         for _, window in limit.windows:
             limits.append(
                 {
+                    "id": limit.limit_id,
+                    "name": limit.name,
                     "source": "main" if limit is usage.main_limit else "additional",
                     "duration_minutes": window.window_minutes,
                     "used_percent": window.used_percent,

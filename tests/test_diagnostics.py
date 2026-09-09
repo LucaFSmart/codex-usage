@@ -60,6 +60,8 @@ def test_diagnostics_use_safe_allowlist() -> None:
         "plan": "plus",
         "limits": [
             {
+                "id": "codex",
+                "name": "Codex",
                 "source": "main",
                 "duration_minutes": 10_080,
                 "used_percent": 27.0,

@@ -190,7 +190,12 @@ def test_exhausted_luna_reserve_is_reported_as_unavailable() -> None:
     assert result.fallback_limit_id == "base_model_inference"
 
 
-def test_future_base_model_bucket_is_not_mislabeled_as_luna_reserve() -> None:
+def test_base_model_bucket_is_still_recognized_as_fallback_after_a_display_rename() -> None:
+    """The provider's stable `metered_feature` id is authoritative, not the display label.
+
+    A renamed `limit_name` must not silently and permanently disable the
+    fallback signal — only the `base_model_inference` id is required.
+    """
     result = monitoring.restriction_summary(
         parse_usage(
             {
@@ -199,15 +204,15 @@ def test_future_base_model_bucket_is_not_mislabeled_as_luna_reserve() -> None:
                     {
                         "metered_feature": "base_model_inference",
                         "limit_name": "future-quota",
-                        "rate_limit": {"allowed": True},
+                        "rate_limit": {"allowed": True, "limit_reached": False},
                     }
                 ],
             }
         )
     )
 
-    assert result.fallback_available is None
-    assert result.fallback_limit_id is None
+    assert result.fallback_available is True
+    assert result.fallback_limit_id == "base_model_inference"
 
 
 def test_real_codex_prefixed_additional_limit_is_not_treated_as_main_alias():

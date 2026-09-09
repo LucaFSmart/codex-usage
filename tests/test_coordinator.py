@@ -137,6 +137,98 @@ def test_optional_429_does_not_stop_core_usage_reads():
     assert client.reset_calls == 0
 
 
+def test_usage_429_cooldown_blocks_subsequent_reads():
+    """Unlike an optional-source 429, a core usage 429 must gate later cycles."""
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.usage_result = CodexHttpError(429, until)
+    coordinator = _coordinator(client)
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["usage"].error_code == "rate_limited"
+    assert coordinator._read_retry_at == until
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    # The retry gate short-circuits before the client is called again.
+    assert client.usage_calls == 1
+
+
+def test_reset_details_429_does_not_stop_core_usage_or_profile_reads():
+    """A reset_details-endpoint 429 must not poison the core usage retry gate."""
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.reset_result = CodexHttpError(429, until)
+    coordinator = _coordinator(client)
+
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.profile_calls == 1
+    assert coordinator.sources["reset_details"].retry_at == until
+    assert coordinator._read_retry_at is None
+
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.usage_calls == 2
+    # Profile's own hourly cadence (unrelated to this test) keeps it at 1 call here too.
+    assert client.profile_calls == 1
+    assert client.reset_calls == 1
+
+
+def test_usage_authentication_failure_raises_config_entry_auth_failed():
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    client = _FakeClient()
+    client.usage_result = CodexAuthenticationError()
+    coordinator = _coordinator(client)
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["usage"].error_code == "authentication"
+
+
+def test_rotated_usage_credentials_propagate_to_same_cycle_optional_fetches():
+    """A token rotated by the usage fetch must reach the profile/reset fetches in the same cycle."""
+    client = _FakeClient()
+    rotated = CodexCredentials(
+        access_token="rotated-access",
+        refresh_token="rotated-refresh",
+        id_token="id",
+        expires_at=9_999_999_999,
+        account_id="workspace-1",
+    )
+    usage_payload = client.usage_result
+
+    async def async_get_usage(credentials: CodexCredentials):
+        client.usage_calls += 1
+        return usage_payload, rotated
+
+    seen_profile_credentials = []
+    seen_reset_credentials = []
+
+    async def async_get_profile(credentials: CodexCredentials) -> CodexProfileStats:
+        client.profile_calls += 1
+        seen_profile_credentials.append(credentials)
+        return client.profile_result
+
+    async def async_get_reset_credits(credentials: CodexCredentials) -> ResetCredits:
+        client.reset_calls += 1
+        seen_reset_credentials.append(credentials)
+        return client.reset_result
+
+    client.async_get_usage = async_get_usage
+    client.async_get_profile = async_get_profile
+    client.async_get_reset_credits = async_get_reset_credits
+    coordinator = _coordinator(client)
+
+    asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.credentials == rotated
+    assert seen_profile_credentials == [rotated]
+    assert seen_reset_credentials == [rotated]
+
+
 def test_optional_503_does_not_stop_other_endpoint():
     client = _FakeClient()
     client.profile_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
