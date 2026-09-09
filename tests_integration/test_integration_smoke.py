@@ -258,6 +258,8 @@ def test_real_recorder_accepts_total_and_reports_removed_measurement_metadata(tm
             )
             await hass.async_start()
             instance = recorder.get_instance(hass)
+            await hass.async_block_till_done()
+            await instance.async_block_till_done()
             descriptions = {item.key: item for item in PROFILE_SENSORS}
             assert descriptions["lifetime_tokens"].state_class.value == "total"
             assert descriptions["peak_daily_tokens"].state_class is None

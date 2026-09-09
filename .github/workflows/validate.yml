@@ -42,15 +42,17 @@ jobs:
         include:
           - ha_version: "2026.3.0"
             harness: ""
+            pytest_args: ""
           - ha_version: "2026.9.1"
             harness: "pytest-homeassistant-custom-component==0.13.364"
+            pytest_args: "-o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=function"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
       - run: pip install "homeassistant==${{ matrix.ha_version }}" pytest ${{ matrix.harness }}
-      - run: pytest tests_integration/test_integration_smoke.py tests/test_blueprint.py -v
+      - run: pytest tests_integration/test_integration_smoke.py tests/test_blueprint.py -v ${{ matrix.pytest_args }}
 
   tests-min-version:
     runs-on: ubuntu-latest
