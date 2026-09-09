@@ -2,14 +2,14 @@
 
 All notable changes to this project are documented here.
 
-## 0.7.0 - Unreleased
+## 0.7.0 - 2026-09-09
 
 Large consistency, resilience and dashboard update.
 
 - Redesign the bundled English/German card with stable standard rows, neutral unknown states, configurable optional sections, source diagnostics and observed usage budgets.
 - Normalize main and feature-specific blockers without marking unrelated limits exhausted; preserve ambiguous and newly discovered provider windows safely.
 - Recognize OpenAI's separate Luna Reserve quota, retain its normal-model metadata on the dynamic usage sensor, and show an explicitly available fallback without treating the account as fully blocked.
-- Reconcile saved-reset counts and expiry details across sources, including changed reset dates after banked resets.
+- Reconcile saved-reset counts and expiry details across sources, adopt provider-reported reset dates after external resets, and keep pace/budget unknown while a new weekly date is absent.
 - Isolate optional profile/reset reads, honor provider cooldowns across usage and token refresh, and expose safe source status and last-success timestamps.
 - Accept reauthentication when an optional user claim appears or disappears while still rejecting a different verified user, and preserve the entry's established unique ID.
 - Use Home Assistant's automatic options-flow reload without the update-listener pattern that becomes invalid in Home Assistant 2026.12.

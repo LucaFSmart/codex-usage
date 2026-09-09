@@ -89,6 +89,8 @@ Unknown is never converted to zero. A named feature restriction remains visible 
 
 For selected eligible accounts, OpenAI may report Luna Reserve as a separate additional allowance after regular usage is exhausted. The integration labels the `gpt-reserve` quota as **Luna Reserve**, preserves its associated `normal_model_slug` on the dynamic usage sensor, and distinguishes an available fallback from a fully exhausted state in the card. Absence of this bucket does not prove that an account is ineligible. Codex Usage remains a passive monitor and does not advertise the client capability that authorizes an app to switch models automatically.
 
+Purchased instant resets and saved banked resets are separate provider features. OpenAI documents that a purchased reset's new weekly period starts with the first subsequent Work or Codex request. Codex Usage never derives that start from purchase or redemption time: reset, pace and budget values remain unknown until the provider reports a valid reset date.
+
 See the [entity reference](docs/entities.md) for every key, unit, state class, default and absence rule.
 
 ## Usage warnings

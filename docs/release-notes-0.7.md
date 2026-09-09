@@ -8,7 +8,7 @@
 - Card configuration now controls each section and individual metric with Automatic, Always show and Hide modes. Source diagnostics remain hidden by default.
 - Main, additional, credit and spend blockers are normalized without making unrelated healthy windows appear exhausted.
 - Luna Reserve is recognized as a separate additional allowance. Its model metadata is preserved on the dynamic usage sensor, and exhausted regular usage with an explicitly available Reserve fallback is no longer styled as fully blocked.
-- Saved-reset counts use one priority rule across sensors and card. Expiry is shown only when detail and usage sources agree, matching OpenAI's clarified banked-reset behavior.
+- Saved-reset counts use one priority rule across sensors and card. Expiry is shown only when detail and usage sources agree. Purchased resets start their new weekly period with subsequent usage, so the integration waits for a provider reset date instead of inventing pace or budget values.
 - Public copy now describes shared eligible-agent allowances and reports reached-limit classifications without claiming that every action is blocked. Negative provider credit balances remain valid account states rather than being clamped to zero.
 - Provider `Retry-After` for HTTP 429 and 503 is honored across usage, optional reads and credential refresh. Manual refresh cannot bypass the cooldown.
 - Optional profile and reset failures are isolated from main usage. Source state, last success and safe error categories are available without exposing raw responses.
@@ -24,4 +24,4 @@ Read [upgrading to 0.7](upgrading-to-0.7.md) before updating. Installation, enti
 
 ## Compatibility
 
-Home Assistant 2026.3.0 or newer is required. Existing config entries and stable unique IDs are preserved. The card payload remains schema 1; refresh the browser after installation to load the 0.7 bundle. This candidate has not been tagged or published.
+Home Assistant 2026.3.0 or newer is required. Existing config entries and stable unique IDs are preserved. The card payload remains schema 1; refresh the browser after installation to load the 0.7 bundle.

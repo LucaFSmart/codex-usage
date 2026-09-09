@@ -447,9 +447,9 @@ def _relative_seconds(value: Any) -> float | None:
 def _reset_time(payload: dict[str, Any]) -> datetime | None:
     """Return the reset time, preferring the absolute backend timestamp.
 
-    Every reset payload carries `reset_at` next to `reset_after_seconds`. The
-    relative value is the only usable source when the absolute one is missing
-    or unparsable, so it keeps a reset sensor available instead of unknown.
+    Responses may supply `reset_at`, `reset_after_seconds`, both, or neither.
+    The relative value is usable when the absolute one is missing or invalid;
+    if both are absent, the reset remains unknown until the provider reports it.
     """
     resets_at = _timestamp(payload.get("reset_at"))
     if resets_at is not None:

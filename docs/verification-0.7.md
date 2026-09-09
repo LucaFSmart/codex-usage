@@ -6,8 +6,8 @@ This file records the checks for the local 0.7 candidate. It is updated from fre
 
 | Target | Purpose | Result |
 | --- | --- | --- |
-| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 254 unit/component, 4 Blueprint and 3 runtime tests passed |
-| Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 254 unit/component, 4 Blueprint and 3 runtime tests passed |
+| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 255 unit/component, 4 Blueprint and 3 runtime tests passed |
+| Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 255 unit/component, 4 Blueprint and 3 runtime tests passed |
 | Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
 
 The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.9.1 Linux job additionally installs `pytest-homeassistant-custom-component==0.13.364`; local Windows verification uses the portable harness because the plugin imports the Unix-only `fcntl` module.
@@ -24,7 +24,7 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 ## Final evidence
 
 - Ruff format check and lint: passed for `custom_components`, `tests` and `tests_integration`.
-- Python: 254 unit/component tests, 4 Blueprint tests and 3 runtime tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. The Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
+- Python: 255 unit/component tests, 4 Blueprint tests and 3 runtime tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. The Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
 - Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 137 Vitest tests passed.
 - Frontend coverage: 97.03% statements, 94.44% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
 - Dependency audit: zero vulnerabilities at npm's high severity threshold.

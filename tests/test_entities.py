@@ -245,6 +245,39 @@ def test_weekly_pace_is_unknown_when_reset_is_outside_window() -> None:
         assert _weekly_pace(data) is None
 
 
+def test_weekly_pace_waits_for_provider_date_after_an_external_reset() -> None:
+    """Do not invent a weekly period before the provider reports its start."""
+    now = datetime(2026, 9, 9, 8, 0, tzinfo=UTC)
+    pending = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 0,
+                    "limit_window_seconds": 604_800,
+                }
+            }
+        }
+    )
+    activated = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 1,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (now + timedelta(days=7)).timestamp(),
+                }
+            }
+        }
+    )
+
+    with patch("custom_components.codex_usage.sensor.datetime") as datetime_mock:
+        datetime_mock.now.return_value = now
+        assert pending.weekly_window is not None
+        assert pending.weekly_window.resets_at is None
+        assert _weekly_pace(pending) is None
+        assert _weekly_pace(activated) == 1.0
+
+
 def test_budget_entities_are_disabled_diagnostics_without_state_class() -> None:
     descriptions = {description.key: description for description in SENSORS}
     for key in ("five_hour_budget", "weekly_budget"):
