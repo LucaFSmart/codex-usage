@@ -11,7 +11,8 @@ from unittest.mock import patch
 from homeassistant import auth, loader
 from homeassistant.components import recorder
 from homeassistant.components.recorder import statistics
-from homeassistant.components.recorder.tasks import StatisticsTask
+from homeassistant.components.recorder.core import Recorder
+from homeassistant.components.recorder.tasks import StatisticsTask, SynchronizeTask
 from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry, entity_registry, issue_registry, restore_state
@@ -70,6 +71,13 @@ async def _hass(tmp_path: Path) -> HomeAssistant:
     await restore_state.async_load(hass)
     hass.auth = await auth.auth_manager_from_config(hass, [], [])
     return hass
+
+
+async def _wait_for_recorder(hass: HomeAssistant, instance: Recorder) -> None:
+    """Wait until every recorder task queued before this call is committed."""
+    future = hass.loop.create_future()
+    instance.queue_task(SynchronizeTask(future))
+    await future
 
 
 def test_real_setup_creates_new_entities_and_unloads(tmp_path):
@@ -259,7 +267,7 @@ def test_real_recorder_accepts_total_and_reports_removed_measurement_metadata(tm
             await hass.async_start()
             instance = recorder.get_instance(hass)
             await hass.async_block_till_done()
-            await instance.async_block_till_done()
+            await _wait_for_recorder(hass, instance)
             descriptions = {item.key: item for item in PROFILE_SENSORS}
             assert descriptions["lifetime_tokens"].state_class.value == "total"
             assert descriptions["peak_daily_tokens"].state_class is None
@@ -276,11 +284,11 @@ def test_real_recorder_accepts_total_and_reports_removed_measurement_metadata(tm
                 {"state_class": "measurement", "unit_of_measurement": "tokens"},
             )
             await hass.async_block_till_done()
-            await instance.async_block_till_done()
+            await _wait_for_recorder(hass, instance)
             now = datetime.now(UTC)
             start = now.replace(minute=(now.minute // 5) * 5, second=0, microsecond=0)
             instance.queue_task(StatisticsTask(start, False))
-            await instance.async_block_till_done()
+            await _wait_for_recorder(hass, instance)
 
             metadata = await instance.async_add_executor_job(
                 functools.partial(
@@ -303,7 +311,7 @@ def test_real_recorder_accepts_total_and_reports_removed_measurement_metadata(tm
                 {"unit_of_measurement": "tokens"},
             )
             await hass.async_block_till_done()
-            await instance.async_block_till_done()
+            await _wait_for_recorder(hass, instance)
             issues = await instance.async_add_executor_job(statistics.validate_statistics, hass)
             assert any(
                 issue.type == "state_class_removed"
