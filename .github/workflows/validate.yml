@@ -54,6 +54,12 @@ jobs:
       - run: pip install "homeassistant==${{ matrix.ha_version }}" pytest ${{ matrix.harness }}
       - run: pytest tests_integration/test_integration_smoke.py tests/test_blueprint.py -v ${{ matrix.pytest_args }}
 
+  integration-smoke:
+    runs-on: ubuntu-latest
+    needs: runtime-matrix
+    steps:
+      - run: echo "All supported Home Assistant runtime checks passed"
+
   tests-min-version:
     runs-on: ubuntu-latest
     steps:
