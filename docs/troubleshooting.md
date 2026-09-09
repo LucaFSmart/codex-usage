@@ -2,7 +2,7 @@
 
 ## Card missing or still showing old behavior
 
-Confirm the integration loaded successfully, then reload the browser and check dashboard resources. The 0.7 bundle URL is `/codex_usage/frontend/codex-usage-card.js?v=0.7.0`. Avoid duplicate resource entries. In YAML-managed dashboards add the module manually. A Repair appears when automatic resource registration actually fails in storage mode; it clears after successful registration or removal of the last loaded entry.
+Confirm the integration loaded successfully, then reload the browser and check dashboard resources. The 0.7 bundle URL is `/codex_usage/frontend/codex-usage-card.js?v=0.7.1`. Avoid duplicate resource entries. In YAML-managed dashboards add the module manually. A Repair appears when automatic resource registration actually fails in storage mode; it clears after successful registration or removal of the last loaded entry.
 
 ## Unknown values or missing optional sections
 

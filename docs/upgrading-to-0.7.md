@@ -1,6 +1,6 @@
 # Upgrading to 0.7
 
-Back up Home Assistant before updating. Install the integration and bundled card together, restart HA, then refresh the dashboard browser. Update manually managed resources to `?v=0.7.0`. An old cached card still reads schema 1 but retains its older rendering behavior until refreshed.
+Back up Home Assistant before updating. Install the integration and bundled card together, restart HA, then refresh the dashboard browser. Update manually managed resources to `?v=0.7.1`. An old cached card still reads schema 1 but retains its older rendering behavior until refreshed.
 
 Existing config entries, workspace/user identity, sensor unique IDs, entity IDs, user names and saved card hides remain associated with the same data. Another workspace requires another entry. The new timestamp and budget entities are disabled by default; enable the ones you want in Settings → Devices & services → Entities.
 
