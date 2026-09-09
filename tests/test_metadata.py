@@ -6,7 +6,10 @@ from typing import Any
 
 from PIL import Image
 
+from custom_components.codex_usage.api import USER_AGENT
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS
+from custom_components.codex_usage.const import CARD_VERSION
+from custom_components.codex_usage.diagnostic_sensor import SOURCE_TIMESTAMP_SENSORS
 from custom_components.codex_usage.sensor import PROFILE_SENSORS, SENSORS
 
 ROOT = Path(__file__).parents[1]
@@ -24,16 +27,20 @@ def _leaf_paths(value: Any, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]
 
 
 def test_translations_match_canonical_strings() -> None:
+    canonical = _load_json(COMPONENT / "strings.json")
     english = _load_json(COMPONENT / "translations" / "en.json")
     german = _load_json(COMPONENT / "translations" / "de.json")
 
+    assert canonical == english
     assert _leaf_paths(german) == _leaf_paths(english)
 
 
 def test_entity_icons_cover_static_entities() -> None:
     icons = _load_json(COMPONENT / "icons.json")["entity"]
 
-    assert set(icons["sensor"]) == {item.translation_key for item in (*SENSORS, *PROFILE_SENSORS)}
+    assert set(icons["sensor"]) == {
+        item.translation_key for item in (*SENSORS, *PROFILE_SENSORS, *SOURCE_TIMESTAMP_SENSORS)
+    }
     assert set(icons["binary_sensor"]) == {item.translation_key for item in BINARY_SENSORS}
 
 
@@ -44,7 +51,15 @@ def test_hacs_and_manifest_metadata() -> None:
     assert manifest["domain"] == "codex_usage"
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
-    assert manifest["version"] == "0.6.5"
+    frontend_package = _load_json(ROOT / "frontend" / "package.json")
+    frontend_lock = _load_json(ROOT / "frontend" / "package-lock.json")
+
+    assert manifest["version"] == "0.7.0"
+    assert CARD_VERSION == manifest["version"]
+    assert frontend_package["version"] == manifest["version"]
+    assert frontend_lock["version"] == manifest["version"]
+    assert frontend_lock["packages"][""]["version"] == manifest["version"]
+    assert USER_AGENT == f"HomeAssistant-CodexUsage/{manifest['version']}"
     assert hacs["homeassistant"] == "2026.3.0"
     assert set(hacs) == {"homeassistant", "name"}
 

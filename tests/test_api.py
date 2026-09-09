@@ -15,6 +15,7 @@ from custom_components.codex_usage.api import (
     CodexApiClient,
     CodexAuthenticationError,
     CodexCredentials,
+    CodexHttpError,
     CodexOptionalEndpointUnavailable,
     CodexProfileUnavailable,
     DeviceCode,
@@ -63,9 +64,31 @@ class _FakeSession:
 
     def post(self, url: str, **kwargs: object) -> _FakeResponse:
         self.last_url = url
-        self.last_headers = kwargs.get("headers")  # type: ignore[assignment]
+        self.last_headers = kwargs.get("headers")
         self.last_kwargs = kwargs
         return self.response
+
+
+@pytest.mark.parametrize("status", [429, 503, 200])
+def test_rotated_credentials_are_saved_before_failed_resource_request(status):
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+
+    from custom_components.codex_usage.api import CodexApiError
+
+    credentials = CodexCredentials("old", "old-refresh", "id", 0, "workspace")
+    rotated = replace(credentials, access_token="new", refresh_token="new-refresh", expires_at=9e9)
+    saved = []
+    response = _FakeResponse(status, None)
+    response.headers = {"Retry-After": "86400"}
+    session = _FakeSession(response)
+    client = CodexApiClient(session)
+    client.on_credentials_refresh = saved.append
+    client.async_refresh_credentials = AsyncMock(return_value=rotated)
+    with pytest.raises(CodexApiError):
+        asyncio.run(client.async_get_usage(credentials))
+    assert saved == [rotated]
+    assert session.last_headers["Authorization"] == "Bearer new"
 
 
 def test_parse_full_usage_response() -> None:
@@ -144,6 +167,101 @@ def test_parse_sparse_usage_response() -> None:
     assert data.additional_limits == ()
     assert data.credits is None
     assert data.spend_limit is None
+
+
+def test_luna_reserve_metadata_is_preserved_and_named_for_people() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": False, "limit_reached": True},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "gpt-5.6-luna",
+                    "rate_limit": {
+                        "allowed": True,
+                        "limit_reached": False,
+                        "primary_window": {
+                            "used_percent": 20,
+                            "limit_window_seconds": 18_000,
+                        },
+                    },
+                }
+            ],
+        }
+    )
+
+    reserve = data.additional_limits[0]
+    assert reserve.limit_id == "base_model_inference"
+    assert reserve.name == "Luna Reserve"
+    assert reserve.normal_model_slug == "gpt-5.6-luna"
+
+
+def test_luna_reserve_model_metadata_is_bounded_and_type_safe() -> None:
+    invalid = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": {"private": "value"},
+                }
+            ]
+        }
+    )
+    bounded = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "normal_model_slug": "x" * 200,
+                }
+            ]
+        }
+    )
+
+    assert invalid.additional_limits[0].normal_model_slug is None
+    assert bounded.additional_limits[0].normal_model_slug is None
+
+
+def test_reserve_label_requires_the_official_id_and_alias_pair() -> None:
+    wrong_id = parse_usage(
+        {
+            "additional_rate_limits": [
+                {"metered_feature": "future_quota", "limit_name": "gpt-reserve"}
+            ]
+        }
+    )
+    wrong_alias = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "future-quota",
+                }
+            ]
+        }
+    )
+
+    assert wrong_id.additional_limits[0].name == "gpt-reserve"
+    assert wrong_alias.additional_limits[0].name == "future-quota"
+
+
+def test_negative_credit_balance_is_preserved() -> None:
+    data = parse_usage(
+        {
+            "credits": {
+                "has_credits": False,
+                "unlimited": False,
+                "balance": "-5.25",
+            }
+        }
+    )
+
+    assert data.credits is not None
+    assert data.credits.has_credits is False
+    assert data.credits.balance == Decimal("-5.25")
 
 
 @pytest.mark.parametrize(
@@ -597,6 +715,39 @@ def test_explicit_spend_limit_signal_sets_safe_blocker_reason() -> None:
     assert data.blocker_reason == "spend"
 
 
+def test_current_spend_control_reached_signal_sets_safe_blocker_reason() -> None:
+    data = parse_usage({"spend_control_reached": True})
+
+    assert data.spend_limit_reached is True
+    assert data.blocker_reason == "spend"
+
+
+@pytest.mark.parametrize(
+    ("top_level", "nested", "expected"),
+    (
+        (True, None, True),
+        (True, False, True),
+        (False, True, True),
+        (False, None, False),
+        (None, False, False),
+        (None, None, None),
+    ),
+)
+def test_spend_restriction_combines_explicit_sources_with_true_precedence(
+    top_level: bool | None, nested: bool | None, expected: bool | None
+) -> None:
+    payload: dict[str, object] = {"spend_control": {}}
+    if top_level is not None:
+        payload["spend_limit_reached"] = top_level
+    if nested is not None:
+        payload["spend_control"] = {"reached": nested}
+
+    data = parse_usage(payload)
+
+    assert data.spend_limit_reached is expected
+    assert data.blocker_reason == ("spend" if expected is True else None)
+
+
 def test_explicit_credit_limit_signal_sets_safe_blocker_reason() -> None:
     data = parse_usage(
         {
@@ -796,6 +947,28 @@ def test_credentials_refresh_disables_redirects() -> None:
     assert session.last_kwargs.get("allow_redirects") is False
 
 
+@pytest.mark.parametrize("status", [429, 503])
+def test_credentials_refresh_preserves_provider_retry_deadline(status: int) -> None:
+    response = _FakeResponse(status, None)
+    response.headers = {"Retry-After": "172800"}
+    credentials = CodexCredentials(
+        access_token="old-access",
+        refresh_token="old-refresh",
+        id_token="old-id",
+        expires_at=0,
+        account_id="workspace-1",
+    )
+    started_at = datetime.now(UTC)
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(
+            CodexApiClient(_FakeSession(response)).async_refresh_credentials(credentials)  # type: ignore[arg-type]
+        )
+
+    assert caught.value.status == status
+    assert caught.value.retry_at >= started_at + timedelta(hours=47, minutes=59)
+
+
 def test_missing_limit_state_stays_unavailable() -> None:
     data = parse_usage({"plan_type": "free", "rate_limit": None})
     assert _limit_reached(data) is None
@@ -809,6 +982,41 @@ def test_explicit_limit_state_is_reported() -> None:
         }
     )
     assert _limit_reached(data) is True
+
+
+@pytest.mark.parametrize("reached_type", [{"type": "rate_limit_reached"}, "rate_limit_reached"])
+def test_reported_reached_type_marks_main_limit_without_legacy_boolean(
+    reached_type: object,
+) -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"allowed": True},
+            "rate_limit_reached_type": reached_type,
+        }
+    )
+
+    assert data.main_limit.limit_reached is True
+    assert data.blocker_reason == "usage_limit"
+
+
+def test_reported_reached_type_marks_additional_limit_without_legacy_boolean() -> None:
+    data = parse_usage(
+        {
+            "rate_limit": {"limit_reached": False},
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "code_review",
+                    "limit_name": "Code review",
+                    "rate_limit": {
+                        "rate_limit_reached_type": "rate_limit_reached",
+                    },
+                }
+            ],
+        }
+    )
+
+    assert data.additional_limits[0].limit_reached is True
+    assert data.blocker_reason is None
 
 
 def test_additional_limit_state_is_included_in_overall_status() -> None:
@@ -842,9 +1050,10 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "X-OpenAI-Fedramp": "true",
     }
+    assert "x-openai-codex-luna-reserve" not in session.last_headers
 
 
 def test_parse_profile_keeps_only_supported_aggregate_statistics() -> None:
@@ -940,7 +1149,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -965,7 +1174,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.6.5",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.0",
         "Cache-Control": "no-store",
     }
 
@@ -1014,3 +1223,112 @@ def test_profile_request_reports_unavailable_endpoint(status: int) -> None:
 
     with pytest.raises(CodexProfileUnavailable):
         asyncio.run(CodexApiClient(session).async_get_profile(credentials))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [None, "false", 0, {}, []])
+def test_credit_flags_are_unknown_unless_actual_booleans(value):
+    credits = parse_usage({"credits": {"has_credits": value, "unlimited": value}}).credits
+    assert credits.has_credits is None
+    assert credits.unlimited is None
+
+
+def test_missing_credit_flags_and_reset_count_are_unknown():
+    credits = parse_usage({"credits": {}}).credits
+    assert credits.has_credits is None and credits.unlimited is None
+    assert parse_reset_credits({}).available_count is None
+    assert parse_reset_credits({"available_count": 0}).available_count == 0
+    assert (
+        parse_usage({"credits": {"has_credits": False, "unlimited": False}}).credits.has_credits
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    ("payload", "present", "malformed"),
+    [
+        ({}, False, 0),
+        ({"credits": None}, False, 0),
+        ({"credits": {}}, False, 0),
+        ({"credits": []}, True, 0),
+        ({"credits": [None, {}]}, True, 2),
+    ],
+)
+def test_reset_details_presence_is_independent_of_rows(payload, present, malformed):
+    details = parse_reset_credits(payload)
+    assert details.details_present is present
+    assert details.malformed_rows == malformed
+    assert details.credits == () and details.available_count is None
+
+
+def test_conflicting_duplicate_windows_are_unknown_but_restriction_survives():
+    def row(used, allowed):
+        return {
+            "metered_feature": "feature",
+            "rate_limit": {
+                "allowed": allowed,
+                "primary_window": {"used_percent": used, "limit_window_seconds": 3600},
+            },
+        }
+
+    usage = parse_usage({"additional_rate_limits": [row(1, True), row(20, False), row(1, True)]})
+    assert len(usage.additional_limits) == 1
+    assert usage.additional_limits[0].primary is None
+    assert usage.additional_limits[0].limit_reached is True
+    assert usage.duplicate_limit_ids == 2
+    assert usage.conflicting_windows == 1
+
+
+def test_conflicting_duplicate_model_slugs_are_not_published():
+    def row(slug):
+        return {
+            "metered_feature": "base_model_inference",
+            "limit_name": "gpt-reserve",
+            "normal_model_slug": slug,
+            "rate_limit": {"allowed": True, "limit_reached": False},
+        }
+
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                row("gpt-5.6-luna"),
+                row("future-model"),
+                row("gpt-5.6-luna"),
+            ]
+        }
+    )
+
+    assert len(usage.additional_limits) == 1
+    assert usage.additional_limits[0].normal_model_slug is None
+
+
+def test_conflicting_duplicate_alias_does_not_claim_luna_reserve():
+    usage = parse_usage(
+        {
+            "additional_rate_limits": [
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "gpt-reserve",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                },
+                {
+                    "metered_feature": "base_model_inference",
+                    "limit_name": "future-quota",
+                    "rate_limit": {"allowed": True, "limit_reached": False},
+                },
+            ]
+        }
+    )
+
+    assert usage.additional_limits[0].name == "Base Model Inference"
+
+
+@pytest.mark.parametrize("rows", [(None, 20), (20, None)])
+def test_duplicate_missing_window_preserves_the_single_reported_value(rows):
+    def row(used):
+        window = None if used is None else {"used_percent": used, "limit_window_seconds": 3600}
+        return {"metered_feature": "feature", "rate_limit": {"primary_window": window}}
+
+    usage = parse_usage({"additional_rate_limits": [row(value) for value in rows]})
+    assert usage.additional_limits[0].primary is not None
+    assert usage.additional_limits[0].primary.used_percent == 20
+    assert usage.conflicting_windows == 0

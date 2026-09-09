@@ -130,6 +130,90 @@ describe("normalizeCardSnapshot", () => {
     expect(result.accounts[0]?.limits[0]?.used_percent).toBeNull();
   });
 
+  it("keeps schema-one additions optional while allowing only safe status, source, reset, and budget values", () => {
+    const sourceAccount = SNAPSHOT.accounts[0]!;
+    const result = normalizeCardSnapshot({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...sourceAccount,
+          limit_statuses: [
+            {
+              id: "base_model_inference",
+              name: "Luna Reserve",
+              source: "additional",
+              allowed: true,
+              reached: false,
+              normal_model_slug: "gpt-5.6-luna",
+            },
+            { id: "private", name: "Private", source: "unknown", allowed: "no", reached: false },
+          ],
+          limit_summary: {
+            reason: "usage_limit",
+            affected_limits: ["codex"],
+            affected_limits_truncated: false,
+            fallback_available: true,
+            fallback_limit_id: "base_model_inference",
+          },
+          sources: {
+            usage: {
+              state: "error",
+              last_attempt: "2026-07-15T10:00:00Z",
+              last_success: null,
+              retry_at: null,
+              error_code: "connection",
+              refresh_mode: "poll",
+              expected_interval_seconds: 300,
+            },
+            private: { state: "error", error_code: "secret" },
+          },
+          reset_credits: {
+            available_count: 0,
+            total_earned: 0,
+            next_expiry: null,
+            count_source: "usage",
+            details_consistent: false,
+            details_present: true,
+          },
+          limits: [
+            {
+              ...sourceAccount.limits[0]!,
+              budget_pph: 0.25,
+              budget_calculated_at: "2026-07-15T10:00:00Z",
+            },
+          ],
+        },
+      ],
+    });
+
+    const account = result.accounts[0]! as (typeof result.accounts)[number] &
+      Record<string, unknown>;
+    expect(account.limit_statuses).toEqual([
+      {
+        id: "base_model_inference",
+        name: "Luna Reserve",
+        source: "additional",
+        allowed: true,
+        reached: false,
+      },
+    ]);
+    expect(account.limit_statuses?.[0]).not.toHaveProperty("normal_model_slug");
+    expect(account.limit_summary).toMatchObject({
+      fallback_available: true,
+      fallback_limit_id: "base_model_inference",
+    });
+    expect(account.sources).toEqual({
+      usage: expect.objectContaining({ state: "error", error_code: "connection" }),
+    });
+    expect(account.reset_credits).toMatchObject({
+      available_count: 0,
+      count_source: "usage",
+      details_consistent: false,
+      details_present: true,
+    });
+    expect((account.limits[0] as unknown as Record<string, unknown>).budget_pph).toBe(0.25);
+  });
+
   it("rejects unsupported and incomplete snapshot envelopes", () => {
     expect(() => normalizeCardSnapshot(null)).toThrow("Unsupported");
     expect(() => normalizeCardSnapshot({ schema_version: 2, accounts: [] })).toThrow("Unsupported");

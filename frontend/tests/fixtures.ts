@@ -14,7 +14,7 @@ export const SNAPSHOT: CardSnapshot = {
       blocker: null,
       limits: [
         {
-          id: "codex:primary:weekly",
+          id: "codex:secondary:weekly",
           name: "Codex",
           source: "main",
           duration_seconds: 604800,

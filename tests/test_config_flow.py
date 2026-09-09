@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from custom_components.codex_usage import async_migrate_entry
 from custom_components.codex_usage.api import (
@@ -14,10 +14,29 @@ from custom_components.codex_usage.api import (
     credentials_from_token_response,
 )
 from custom_components.codex_usage.config_flow import (
+    CodexUsageConfigFlow,
     preserve_reauth_workspace,
     workspace_choices,
 )
 from custom_components.codex_usage.coordinator import credentials_to_entry_data
+
+
+def test_options_offer_enabled_optional_sources_for_existing_entries():
+    from custom_components.codex_usage.config_flow import CodexUsageOptionsFlow
+
+    flow = CodexUsageOptionsFlow()
+    flow.async_show_form = MagicMock(side_effect=lambda **kwargs: kwargs)
+    with patch.object(CodexUsageOptionsFlow, "config_entry", new_callable=PropertyMock) as entry:
+        entry.return_value = SimpleNamespace(options={})
+        result = asyncio.run(flow.async_step_init())
+    values = result["data_schema"]({})
+    assert values == {"update_interval": 300, "fetch_profile": True, "fetch_reset_details": True}
+
+
+def test_options_flow_uses_home_assistant_automatic_reload() -> None:
+    from custom_components.codex_usage.config_flow import CodexUsageOptionsFlow
+
+    assert CodexUsageOptionsFlow.automatic_reload is True
 
 
 def _jwt(payload: dict[str, object]) -> str:
@@ -95,6 +114,133 @@ def test_reauth_preserves_workspace_when_account_discovery_is_unavailable() -> N
 
     assert preserved.account_id == "configured-workspace"
     assert credentials.account_id == "token-default"
+
+
+def test_reauth_accepts_a_newly_available_user_claim() -> None:
+    async def exercise() -> tuple[object, AsyncMock]:
+        credentials = CodexCredentials(
+            access_token="access",
+            refresh_token="refresh",
+            id_token="id",
+            expires_at=123.0,
+            account_id="token-workspace",
+            user_id="user",
+        )
+        entry = SimpleNamespace(
+            data={"account_id": "configured-workspace", "user_id": None},
+            unique_id="configured-workspace",
+        )
+        finish = AsyncMock(return_value={"type": "done"})
+        flow = CodexUsageConfigFlow()
+        flow._reauth_entry = entry
+        flow._async_finish_workspace = finish
+        flow.async_abort = MagicMock(return_value={"type": "abort"})
+        client = SimpleNamespace(async_get_accounts=AsyncMock(return_value=()))
+        with patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api:
+            api.return_value = client
+            result = await flow._async_prepare_workspace(credentials, reauth=True)
+        return result, finish
+
+    result, finish = asyncio.run(exercise())
+
+    assert result == {"type": "done"}
+    passed_credentials = finish.await_args.args[0]
+    assert passed_credentials.account_id == "configured-workspace"
+    assert passed_credentials.user_id == "user"
+
+
+def test_reauth_retains_a_previously_verified_user_claim_when_new_claim_is_missing() -> None:
+    async def exercise() -> tuple[object, AsyncMock]:
+        credentials = CodexCredentials(
+            access_token="access",
+            refresh_token="refresh",
+            id_token="id",
+            expires_at=123.0,
+            account_id="token-workspace",
+            user_id=None,
+        )
+        entry = SimpleNamespace(
+            data={"account_id": "configured-workspace", "user_id": "user"},
+            unique_id="configured-workspace:user",
+        )
+        finish = AsyncMock(return_value={"type": "done"})
+        flow = CodexUsageConfigFlow()
+        flow._reauth_entry = entry
+        flow._async_finish_workspace = finish
+        flow.async_abort = MagicMock(return_value={"type": "abort"})
+        client = SimpleNamespace(async_get_accounts=AsyncMock(return_value=()))
+        with patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api:
+            api.return_value = client
+            result = await flow._async_prepare_workspace(credentials, reauth=True)
+        return result, finish
+
+    result, finish = asyncio.run(exercise())
+
+    assert result == {"type": "done"}
+    passed_credentials = finish.await_args.args[0]
+    assert passed_credentials.account_id == "configured-workspace"
+    assert passed_credentials.user_id == "user"
+
+
+def test_reauth_still_rejects_a_different_verified_user() -> None:
+    async def exercise() -> object:
+        credentials = CodexCredentials(
+            access_token="access",
+            refresh_token="refresh",
+            id_token="id",
+            expires_at=123.0,
+            account_id="token-workspace",
+            user_id="different-user",
+        )
+        entry = SimpleNamespace(
+            data={"account_id": "configured-workspace", "user_id": "verified-user"},
+            unique_id="configured-workspace:verified-user",
+        )
+        flow = CodexUsageConfigFlow()
+        flow._reauth_entry = entry
+        flow._async_finish_workspace = AsyncMock(return_value={"type": "done"})
+        flow.async_abort = MagicMock(return_value={"type": "abort", "reason": "wrong_account"})
+        client = SimpleNamespace(async_get_accounts=AsyncMock(return_value=()))
+        with patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api:
+            api.return_value = client
+            return await flow._async_prepare_workspace(credentials, reauth=True)
+
+    assert asyncio.run(exercise()) == {"type": "abort", "reason": "wrong_account"}
+
+
+def test_reauth_requests_one_explicit_reload() -> None:
+    async def exercise() -> tuple[object, MagicMock, MagicMock]:
+        credentials = CodexCredentials(
+            access_token="access",
+            refresh_token="refresh",
+            id_token="id",
+            expires_at=123.0,
+            account_id="configured-workspace",
+            user_id="user",
+        )
+        entry = SimpleNamespace(
+            data={"account_id": "configured-workspace", "user_id": "user"},
+            unique_id="configured-workspace:user",
+        )
+        flow = CodexUsageConfigFlow()
+        flow._reauth_entry = entry
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_mismatch = MagicMock()
+        update = MagicMock(return_value={"type": "done"})
+        update_reload = MagicMock(return_value={"type": "reload"})
+        flow.async_update_and_abort = update
+        flow.async_update_reload_and_abort = update_reload
+        client = SimpleNamespace(async_get_usage=AsyncMock(return_value=(None, credentials)))
+        with patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api:
+            api.return_value = client
+            result = await flow._async_finish_workspace(credentials, None, reauth=True)
+        return result, update, update_reload
+
+    result, update, update_reload = asyncio.run(exercise())
+
+    assert result == {"type": "reload"}
+    update.assert_not_called()
+    update_reload.assert_called_once()
 
 
 def test_migration_removes_legacy_identity_claims() -> None:

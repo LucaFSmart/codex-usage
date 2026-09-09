@@ -15,8 +15,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .api import RateLimit, RateLimitWindow
+from .budget import UsageBudget, budget_key, current_budget
 from .const import CARD_VERSION, DOMAIN
 from .entry_title import safe_entry_title
+from .monitoring import limit_statuses, reset_summary, restriction_summary
 
 CARD_DATA_COMMAND = f"{DOMAIN}/card_data"
 EVENT_CARD_DATA_UPDATED = f"{DOMAIN}_card_data_updated"
@@ -30,6 +32,18 @@ def _decimal_text(value: Decimal | None) -> str | None:
     return str(value) if value is not None else None
 
 
+def _source_payload(value: Any) -> dict[str, Any]:
+    return {
+        "state": value.state,
+        "last_attempt": _iso(value.last_attempt),
+        "last_success": _iso(value.last_success),
+        "retry_at": _iso(value.retry_at),
+        "error_code": value.error_code,
+        "refresh_mode": value.refresh_mode,
+        "expected_interval_seconds": value.expected_interval_seconds,
+    }
+
+
 def _limit_payload(
     limit: RateLimit,
     position: str,
@@ -37,6 +51,7 @@ def _limit_payload(
     *,
     source: str,
     entity_id: str | None,
+    budget: UsageBudget | None,
 ) -> dict[str, Any]:
     return {
         "id": f"{limit.limit_id}:{position}:{window.duration_key}",
@@ -48,10 +63,19 @@ def _limit_payload(
         "resets_at": _iso(window.resets_at),
         "reached": limit.limit_reached,
         "entity_id": entity_id,
+        "budget_pph": budget.budget_pph if budget else None,
+        "budget_calculated_at": _iso(budget.calculated_at) if budget else None,
     }
 
 
-def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> list[dict[str, Any]]:
+def _limits(
+    usage: Any,
+    entity_ids: dict[str, str],
+    identity: str | None,
+    *,
+    coordinator: Any,
+    now: datetime,
+) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     main_window_ids: set[int] = set()
     for position, window in usage.main_limit.windows:
@@ -76,6 +100,12 @@ def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> lis
                 window,
                 source="main",
                 entity_id=entity_ids.get(unique_id) if unique_id else None,
+                budget=current_budget(
+                    coordinator,
+                    budget_key(usage.main_limit, position, window, source="main"),
+                    window,
+                    now=now,
+                ),
             )
         )
     for limit in usage.additional_limits:
@@ -90,6 +120,12 @@ def _limits(usage: Any, entity_ids: dict[str, str], identity: str | None) -> lis
                     window,
                     source="additional",
                     entity_id=entity_ids.get(unique_id) if unique_id else None,
+                    budget=current_budget(
+                        coordinator,
+                        budget_key(limit, position, window, source="additional"),
+                        window,
+                        now=now,
+                    ),
                 )
             )
     return result
@@ -128,20 +164,22 @@ def _user_can_read_entry(user: User, registry: Any, entry_id: str) -> bool:
     )
 
 
-def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -> dict[str, Any]:
+def _account_payload(
+    entry: Any, coordinator: Any, entity_ids: dict[str, str], now: datetime
+) -> dict[str, Any]:
     data = coordinator.data
     usage = data.usage
     credits = usage.credits
     spend = usage.spend_limit
     reset = data.reset_credits
-    expiry = (
-        min(
-            (credit.expires_at for credit in reset.credits if credit.expires_at is not None),
-            default=None,
-        )
-        if reset
-        else None
+    normalized_reset = getattr(data, "reset_summary", None) or reset_summary(
+        usage,
+        reset,
+        now=now,
+        usage_updated_at=getattr(coordinator, "last_success", None),
+        details_updated_at=getattr(coordinator, "reset_last_success", now),
     )
+    restriction = restriction_summary(usage)
     return {
         "id": entry.entry_id,
         "name": safe_entry_title(entry),
@@ -149,10 +187,40 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
         "available": bool(coordinator.last_update_success),
         "updated_at": _iso(getattr(coordinator, "last_success", None)),
         "blocker": usage.blocker_reason,
+        "limit_statuses": [
+            {
+                "id": item.id,
+                "name": item.name,
+                "source": item.source,
+                "allowed": item.allowed,
+                "reached": item.reached,
+            }
+            for item in limit_statuses(usage)
+        ],
+        "limit_summary": {
+            "reached": restriction.reached,
+            "reason": restriction.reason,
+            "affected_limits": list(restriction.affected_limits),
+            "affected_limits_truncated": restriction.affected_limits_truncated,
+            **(
+                {
+                    "fallback_available": restriction.fallback_available,
+                    "fallback_limit_id": restriction.fallback_limit_id,
+                }
+                if restriction.fallback_limit_id
+                else {}
+            ),
+        },
+        "sources": {
+            key: _source_payload(value)
+            for key, value in getattr(coordinator, "sources", {}).items()
+        },
         "limits": _limits(
             usage,
             entity_ids,
             entry.unique_id or entry.data.get("account_id"),
+            coordinator=coordinator,
+            now=now,
         ),
         "credits": (
             {
@@ -180,11 +248,18 @@ def _account_payload(entry: Any, coordinator: Any, entity_ids: dict[str, str]) -
         ),
         "reset_credits": (
             {
-                "available_count": reset.available_count,
-                "total_earned": reset.total_earned_count,
-                "next_expiry": _iso(expiry),
+                "available_count": normalized_reset.available_count,
+                "total_earned": normalized_reset.total_earned,
+                "next_expiry": _iso(normalized_reset.next_expiry),
+                "count_source": normalized_reset.count_source,
+                "count_updated_at": _iso(normalized_reset.count_updated_at),
+                "details_consistent": normalized_reset.details_consistent,
+                "details_present": normalized_reset.details_present,
+                "details_updated_at": _iso(normalized_reset.details_updated_at),
             }
-            if reset
+            if normalized_reset.available_count is not None
+            or normalized_reset.total_earned is not None
+            or normalized_reset.details_present
             else None
         ),
         "profile": asdict(data.profile) if data.profile else None,
@@ -199,12 +274,13 @@ def build_card_snapshot(hass: HomeAssistant, user: User) -> dict[str, Any]:
         registry = er.async_get(hass)
     except AttributeError, KeyError, TypeError:
         registry = None
+    now = datetime.now(UTC)
     return {
         "schema_version": 1,
         "integration_version": CARD_VERSION,
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": now.isoformat(),
         "accounts": [
-            _account_payload(entry, coordinator, entity_ids)
+            _account_payload(entry, coordinator, entity_ids, now)
             for entry, coordinator in entries.values()
             if coordinator.data is not None and _user_can_read_entry(user, registry, entry.entry_id)
         ],

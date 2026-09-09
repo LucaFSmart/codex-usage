@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 DOMAIN: Final = "codex_usage"
 PLATFORMS: Final = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
-CARD_VERSION: Final = "0.6.5"
+CARD_VERSION: Final = "0.7.0"
 CARD_URL: Final = "/codex_usage/frontend/codex-usage-card.js"
 
 OAUTH_CLIENT_ID: Final = "app_EMoamEEZ73f0CkXaXp7hrann"
@@ -36,3 +36,6 @@ CONF_EMAIL: Final = "email"
 CONF_PLAN_TYPE: Final = "plan_type"
 CONF_FEDRAMP: Final = "fedramp"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
+CONF_FETCH_PROFILE: Final = "fetch_profile"
+CONF_FETCH_RESET_DETAILS: Final = "fetch_reset_details"
+CONF_WORKSPACE_DISCOVERY: Final = "workspace_discovery_last_success"

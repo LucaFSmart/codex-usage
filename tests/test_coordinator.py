@@ -1,18 +1,24 @@
 """Tests for usage and profile update scheduling."""
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
 from custom_components.codex_usage.api import (
+    CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
+    CodexHttpError,
     CodexProfileStats,
     ResetCredits,
     parse_usage,
 )
 from custom_components.codex_usage.coordinator import CodexUsageCoordinator
+from custom_components.codex_usage.monitoring import initial_sources
 
 
 def _credentials() -> CodexCredentials:
@@ -43,13 +49,18 @@ def _profile(total_threads: int) -> CodexProfileStats:
 
 class _FakeClient:
     def __init__(self) -> None:
+        self.usage_calls = 0
         self.profile_calls = 0
         self.profile_result: CodexProfileStats | Exception = _profile(10)
         self.reset_calls = 0
         self.reset_result: ResetCredits | Exception = ResetCredits(1, 2, ())
+        self.usage_result = parse_usage({"plan_type": "plus", "rate_limit": None})
 
     async def async_get_usage(self, credentials: CodexCredentials):
-        return parse_usage({"plan_type": "plus", "rate_limit": None}), credentials
+        self.usage_calls += 1
+        if isinstance(self.usage_result, Exception):
+            raise self.usage_result
+        return self.usage_result, credentials
 
     async def async_get_profile(self, credentials: CodexCredentials) -> CodexProfileStats:
         self.profile_calls += 1
@@ -68,7 +79,7 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator = object.__new__(CodexUsageCoordinator)
     coordinator.client = client  # type: ignore[assignment]
     coordinator.credentials = _credentials()
-    coordinator.config_entry = SimpleNamespace(data={})
+    coordinator.config_entry = SimpleNamespace(data={}, options={})
     coordinator.hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_update_entry=lambda *args, **kwargs: None)
     )
@@ -82,7 +93,91 @@ def _coordinator(client: _FakeClient) -> CodexUsageCoordinator:
     coordinator._reset_last_success = None
     coordinator._reset_available = None
     coordinator._reset_last_error = None
+    coordinator._last_success = None
+    coordinator.sources = initial_sources()
+    coordinator._read_retry_at = None
+    coordinator._usage_retry_at = None
+    coordinator._profile_retry_at = None
+    coordinator._reset_reconciled_context = None
+    coordinator._reset_context_changed_at = None
     return coordinator
+
+
+def test_disabled_optional_sources_skip_reads_and_keep_usage_reset_count():
+    client = _FakeClient()
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 4}})
+    coordinator = _coordinator(client)
+    coordinator.config_entry.options = {"fetch_profile": False, "fetch_reset_details": False}
+    data = asyncio.run(coordinator._async_update_data())
+    assert (client.profile_calls, client.reset_calls) == (0, 0)
+    assert data.profile is None and data.reset_credits is None
+    assert data.reset_summary.available_count == 4
+    assert coordinator.sources["profile"].state == "disabled"
+
+
+def test_optional_429_does_not_stop_core_usage_reads():
+    """A profile-endpoint 429 must not block the independently-fetched usage sensors."""
+    from custom_components.codex_usage.api import CodexHttpError
+
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=3)
+    client.profile_result = CodexHttpError(429, until)
+    coordinator = _coordinator(client)
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.reset_calls == 0
+    assert coordinator.sources["profile"].retry_at == until
+
+    # Usage keeps updating on later cycles; only the rate-limited profile (and the
+    # reset_details read that voluntarily defers to it) stay backed off.
+    data = asyncio.run(coordinator._async_update_data())
+    assert data.usage is client.usage_result
+    assert client.usage_calls == 2
+    assert client.profile_calls == 1
+    assert client.reset_calls == 0
+
+
+def test_optional_503_does_not_stop_other_endpoint():
+    client = _FakeClient()
+    client.profile_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
+    coordinator = _coordinator(client)
+    asyncio.run(coordinator._async_update_data())
+    asyncio.run(coordinator._async_update_data())
+    assert client.profile_calls == 1
+    assert client.reset_calls == 1
+    assert client.usage_calls == 2
+
+
+def test_usage_503_cooldown_keeps_http_error_cause():
+    client = _FakeClient()
+    client.usage_result = CodexHttpError(503, datetime.now(UTC) + timedelta(days=1))
+    coordinator = _coordinator(client)
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    attempted_at = coordinator.sources["usage"].last_attempt
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.sources["usage"].error_code == "http_error"
+    assert coordinator.sources["usage"].last_attempt == attempted_at
+
+
+@pytest.mark.parametrize(
+    ("result_attribute", "source"),
+    [("profile_result", "profile"), ("reset_result", "reset_details")],
+)
+def test_optional_authentication_failure_keeps_authentication_cause(
+    result_attribute: str, source: str
+):
+    client = _FakeClient()
+    setattr(client, result_attribute, CodexAuthenticationError())
+    coordinator = _coordinator(client)
+
+    data = asyncio.run(coordinator._async_update_data())
+
+    assert data.usage is client.usage_result
+    assert coordinator.sources[source].error_code == "authentication"
 
 
 def test_profile_is_fetched_at_start_and_then_hourly() -> None:
@@ -174,3 +269,103 @@ def test_identical_usage_refreshes_still_produce_fresh_coordinator_data() -> Non
     assert first.refreshed_at == first_time
     assert second.refreshed_at == second_time
     assert first != second
+
+
+def test_core_failure_updates_live_source_and_retains_success_timestamp() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        asyncio.run(coordinator._async_update_data())
+    successful = coordinator.sources["usage"].last_success
+    client.usage_result = CodexConnectionError()
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["usage"].state == "error"
+    assert coordinator.sources["usage"].error_code == "connection"
+    assert coordinator.sources["usage"].last_success == successful
+
+
+def test_changed_usage_context_suppresses_unreconciled_detail_expiry() -> None:
+    client = _FakeClient()
+    coordinator = _coordinator(client)
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 1}})
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0):
+        first = asyncio.run(coordinator._async_update_data())
+    client.usage_result = parse_usage({"rate_limit_reset_credits": {"available_count": 2}})
+    coordinator._reset_next_attempt = 10_000
+    with patch("custom_components.codex_usage.coordinator.monotonic", return_value=200.0):
+        second = asyncio.run(coordinator._async_update_data())
+    assert first.reset_summary is not None
+    assert second.reset_summary is not None
+    assert second.reset_summary.available_count == 2
+    assert second.reset_summary.details_consistent is False
+    assert second.reset_summary.next_expiry is None
+
+
+def test_successful_refresh_stores_one_canonical_budget_observation() -> None:
+    client = _FakeClient()
+    observed_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    client.usage_result = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (observed_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = _coordinator(client)
+
+    with (
+        patch("custom_components.codex_usage.coordinator.datetime") as datetime_mock,
+        patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0),
+    ):
+        datetime_mock.now.return_value = observed_at
+        data = asyncio.run(coordinator._async_update_data())
+
+    assert data.budgets["weekly"].budget_pph == pytest.approx(0.25)
+    assert data.budgets["weekly"].calculated_at == observed_at
+
+
+def test_changed_window_tuple_replaces_budget_atomically() -> None:
+    client = _FakeClient()
+    first_at = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    second_at = first_at + timedelta(minutes=5)
+    client.usage_result = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 82,
+                    "limit_window_seconds": 604_800,
+                    "reset_at": (first_at + timedelta(hours=72)).timestamp(),
+                }
+            }
+        }
+    )
+    coordinator = _coordinator(client)
+
+    with (
+        patch("custom_components.codex_usage.coordinator.datetime") as datetime_mock,
+        patch("custom_components.codex_usage.coordinator.monotonic", return_value=100.0),
+    ):
+        datetime_mock.now.return_value = first_at
+        first = asyncio.run(coordinator._async_update_data())
+        client.usage_result = parse_usage(
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 0,
+                        "limit_window_seconds": 604_800,
+                        "reset_at": (second_at + timedelta(days=7)).timestamp(),
+                    }
+                }
+            }
+        )
+        datetime_mock.now.return_value = second_at
+        second = asyncio.run(coordinator._async_update_data())
+
+    assert first.budgets["weekly"].budget_pph == pytest.approx(0.25)
+    assert second.budgets["weekly"].budget_pph == pytest.approx(100 / 168)
+    assert second.budgets["weekly"].calculated_at == second_at

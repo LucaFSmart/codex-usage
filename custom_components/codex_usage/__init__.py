@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -19,8 +18,6 @@ from .card_registration import CodexUsageCardRegistration
 from .const import (
     CONF_EMAIL,
     CONF_PLAN_TYPE,
-    CONF_UPDATE_INTERVAL,
-    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     PLATFORMS,
 )
@@ -67,7 +64,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: hass.bus.async_fire(EVENT_CARD_DATA_UPDATED))
     )
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     domain_data = hass.data.setdefault(DOMAIN, {})
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
@@ -104,9 +100,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
             except Exception:  # noqa: BLE001
                 _LOGGER.warning("Unable to unregister the Codex Usage Lovelace card", exc_info=True)
     return True
-
-
-async def _async_update_listener(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> None:
-    """Apply an updated polling interval without reloading the integration."""
-    interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
-    entry.runtime_data.update_interval = timedelta(seconds=interval)

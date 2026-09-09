@@ -7,6 +7,7 @@ import { SNAPSHOT } from "./fixtures";
 
 const alpha = SNAPSHOT.accounts[0] as CardAccount;
 const beta = SNAPSHOT.accounts[1] as CardAccount;
+const NOW = new Date("2026-07-15T10:00:00Z");
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -70,6 +71,67 @@ describe("buildCardViewModel", () => {
 
     full.accounts[0]!.blocker = "usage_limit";
     expect(buildCardViewModel(full, DEFAULT_CONFIG).severity).toBe("blocked");
+  });
+
+  it("keeps healthy main windows healthy when a windowless feature restriction is reported", () => {
+    const result = buildCardViewModel(
+      {
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...alpha,
+            limits: [{ ...alpha.limits[0]!, used_percent: 10, remaining_percent: 90 }],
+            blocker: null,
+            limit_statuses: [
+              {
+                id: "code_review",
+                name: "Code review",
+                source: "additional",
+                allowed: false,
+                reached: true,
+              },
+            ],
+            limit_summary: {
+              reached: true,
+              reason: "additional_limit",
+              affected_limits: ["code_review"],
+              affected_limits_truncated: false,
+            },
+          },
+        ],
+      },
+      DEFAULT_CONFIG,
+    );
+    expect(result.selectedAccount?.limits[0]?.severity).toBe("ok");
+    expect(result.selectedAccount?.severity).toBe("blocked");
+  });
+
+  it("downgrades an exhausted regular allowance to critical when Luna Reserve is available", () => {
+    const result = buildCardViewModel(
+      {
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...alpha,
+            blocker: "usage_limit",
+            limits: [
+              { ...alpha.limits[0]!, reached: true, used_percent: 100, remaining_percent: 0 },
+            ],
+            limit_summary: {
+              reached: true,
+              reason: "usage_limit",
+              affected_limits: ["codex"],
+              affected_limits_truncated: false,
+              fallback_available: true,
+              fallback_limit_id: "base_model_inference",
+            },
+          },
+        ],
+      },
+      DEFAULT_CONFIG,
+    );
+
+    expect(result.selectedAccount?.severity).toBe("critical");
   });
 
   it("calculates pace only for plausible windows", () => {
@@ -206,8 +268,8 @@ describe("isSectionVisible", () => {
   ).selectedAccount!;
 
   it("passes through boolean visibility unaffected by data presence", () => {
-    expect(isSectionVisible("credits", true, baseAccount)).toBe(true);
-    expect(isSectionVisible("credits", false, baseAccount)).toBe(false);
+    expect(isSectionVisible("credits", true, baseAccount, NOW)).toBe(true);
+    expect(isSectionVisible("credits", false, baseAccount, NOW)).toBe(false);
   });
 
   it.each([
@@ -215,30 +277,69 @@ describe("isSectionVisible", () => {
     ["spending", "spend"],
     ["profile", "profile"],
   ] as const)("resolves auto for %s based on the account's %s field", (key, field) => {
-    expect(isSectionVisible(key, "auto", baseAccount)).toBe(false);
-    expect(isSectionVisible(key, "auto", { ...baseAccount, [field]: {} })).toBe(true);
+    expect(isSectionVisible(key, "auto", baseAccount, NOW)).toBe(false);
+    expect(isSectionVisible(key, "auto", { ...baseAccount, [field]: {} }, NOW)).toBe(true);
   });
 
   it("resolves credits as auto-visible when only reset credits are present", () => {
     expect(
-      isSectionVisible("credits", "auto", {
-        ...baseAccount,
-        credits: null,
-        reset_credits: { available_count: 2, total_earned: 2, next_expiry: null },
-      }),
+      isSectionVisible(
+        "credits",
+        "auto",
+        {
+          ...baseAccount,
+          credits: null,
+          reset_credits: { available_count: 2, total_earned: 2, next_expiry: null },
+        },
+        NOW,
+      ),
     ).toBe(true);
   });
 
   it("resolves auto for additional_limits based on limit sources", () => {
-    expect(isSectionVisible("additional_limits", "auto", baseAccount)).toBe(false);
+    expect(isSectionVisible("additional_limits", "auto", baseAccount, NOW)).toBe(false);
     const withAdditional = {
       ...baseAccount,
       limits: [...baseAccount.limits, makeLimit({ id: "extra", source: "additional" })],
     };
-    expect(isSectionVisible("additional_limits", "auto", withAdditional)).toBe(true);
+    expect(isSectionVisible("additional_limits", "auto", withAdditional, NOW)).toBe(true);
   });
 
   it("treats auto as true for keys with no auto-specific rule", () => {
-    expect(isSectionVisible("limits", "auto", baseAccount)).toBe(true);
+    expect(isSectionVisible("limits", "auto", baseAccount, NOW)).toBe(true);
+  });
+
+  it("shows stale polling sources automatically but ignores discovery age", () => {
+    const staleProfile = {
+      ...baseAccount,
+      sources: {
+        profile: {
+          state: "ok" as const,
+          last_attempt: null,
+          last_success: "2026-07-15T08:00:00Z",
+          retry_at: null,
+          error_code: null,
+          refresh_mode: "poll" as const,
+          expected_interval_seconds: 300,
+        },
+      },
+    };
+    expect(isSectionVisible("sources", "auto", staleProfile, NOW)).toBe(true);
+    expect(
+      isSectionVisible(
+        "sources",
+        "auto",
+        {
+          ...staleProfile,
+          sources: {
+            workspace_discovery: {
+              ...staleProfile.sources.profile!,
+              refresh_mode: "on_auth" as const,
+            },
+          },
+        },
+        NOW,
+      ),
+    ).toBe(false);
   });
 });

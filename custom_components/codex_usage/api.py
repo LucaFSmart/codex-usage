@@ -11,6 +11,7 @@ import binascii
 import json
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -20,6 +21,7 @@ import aiohttp
 
 from .const import (
     ACCOUNTS_API_URL,
+    CARD_VERSION,
     DEVICE_CODE_URL,
     DEVICE_TOKEN_URL,
     DEVICE_VERIFICATION_URL,
@@ -30,14 +32,38 @@ from .const import (
     RESET_CREDITS_API_URL,
     USAGE_API_URL,
 )
+from .retry import retry_deadline
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
-USER_AGENT = "HomeAssistant-CodexUsage/0.6.5"
+USER_AGENT = f"HomeAssistant-CodexUsage/{CARD_VERSION}"
 MAX_ADDITIONAL_RATE_LIMITS = 50
 
 
 class CodexApiError(Exception):
     """Base error raised by the Codex API client."""
+
+
+class CodexHttpError(CodexApiError):
+    """A safe HTTP status and provider retry deadline, without response contents."""
+
+    def __init__(self, status: int, retry_at: datetime) -> None:
+        super().__init__(f"Codex request failed ({status})")
+        self.status = status
+        self.retry_at = retry_at
+
+
+def _check_retry(response: aiohttp.ClientResponse) -> None:
+    if response.status in (429, 503):
+        headers = getattr(response, "headers", {})
+        raise CodexHttpError(
+            response.status,
+            retry_deadline(
+                headers.get("Retry-After"),
+                server_date=headers.get("Date"),
+                now=datetime.now(UTC),
+                floor_seconds=60,
+            ),
+        )
 
 
 class CodexAuthenticationError(CodexApiError):
@@ -141,6 +167,7 @@ class RateLimit:
     limit_reached: bool | None
     primary: RateLimitWindow | None
     secondary: RateLimitWindow | None
+    normal_model_slug: str | None = None
 
     @property
     def windows(self) -> tuple[tuple[str, RateLimitWindow], ...]:
@@ -159,8 +186,8 @@ class RateLimit:
 class CreditStatus:
     """ChatGPT credit status."""
 
-    has_credits: bool
-    unlimited: bool
+    has_credits: bool | None
+    unlimited: bool | None
     balance: Decimal | None
     overage_limit_reached: bool | None
 
@@ -190,6 +217,8 @@ class CodexUsageData:
     spend_limit_reached: bool | None
     blocker_reason: str | None
     available_reset_credits: int | None
+    duplicate_limit_ids: int = 0
+    conflicting_windows: int = 0
 
     def _main_window(self, duration_key: str) -> RateLimitWindow | None:
         return next(
@@ -252,9 +281,11 @@ class ResetCredit:
 class ResetCredits:
     """Aggregated reset-credit status."""
 
-    available_count: int
+    available_count: int | None
     total_earned_count: int | None
     credits: tuple[ResetCredit, ...]
+    details_present: bool = True
+    malformed_rows: int = 0
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
@@ -416,9 +447,9 @@ def _relative_seconds(value: Any) -> float | None:
 def _reset_time(payload: dict[str, Any]) -> datetime | None:
     """Return the reset time, preferring the absolute backend timestamp.
 
-    Every reset payload carries `reset_at` next to `reset_after_seconds`. The
-    relative value is the only usable source when the absolute one is missing
-    or unparsable, so it keeps a reset sensor available instead of unknown.
+    Responses may supply `reset_at`, `reset_after_seconds`, both, or neither.
+    The relative value is usable when the absolute one is missing or invalid;
+    if both are absent, the reset remains unknown until the provider reports it.
     """
     resets_at = _timestamp(payload.get("reset_at"))
     if resets_at is not None:
@@ -450,25 +481,50 @@ def _window(payload: Any) -> RateLimitWindow | None:
     )
 
 
-def _rate_limit(limit_id: str, name: str, payload: Any) -> RateLimit:
+def _reported_reached_reason(value: Any) -> str | None:
+    """Normalize both historical object and current scalar reached-type shapes."""
+    if isinstance(value, dict):
+        value = value.get("type")
+    return _blocker_reason(value)
+
+
+def _rate_limit(
+    limit_id: str,
+    name: str,
+    payload: Any,
+    *,
+    reached_reason: str | None = None,
+    normal_model_slug: str | None = None,
+) -> RateLimit:
     details = payload if isinstance(payload, dict) else {}
     allowed = details.get("allowed") if isinstance(details.get("allowed"), bool) else None
     reported_reached = (
         details.get("limit_reached") if isinstance(details.get("limit_reached"), bool) else None
     )
+    reached_by_type = (
+        reached_reason == "usage_limit"
+        or _reported_reached_reason(details.get("rate_limit_reached_type")) == "usage_limit"
+    )
     return RateLimit(
         limit_id=limit_id,
         name=name,
         allowed=allowed,
-        limit_reached=True if allowed is False else reported_reached,
+        limit_reached=True if allowed is False or reached_by_type else reported_reached,
         primary=_window(details.get("primary_window")),
         secondary=_window(details.get("secondary_window")),
+        normal_model_slug=normal_model_slug,
     )
 
 
 def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     """Normalize the Codex usage response."""
-    main = _rate_limit("codex", "Codex", payload.get("rate_limit"))
+    main_reached_reason = _reported_reached_reason(payload.get("rate_limit_reached_type"))
+    main = _rate_limit(
+        "codex",
+        "Codex",
+        payload.get("rate_limit"),
+        reached_reason=main_reached_reason,
+    )
     additional: list[RateLimit] = []
 
     for position, window in main.windows:
@@ -491,6 +547,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     raw_additional = payload.get("additional_rate_limits")
     if not isinstance(raw_additional, list):
         raw_additional = []
+    parsed_additional: list[RateLimit] = []
     for item in raw_additional[:MAX_ADDITIONAL_RATE_LIMITS]:
         if not isinstance(item, dict):
             continue
@@ -499,8 +556,22 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
             or _display_text(item.get("limit_name"), max_length=80)
             or "additional"
         )
-        name = _display_text(item.get("limit_name")) or limit_id.replace("_", " ").title()
-        additional.append(_rate_limit(limit_id, name, item.get("rate_limit")))
+        reported_name = _display_text(item.get("limit_name"))
+        name = (
+            "Luna Reserve"
+            if limit_id == "base_model_inference"
+            and reported_name
+            and reported_name.casefold() == "gpt-reserve"
+            else reported_name or limit_id.replace("_", " ").title()
+        )
+        parsed_additional.append(
+            _rate_limit(
+                limit_id,
+                name,
+                item.get("rate_limit"),
+                normal_model_slug=_display_text(item.get("normal_model_slug"), max_length=80),
+            )
+        )
 
     # The current backend schema reports code review through
     # `additional_rate_limits`. This dedicated key is an older response shape
@@ -508,14 +579,101 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     code_review_payload = payload.get("code_review_rate_limit")
     if isinstance(code_review_payload, dict):
         details = code_review_payload.get("rate_limit", code_review_payload)
-        additional.append(_rate_limit("code_review", "Code review", details))
+        parsed_additional.append(_rate_limit("code_review", "Code review", details))
+
+    duplicates = 0
+    conflicts = 0
+    by_id: dict[str, RateLimit] = {}
+    ambiguous_windows: set[tuple[str, str]] = set()
+    ambiguous_model_slugs: set[str] = set()
+    for limit in parsed_additional:
+        previous = by_id.get(limit.limit_id)
+        if previous is None:
+            by_id[limit.limit_id] = limit
+            continue
+        duplicates += 1
+        primary_conflict = (
+            previous.primary is not None
+            and limit.primary is not None
+            and previous.primary != limit.primary
+        )
+        secondary_conflict = (
+            previous.secondary is not None
+            and limit.secondary is not None
+            and previous.secondary != limit.secondary
+        )
+        if primary_conflict:
+            ambiguous_windows.add((limit.limit_id, "primary"))
+        if secondary_conflict:
+            ambiguous_windows.add((limit.limit_id, "secondary"))
+        primary = (
+            None
+            if (limit.limit_id, "primary") in ambiguous_windows
+            else (previous.primary or limit.primary)
+        )
+        secondary = (
+            None
+            if (limit.limit_id, "secondary") in ambiguous_windows
+            else (previous.secondary or limit.secondary)
+        )
+        if primary_conflict or secondary_conflict:
+            conflicts += 1
+        restrictive = previous.limit_reached is True or limit.limit_reached is True
+        allowed_false = previous.allowed is False or limit.allowed is False
+        allowed = (
+            False
+            if allowed_false
+            else (True if previous.allowed is True and limit.allowed is True else None)
+        )
+        reached = (
+            True
+            if restrictive or allowed_false
+            else (
+                False if previous.limit_reached is False and limit.limit_reached is False else None
+            )
+        )
+        slug_conflict = (
+            previous.normal_model_slug is not None
+            and limit.normal_model_slug is not None
+            and previous.normal_model_slug != limit.normal_model_slug
+        )
+        if slug_conflict:
+            ambiguous_model_slugs.add(limit.limit_id)
+        normal_model_slug = (
+            None
+            if limit.limit_id in ambiguous_model_slugs
+            else previous.normal_model_slug or limit.normal_model_slug
+        )
+        name = (
+            previous.name
+            if previous.name == limit.name
+            else limit.limit_id.replace("_", " ").title()
+        )
+        by_id[limit.limit_id] = RateLimit(
+            limit.limit_id,
+            name,
+            allowed,
+            reached,
+            primary,
+            secondary,
+            normal_model_slug,
+        )
+    additional.extend(by_id.values())
 
     credits_payload = payload.get("credits")
     credits = None
     if isinstance(credits_payload, dict):
         credits = CreditStatus(
-            has_credits=bool(credits_payload.get("has_credits", False)),
-            unlimited=bool(credits_payload.get("unlimited", False)),
+            has_credits=(
+                credits_payload.get("has_credits")
+                if isinstance(credits_payload.get("has_credits"), bool)
+                else None
+            ),
+            unlimited=(
+                credits_payload.get("unlimited")
+                if isinstance(credits_payload.get("unlimited"), bool)
+                else None
+            ),
             balance=_decimal(credits_payload.get("balance")),
             overage_limit_reached=(
                 credits_payload.get("overage_limit_reached")
@@ -526,10 +684,23 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
 
     spend_payload = payload.get("spend_control")
     spend_limit = None
-    spend_reached = None
+    spend_signals = [
+        value
+        for value in (
+            payload.get("spend_limit_reached"),
+            payload.get("spend_control_reached"),
+        )
+        if isinstance(value, bool)
+    ]
+    spend_reached = True if True in spend_signals else (False if False in spend_signals else None)
     if isinstance(spend_payload, dict):
-        spend_reached = (
+        nested_spend_reached = (
             spend_payload.get("reached") if isinstance(spend_payload.get("reached"), bool) else None
+        )
+        spend_reached = (
+            True
+            if spend_reached is True or nested_spend_reached is True
+            else (False if spend_reached is False or nested_spend_reached is False else None)
         )
         item = spend_payload.get("individual_limit")
         if isinstance(item, dict):
@@ -543,9 +714,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 resets_at=_reset_time(item),
             )
 
-    reached = payload.get("rate_limit_reached_type")
-    reached_type = reached.get("type") if isinstance(reached, dict) else None
-    blocker_reason = _blocker_reason(reached_type)
+    blocker_reason = main_reached_reason or _blocker_reason(payload.get("blocker_reason"))
     if blocker_reason is None and spend_reached is True:
         blocker_reason = "spend"
     if blocker_reason is None and credits is not None and credits.overage_limit_reached is True:
@@ -567,6 +736,8 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
         spend_limit_reached=spend_reached,
         blocker_reason=blocker_reason,
         available_reset_credits=available_reset_credits,
+        duplicate_limit_ids=duplicates,
+        conflicting_windows=conflicts,
     )
 
 
@@ -626,17 +797,21 @@ def parse_accounts(payload: dict[str, Any]) -> tuple[AvailableAccount, ...]:
 
 def parse_reset_credits(payload: dict[str, Any]) -> ResetCredits:
     """Normalize reset-credit metadata and discard private descriptions and IDs."""
-    available_count = _non_negative_int(payload.get("available_count")) or 0
+    available_count = _non_negative_int(payload.get("available_count"))
     total_earned_count = _non_negative_int(payload.get("total_earned_count"))
     credits: list[ResetCredit] = []
     raw_credits = payload.get("credits")
-    if isinstance(raw_credits, list):
+    details_present = isinstance(raw_credits, list)
+    malformed_rows = 0
+    if details_present:
         for item in raw_credits:
             if not isinstance(item, dict):
+                malformed_rows += 1
                 continue
             reset_type = item.get("reset_type")
             status = item.get("status")
             if not isinstance(reset_type, str) or not isinstance(status, str):
+                malformed_rows += 1
                 continue
             credits.append(
                 ResetCredit(
@@ -646,7 +821,9 @@ def parse_reset_credits(payload: dict[str, Any]) -> ResetCredits:
                     expires_at=_date_time(item.get("expires_at")),
                 )
             )
-    return ResetCredits(available_count, total_earned_count, tuple(credits))
+    return ResetCredits(
+        available_count, total_earned_count, tuple(credits), details_present, malformed_rows
+    )
 
 
 def parse_profile(payload: dict[str, Any]) -> CodexProfileStats:
@@ -773,6 +950,7 @@ class CodexApiClient:
             ) as response:
                 if response.status in (400, 401, 403):
                     raise CodexAuthenticationError("The OpenAI session can no longer be refreshed")
+                _check_retry(response)
                 if response.status >= 400:
                     raise CodexApiError(f"Token refresh failed ({response.status})")
                 payload = await self._async_decode_json(response)
@@ -788,10 +966,10 @@ class CodexApiClient:
         """Fetch current usage, refreshing credentials as needed."""
         current = credentials
         if current.expires_at <= time.time() + 300:
-            current = await self.async_refresh_credentials(current)
+            current = await self._async_refresh_for_usage(current)
         status, payload = await self._async_usage_request(current)
         if status == 401:
-            current = await self.async_refresh_credentials(current)
+            current = await self._async_refresh_for_usage(current)
             status, payload = await self._async_usage_request(current)
         if status in (401, 403):
             raise CodexAuthenticationError("OpenAI rejected the stored credentials")
@@ -817,6 +995,7 @@ class CodexApiClient:
             async with self._session.get(
                 PROFILE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
+                _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexProfileUnavailable
                 if response.status == 401:
@@ -859,6 +1038,7 @@ class CodexApiClient:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
             async with self._session.get(url, headers=headers, timeout=REQUEST_TIMEOUT) as response:
+                _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexOptionalEndpointUnavailable
                 if response.status == 401:
@@ -889,6 +1069,7 @@ class CodexApiClient:
                 USAGE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
                 status = response.status
+                _check_retry(response)
                 try:
                     payload = await response.json(content_type=None)
                 except aiohttp.ContentTypeError, json.JSONDecodeError:
@@ -904,3 +1085,11 @@ class CodexApiClient:
             return await response.json(content_type=None)
         except (aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError) as err:
             raise CodexApiError("OpenAI returned invalid JSON") from err
+
+    on_credentials_refresh: Callable[[CodexCredentials], None] | None = None
+
+    async def _async_refresh_for_usage(self, credentials: CodexCredentials) -> CodexCredentials:
+        current = await self.async_refresh_credentials(credentials)
+        if self.on_credentials_refresh is not None:
+            self.on_credentials_refresh(current)
+        return current

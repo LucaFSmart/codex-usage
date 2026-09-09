@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../src/codex-usage-card";
-import { CodexUsageCard, CodexUsageCardEditor } from "../src/codex-usage-card";
+import "../src/codex-usage-card-editor";
+import { CodexUsageCard } from "../src/codex-usage-card";
+import { CodexUsageCardEditor } from "../src/codex-usage-card-editor";
 import { makeFakeHass, SNAPSHOT } from "./fixtures";
 
 async function mount<T extends HTMLElement>(tag: string): Promise<T> {
@@ -25,6 +27,344 @@ afterEach(() => {
 });
 
 describe("CodexUsageCard", () => {
+  it("retains standard main slots as neutral rows when a snapshot omits them", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [] }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"]')?.textContent,
+    ).toContain("—");
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
+    ).toContain("—");
+  });
+
+  it("maps standard windows by duration when weekly is the secondary provider slot", async () => {
+    const fiveHour = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      id: "codex:primary:five_hour",
+      duration_seconds: 18_000,
+      used_percent: 25,
+      remaining_percent: 75,
+    };
+    const weekly = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      id: "codex:secondary:weekly",
+      duration_seconds: 604_800,
+      used_percent: 40,
+      remaining_percent: 60,
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [fiveHour, weekly] }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const rows = card.shadowRoot?.querySelectorAll("[data-limit-id]") ?? [];
+    expect(rows).toHaveLength(2);
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
+    ).toContain("60%");
+  });
+
+  it("does not replace an explicitly hidden secondary weekly window with a placeholder", async () => {
+    const weekly = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      id: "codex:secondary:weekly",
+      duration_seconds: 604_800,
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      sections: { limits: { visible: true, values: { "codex:secondary:weekly": false } } },
+    });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [weekly] }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')).toBeNull();
+  });
+
+  it("keeps the legacy primary-weekly hide setting effective for the stable weekly slot", async () => {
+    const weekly = SNAPSHOT.accounts[0]!.limits[0]!;
+    for (const limits of [[], [weekly]]) {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({
+        type: "custom:codex-usage-card",
+        account_mode: "single",
+        sections: { limits: { visible: true, values: { "codex:primary:weekly": false } } },
+      });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [{ ...SNAPSHOT.accounts[0]!, limits }],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')).toBeNull();
+    }
+  });
+
+  it("keeps a feature name on an additional window with a standard duration", async () => {
+    const additional = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      id: "code_review:primary:weekly",
+      name: "Code review",
+      source: "additional" as const,
+      duration_seconds: 604_800,
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: false });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          limits: [...SNAPSHOT.accounts[0]!.limits, additional],
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const row = card.shadowRoot?.querySelector('[data-limit-id="code_review:primary:weekly"]');
+    expect(row?.textContent).toContain("Code review");
+    expect(row?.textContent).toContain("Week");
+  });
+
+  it("does not draw unknown quota progress as zero", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          limits: [
+            { ...SNAPSHOT.accounts[0]!.limits[0]!, used_percent: null, remaining_percent: null },
+          ],
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const row = card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector(".bar span")).toBeNull();
+    expect(row?.querySelector(".ring")?.classList.contains("unknown")).toBe(true);
+  });
+
+  it("shows available resets in compact layout without turning an unknown count into zero", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: true });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          reset_credits: { available_count: null, total_earned: 3, next_expiry: null },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector('[data-core="resets"]')?.textContent).toContain("—");
+  });
+
+  it("keeps a single neutral row for forced-empty optional sections unless all values are explicitly hidden", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: {
+        spending: { visible: true, values: {} },
+        credits: { visible: true, values: { balance: false } },
+        budget: { visible: true, values: {} },
+      },
+    });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, spend: null, credits: null }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      card.shadowRoot?.querySelector('[data-empty-section="spending"]')?.textContent,
+    ).toContain("—");
+    expect(card.shadowRoot?.querySelector('[data-empty-section="credits"]')).toBeNull();
+    expect(card.shadowRoot?.querySelector('[data-empty-section="budget"]')?.textContent).toContain(
+      "—",
+    );
+    const spendingLabels = Array.from(
+      card.shadowRoot?.querySelectorAll(".section-label") ?? [],
+    ).filter((label) => label.textContent?.trim() === "Spending");
+    expect(spendingLabels).toHaveLength(1);
+  });
+
+  it("does not add an empty credit row when saved reset data is present", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: { credits: { visible: true, values: {} } },
+    });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          credits: null,
+          reset_credits: { available_count: 1, total_earned: 2, next_expiry: null },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector('[data-detail="reset-credits"]')).not.toBeNull();
+    expect(card.shadowRoot?.querySelector('[data-empty-section="credits"]')).toBeNull();
+  });
+
+  it("suppresses canonical budget values when core data or its observation is stale", async () => {
+    const limit = {
+      ...SNAPSHOT.accounts[0]!.limits[0]!,
+      duration_seconds: 604800,
+      resets_at: "2026-07-18T10:00:00Z",
+      budget_pph: 0.25,
+      budget_calculated_at: "2026-07-15T09:00:00Z",
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: false });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, limits: [limit] }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector("[data-budget-id]")).toBeNull();
+  });
+
+  it("marks retained profile data as historical without exposing sources", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", account_mode: "single", compact: false });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          profile: { lifetime_tokens: 1 },
+          sources: {
+            profile: {
+              state: "ok",
+              last_attempt: null,
+              last_success: "2026-07-01T10:00:00Z",
+              retry_at: null,
+              error_code: null,
+              refresh_mode: "poll",
+              expected_interval_seconds: 3600,
+            },
+          },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.querySelector("[data-profile-historical]")?.textContent).toContain(
+      "Historical",
+    );
+  });
+
+  it("renders bilingual source lifecycle labels instead of transport enums", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: { sources: { visible: true, values: {} } },
+    });
+    card.hass = {
+      ...makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...SNAPSHOT.accounts[0]!,
+            sources: {
+              workspace_discovery: {
+                state: "never",
+                last_attempt: null,
+                last_success: null,
+                retry_at: null,
+                error_code: null,
+                refresh_mode: "on_auth",
+                expected_interval_seconds: null,
+              },
+            },
+          },
+        ],
+      }),
+      language: "de",
+      locale: { language: "de-DE" },
+    };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const source = card.shadowRoot?.querySelector(
+      '[data-source="workspace_discovery"]',
+    )?.textContent;
+    expect(source).toContain("Letzte Workspace-Erkennung");
+    expect(source).toContain("Bei Anmeldung");
+  });
+
+  it("labels a stale healthy polling source as out of date", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      account_mode: "single",
+      compact: false,
+      sections: { sources: { visible: "auto", values: {} } },
+    });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          sources: {
+            profile: {
+              state: "ok",
+              last_attempt: "2026-07-15T06:00:00Z",
+              last_success: "2026-07-15T06:00:00Z",
+              retry_at: null,
+              error_code: null,
+              refresh_mode: "poll",
+              expected_interval_seconds: 3600,
+            },
+          },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const source = card.shadowRoot?.querySelector('[data-source="profile"]')?.textContent;
+    expect(source).toContain("Out of date");
+    expect(source).not.toContain("Current");
+  });
+  it("owns one local minute timer across disconnect and reconnect without timer networking", async () => {
+    const timer = vi.spyOn(globalThis, "setInterval");
+    const hass = makeFakeHass();
+    const callWS = vi.spyOn(hass, "callWS");
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(timer).toHaveBeenCalledOnce();
+    expect(callWS).toHaveBeenCalledOnce();
+
+    card.remove();
+    document.body.append(card);
+    await card.updateComplete;
+    expect(timer).toHaveBeenCalledTimes(2);
+    expect(callWS).toHaveBeenCalledOnce();
+    card.remove();
+    timer.mockRestore();
+  });
   it("exposes Home Assistant card APIs and section grid defaults", async () => {
     expect(CodexUsageCard.getStubConfig()).toEqual({});
     expect(new CodexUsageCard().getGridOptions()).toEqual({
@@ -50,10 +390,10 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
     // alpha: used_percent 40, remaining_percent 60 -> remaining is now the primary metric
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
     ).toContain("60%");
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')?.textContent,
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]')?.textContent,
     ).toContain("40% used");
   });
 
@@ -243,7 +583,8 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await unknownCard.updateComplete;
     const unknownCallout = unknownCard.shadowRoot?.querySelector(".callout")?.textContent;
-    expect(unknownCallout).toContain("unavailable");
+    expect(unknownCallout).toContain("restriction was reported");
+    expect(unknownCallout).not.toContain("unavailable");
     expect(unknownCallout).not.toContain("Week");
   });
 
@@ -316,12 +657,12 @@ describe("CodexUsageCard", () => {
       card.shadowRoot?.querySelector('[data-limit-id="codex:primary:five_hour"] .ring'),
     ).not.toBeNull();
     expect(
-      card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"] .ring'),
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"] .ring'),
     ).not.toBeNull();
     expect(card.shadowRoot?.querySelector('[data-limit-id="code_review"] .ring')).toBeNull();
   });
 
-  it("does not duplicate the blocked message in a separate blocker note", async () => {
+  it("does not overstate or duplicate a reported usage-limit message", async () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     card.setConfig({ type: "custom:codex-usage-card" });
     card.hass = makeFakeHass({
@@ -332,7 +673,119 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
 
     expect(card.shadowRoot?.querySelector(".blocker-note")).toBeNull();
-    expect(card.shadowRoot?.querySelector(".callout")?.textContent).toContain("blocked");
+    const callout = card.shadowRoot?.querySelector(".callout")?.textContent;
+    expect(callout).toContain("limit");
+    expect(callout).toContain("reached");
+    expect(callout).not.toContain("blocked");
+  });
+
+  it("explains when Luna Reserve remains available after regular usage is exhausted", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...SNAPSHOT.accounts[0]!,
+          blocker: "usage_limit",
+          limits: [
+            {
+              ...SNAPSHOT.accounts[0]!.limits[0]!,
+              reached: true,
+              used_percent: 100,
+              remaining_percent: 0,
+            },
+          ],
+          limit_summary: {
+            reached: true,
+            reason: "usage_limit",
+            affected_limits: ["codex"],
+            affected_limits_truncated: false,
+            fallback_available: true,
+            fallback_limit_id: "base_model_inference",
+          },
+        },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const callout = card.shadowRoot?.querySelector(".callout")?.textContent;
+    const status = card.shadowRoot?.querySelector(".status")?.textContent;
+    expect(callout).toContain("Regular usage");
+    expect(callout).toContain("Luna Reserve");
+    expect(callout).toContain("available");
+    expect(status).toContain("Luna Reserve");
+    expect(status).not.toContain("Critically low");
+  });
+
+  it.each([false, null])(
+    "does not claim Luna Reserve when fallback availability is %s",
+    async (fallbackAvailable) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card" });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [
+          {
+            ...SNAPSHOT.accounts[0]!,
+            blocker: "usage_limit",
+            limit_summary: {
+              reached: true,
+              reason: "usage_limit",
+              affected_limits: ["codex"],
+              affected_limits_truncated: false,
+              fallback_available: fallbackAvailable,
+              fallback_limit_id: "base_model_inference",
+            },
+          },
+        ],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector(".callout")?.textContent).not.toContain("Luna Reserve");
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).not.toContain("Luna Reserve");
+    },
+  );
+
+  it("keeps an overall blocked status when the selected account has Luna Reserve", async () => {
+    const reserveAccount = {
+      ...SNAPSHOT.accounts[0]!,
+      blocker: "usage_limit" as const,
+      limit_summary: {
+        reached: true,
+        reason: "usage_limit" as const,
+        affected_limits: ["codex"],
+        affected_limits_truncated: false,
+        fallback_available: true,
+        fallback_limit_id: "base_model_inference",
+      },
+    };
+    const blockedAccount = {
+      ...SNAPSHOT.accounts[1]!,
+      blocker: "credits" as const,
+      limit_summary: {
+        reached: true,
+        reason: "credits" as const,
+        affected_limits: [],
+        affected_limits_truncated: false,
+      },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({
+      type: "custom:codex-usage-card",
+      selected_entry_id: "entry-a",
+      stale_after_minutes: 1440,
+    });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [reserveAccount, blockedAccount] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const status = card.shadowRoot?.querySelector(".status")?.textContent;
+    expect(status).toContain("Overall");
+    expect(status).toContain("Limit reached");
+    expect(status).not.toContain("Luna Reserve");
   });
 
   it("collapses details by default and expands only when compact is explicitly false", async () => {
@@ -379,7 +832,9 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
 
-    expect(card.shadowRoot?.querySelector('[data-limit-id="codex:primary:weekly"]')).not.toBeNull();
+    expect(
+      card.shadowRoot?.querySelector('[data-limit-id="codex:secondary:weekly"]'),
+    ).not.toBeNull();
   });
 
   it("auto-hides the credits section when the account has no credits data", async () => {
@@ -421,7 +876,7 @@ describe("CodexUsageCard", () => {
     expect(row?.classList.contains("limit-row")).toBe(true);
   });
 
-  it("formats spend amounts as USD, consistent with the credits copy", async () => {
+  it("renders credit quantities without inventing a currency", async () => {
     const account = {
       ...SNAPSHOT.accounts[0]!,
       spend: {
@@ -442,11 +897,46 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
 
     const spendingRow = card.shadowRoot?.querySelector('[data-detail="spending"]')?.textContent;
-    expect(spendingRow).toContain("$81.8");
+    expect(spendingRow).toContain("81.8");
+    expect(spendingRow).not.toContain("$");
     const usedRow = card.shadowRoot?.querySelector('[data-spend-key="used"]')?.textContent;
-    expect(usedRow).toContain("$18.2");
+    expect(usedRow).toContain("18.2");
     const limitRow = card.shadowRoot?.querySelector('[data-spend-key="limit"]')?.textContent;
-    expect(limitRow).toContain("$100");
+    expect(limitRow).toContain("100");
+  });
+
+  it("keeps a signed credit balance visible when availability is explicitly false", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      credits: { balance: "-3.5", has_credits: false, unlimited: false, overage_reached: false },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector('[data-detail="credits"]')?.textContent).toContain(
+      "-3.5",
+    );
+  });
+
+  it("shows a known signed balance independently from unlimited status", async () => {
+    const account = {
+      ...SNAPSHOT.accounts[0]!,
+      credits: { balance: "-3.5", has_credits: false, unlimited: true, overage_reached: false },
+    };
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass({ ...SNAPSHOT, accounts: [account] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector('[data-detail="credits"]')?.textContent).toContain(
+      "-3.5",
+    );
+    expect(card.shadowRoot?.querySelector('[data-credit-key="unlimited"]')?.textContent).toContain(
+      "Unlimited credits",
+    );
   });
 
   it("does not render individually-boxed sub-cards for credits, spend, or account details", async () => {
@@ -666,6 +1156,30 @@ describe("CodexUsageCardEditor", () => {
 
     expect(editor.shadowRoot?.textContent).toContain("Additional limits");
     expect(editor.shadowRoot?.textContent).toContain("Account");
+  });
+
+  it("uses three-state section selectors while preserving per-value hides and HA layout fields", async () => {
+    const editor = await mount<CodexUsageCardEditor>("codex-usage-card-editor");
+    editor.setConfig({
+      type: "custom:codex-usage-card",
+      view_layout: { grid_area: "sidebar" },
+      sections: { credits: { visible: false, values: { balance: false } } },
+    });
+    editor.hass = makeFakeHass();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await editor.updateComplete;
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    const select = editor.shadowRoot?.querySelector<HTMLSelectElement>(
+      '[data-section-key="credits"]',
+    );
+    expect(select?.value).toBe("false");
+    select!.value = "auto";
+    select!.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+
+    const config = (changed.mock.calls[0]?.[0] as CustomEvent).detail.config;
+    expect(config.sections.credits).toEqual({ visible: "auto", values: { balance: false } });
+    expect(config.view_layout).toEqual({ grid_area: "sidebar" });
   });
 
   it("edits semantic colors with synchronized native and text inputs", async () => {

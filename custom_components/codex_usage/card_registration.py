@@ -10,6 +10,7 @@ from homeassistant.components.lovelace import MODE_STORAGE
 from homeassistant.core import HomeAssistant
 
 from .const import CARD_URL, CARD_VERSION
+from .repairs import registration_failed, registration_recovered
 
 _BUNDLE_PATH = Path(__file__).parent / "frontend" / "codex-usage-card.js"
 
@@ -35,14 +36,21 @@ class CodexUsageCardRegistration:
         async with self._registration_lock:
             if self._registered:
                 return
-            await self._async_register_static_path()
-            if self._storage_resources_supported():
-                await self._async_upsert_resource()
+            try:
+                await self._async_register_static_path()
+                if self._storage_resources_supported():
+                    await self._async_upsert_resource()
+            except Exception:
+                if self._storage_resources_supported():
+                    registration_failed(self.hass)
+                raise
+            registration_recovered(self.hass)
             self._registered = True
 
     async def async_unregister(self) -> None:
         """Remove all resources that point to the bundled card."""
         async with self._registration_lock:
+            registration_recovered(self.hass)
             if self._storage_resources_supported():
                 await self.lovelace.resources.async_get_info()
                 for item in list(self.lovelace.resources.async_items()):

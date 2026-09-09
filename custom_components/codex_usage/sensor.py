@@ -21,8 +21,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CodexUsageConfigEntry
 from .api import CodexProfileStats, CodexUsageData, RateLimit, RateLimitWindow
+from .budget import budget_key, current_budget
 from .const import CONF_ACCOUNT_ID
 from .coordinator import CodexUsageCoordinator
+from .diagnostic_sensor import source_timestamp_entities
 from .entity import CodexUsageEntity
 
 
@@ -81,6 +83,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         value_fn=lambda data: data.five_hour_window.resets_at if data.five_hour_window else None,
     ),
     CodexSensorDescription(
+        key="five_hour_budget",
+        translation_key="five_hour_budget",
+        native_unit_of_measurement="pp/h",
+        suggested_display_precision=3,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: None,
+    ),
+    CodexSensorDescription(
         key="weekly_usage",
         translation_key="weekly_usage",
         native_unit_of_measurement=PERCENTAGE,
@@ -101,6 +111,14 @@ SENSORS: tuple[CodexSensorDescription, ...] = (
         translation_key="weekly_reset",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.weekly_window.resets_at if data.weekly_window else None,
+    ),
+    CodexSensorDescription(
+        key="weekly_budget",
+        translation_key="weekly_budget",
+        native_unit_of_measurement="pp/h",
+        suggested_display_precision=3,
+        entity_registry_enabled_default=False,
+        value_fn=lambda data: None,
     ),
     CodexSensorDescription(
         key="weekly_pace",
@@ -166,7 +184,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="lifetime_tokens",
         translation_key="lifetime_tokens",
         native_unit_of_measurement="tokens",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.lifetime_tokens,
     ),
@@ -174,7 +192,6 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="peak_daily_tokens",
         translation_key="peak_daily_tokens",
         native_unit_of_measurement="tokens",
-        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.peak_daily_tokens,
     ),
@@ -190,7 +207,6 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="longest_streak_days",
         translation_key="longest_streak_days",
         native_unit_of_measurement=UnitOfTime.DAYS,
-        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.longest_streak_days,
     ),
@@ -198,7 +214,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="total_threads",
         translation_key="total_threads",
         native_unit_of_measurement="threads",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.total_threads,
     ),
@@ -207,7 +223,6 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         translation_key="longest_running_turn",
         native_unit_of_measurement=UnitOfTime.SECONDS,
         device_class=SensorDeviceClass.DURATION,
-        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.longest_running_turn_sec,
     ),
@@ -215,7 +230,6 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="fast_mode_usage",
         translation_key="fast_mode_usage",
         native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.fast_mode_usage_percentage,
@@ -224,7 +238,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="total_skills_used",
         translation_key="total_skills_used",
         native_unit_of_measurement="uses",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.total_skills_used,
     ),
@@ -232,7 +246,7 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="unique_skills_used",
         translation_key="unique_skills_used",
         native_unit_of_measurement="skills",
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.unique_skills_used,
     ),
@@ -246,7 +260,6 @@ PROFILE_SENSORS: tuple[CodexProfileSensorDescription, ...] = (
         key="most_used_reasoning_effort_percentage",
         translation_key="most_used_reasoning_effort_percentage",
         native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         entity_registry_enabled_default=False,
         value_fn=lambda data: data.most_used_reasoning_effort_percentage,
@@ -282,13 +295,10 @@ def _existing_additional_keys(
             continue
         remainder = unique_id.removeprefix(prefix)
         for window_name in ("primary", "secondary"):
-            marker = f"_{window_name}_"
-            if marker not in remainder:
-                continue
-            limit_id, metric = remainder.rsplit(marker, maxsplit=1)
-            if limit_id and metric in ("usage", "remaining", "reset"):
-                result.add((limit_id, window_name, metric))
-            break
+            for metric in ("usage", "remaining", "reset", "budget"):
+                suffix = f"_{window_name}_{metric}"
+                if remainder.endswith(suffix) and (limit_id := remainder.removesuffix(suffix)):
+                    result.add((limit_id, window_name, metric))
     return result
 
 
@@ -309,6 +319,7 @@ async def async_setup_entry(
     )
     async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in descriptions)
     async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
+    async_add_entities(source_timestamp_entities(coordinator, entry))
 
     known = _existing_additional_keys(existing_unique_ids, identity)
     if known:
@@ -333,7 +344,10 @@ async def async_setup_entry(
             for window_name, window in (("primary", limit.primary), ("secondary", limit.secondary)):
                 if window is None:
                     continue
-                for metric in ("usage", "remaining", "reset"):
+                metrics = ["usage", "remaining", "reset"]
+                if type(window.window_minutes) is int and window.window_minutes > 0:
+                    metrics.append("budget")
+                for metric in metrics:
                     key = (limit.limit_id, window_name, metric)
                     if key not in known:
                         known.add(key)
@@ -367,6 +381,15 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
+        if self.entity_description.key == "available_reset_credits":
+            summary = getattr(self.coordinator.data, "reset_summary", None)
+            if summary is not None:
+                return summary.available_count
+        if self.entity_description.key in ("five_hour_budget", "weekly_budget"):
+            window_key = self.entity_description.key.removesuffix("_budget")
+            window = getattr(self.coordinator.data.usage, f"{window_key}_window")
+            budget = current_budget(self.coordinator, window_key, window, now=datetime.now(UTC))
+            return budget.budget_pph if budget else None
         return self.entity_description.value_fn(self.coordinator.data.usage)
 
     @property
@@ -391,20 +414,26 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
         self._window_name = window_name
         self._metric = metric
         window = self._window()
-        window_label = window.duration_label if window else "Usage window"
-        metric_label = {"usage": "usage", "remaining": "remaining", "reset": "reset"}[metric]
-        self._attr_name = f"{limit_name} {window_label} {metric_label}"
+        self._attr_translation_key = f"dynamic_limit_{metric}"
+        self._attr_translation_placeholders = {
+            "limit_name": limit_name,
+            "duration": _duration_placeholder(window),
+        }
         identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
         self._attr_unique_id = f"{identity}_{limit_id}_{window_name}_{metric}"
         if metric == "reset":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        elif metric == "budget":
+            self._attr_native_unit_of_measurement = "pp/h"
+            self._attr_suggested_display_precision = 3
+            self._attr_entity_registry_enabled_default = False
         else:
             self._attr_native_unit_of_measurement = PERCENTAGE
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_suggested_display_precision = 0
 
-    def _window(self) -> RateLimitWindow | None:
-        limit: RateLimit | None = next(
+    def _limit(self) -> RateLimit | None:
+        return next(
             (
                 item
                 for item in self.coordinator.data.usage.additional_limits
@@ -412,7 +441,23 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
             ),
             None,
         )
+
+    def _window(self) -> RateLimitWindow | None:
+        limit = self._limit()
         return getattr(limit, self._window_name) if limit else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        limit = self._limit()
+        if limit is None or self._metric != "usage":
+            return None
+        attributes: dict[str, object] = {
+            "allowed": limit.allowed,
+            "limit_reached": limit.limit_reached,
+        }
+        if limit.normal_model_slug:
+            attributes["normal_model_slug"] = limit.normal_model_slug
+        return attributes
 
     @property
     def native_value(self) -> datetime | float | Decimal | None:
@@ -423,11 +468,36 @@ class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):
             return window.used_percent
         if self._metric == "remaining":
             return window.remaining_percent
+        if self._metric == "budget":
+            key = budget_key(
+                next(
+                    item
+                    for item in self.coordinator.data.usage.additional_limits
+                    if item.limit_id == self._limit_id
+                ),
+                self._window_name,
+                window,
+                source="additional",
+            )
+            budget = current_budget(self.coordinator, key, window, now=datetime.now(UTC))
+            return budget.budget_pph if budget else None
         return window.resets_at
 
     @property
     def available(self) -> bool:
         return super().available
+
+
+def _duration_placeholder(window: RateLimitWindow | None) -> str:
+    """Return a compact locale-neutral duration for translated entity names."""
+    if window is None or window.window_minutes is None:
+        return "—"
+    minutes = window.window_minutes
+    if minutes % (24 * 60) == 0:
+        return f"{minutes // (24 * 60)} d"
+    if minutes % 60 == 0:
+        return f"{minutes // 60} h"
+    return f"{minutes} min"
 
 
 class CodexProfileSensor(CodexUsageEntity, SensorEntity):

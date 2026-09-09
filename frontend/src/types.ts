@@ -18,6 +18,8 @@ export type SectionKey =
   | "profile"
   | "credits"
   | "spending"
+  | "budget"
+  | "sources"
   | "footer";
 
 export interface SectionConfig {
@@ -51,17 +53,53 @@ export interface CodexUsageCardConfig extends LovelaceCardConfig {
 }
 
 export type SafeBlocker = "spend" | "credits" | "usage_limit" | "unknown" | null;
+export type LimitSource = "main" | "additional";
+export type SourceState = "ok" | "error" | "unsupported" | "disabled" | "never";
+export type SourceRefreshMode = "poll" | "on_auth";
+export type ResetCountSource = "usage" | "reset_details" | "none";
+export type RestrictionReason =
+  "spend" | "credits" | "usage_limit" | "additional_limit" | "unknown" | "none";
 
 export interface CardLimit {
   id: string;
   name: string;
-  source: "main" | "additional";
+  source: LimitSource;
   duration_seconds: number | null;
   used_percent: number | null;
   remaining_percent: number | null;
   resets_at: string | null;
   reached: boolean;
   entity_id: string | null;
+  budget_pph?: number | null;
+  budget_calculated_at?: string | null;
+}
+
+export interface CardLimitStatus {
+  id: string;
+  name: string;
+  source: LimitSource;
+  allowed: boolean | null;
+  reached: boolean | null;
+}
+
+export interface CardLimitSummary {
+  reached: boolean | null;
+  reason: RestrictionReason;
+  affected_limits: string[];
+  affected_limits_truncated: boolean;
+  fallback_available?: boolean | null;
+  fallback_limit_id?: string | null;
+}
+
+export interface CardSource {
+  state: SourceState;
+  last_attempt: string | null;
+  last_success: string | null;
+  retry_at: string | null;
+  error_code:
+    "rate_limited" | "connection" | "authentication" | "invalid_response" | "http_error" | null;
+  refresh_mode: SourceRefreshMode;
+  expected_interval_seconds: number | null;
 }
 
 export interface CardCredits {
@@ -110,8 +148,18 @@ export interface CardAccount {
     available_count: number | null;
     total_earned: number | null;
     next_expiry: string | null;
+    count_source?: ResetCountSource;
+    count_updated_at?: string | null;
+    details_consistent?: boolean | null;
+    details_present?: boolean;
+    details_updated_at?: string | null;
   } | null;
   profile: CardProfile | null;
+  limit_statuses?: CardLimitStatus[];
+  limit_summary?: CardLimitSummary;
+  sources?: Partial<
+    Record<"usage" | "profile" | "reset_details" | "workspace_discovery", CardSource>
+  >;
 }
 
 export interface CardSnapshot {

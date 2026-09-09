@@ -21,6 +21,25 @@ function isStale(value: string | null, minutes: number, now: Date): boolean {
   return updated === null || now.getTime() - updated.getTime() > minutes * 60_000;
 }
 
+export function isActionablyStaleSource(
+  source: NonNullable<CardAccount["sources"]>["usage"],
+  now: Date,
+): boolean {
+  if (
+    !source ||
+    source.refresh_mode !== "poll" ||
+    source.state === "disabled" ||
+    source.state === "unsupported"
+  )
+    return false;
+  if (source.state === "error" || source.state === "never") return true;
+  if (!source.last_success || !source.expected_interval_seconds) return false;
+  return (
+    now.getTime() - new Date(source.last_success).getTime() >
+    source.expected_interval_seconds * 2_000
+  );
+}
+
 function pace(limit: CardAccount["limits"][number], now: Date): number | null {
   if (!limit.duration_seconds || !limit.resets_at || limit.used_percent === null) return null;
   const reset = parsedDate(limit.resets_at);
@@ -49,6 +68,7 @@ export function isSectionVisible(
   key: SectionKey,
   visible: boolean | "auto",
   account: AccountViewModel,
+  now: Date,
 ): boolean {
   if (visible !== "auto") return visible;
   switch (key) {
@@ -60,6 +80,14 @@ export function isSectionVisible(
       return account.profile !== null;
     case "additional_limits":
       return account.limits.some((item) => item.source === "additional");
+    case "budget":
+      return account.limits.some(
+        (item) => item.budget_pph !== null && item.budget_pph !== undefined,
+      );
+    case "sources":
+      return Object.values(account.sources ?? {}).some((source) =>
+        isActionablyStaleSource(source, now),
+      );
     default:
       return true;
   }
@@ -73,15 +101,18 @@ function accountModel(
   const stale = !account.available || isStale(account.updated_at, config.stale_after_minutes, now);
   const limits: LimitViewModel[] = account.limits.map((item) => ({
     ...item,
-    severity: evaluateLimit(
-      item.used_percent,
-      item.reached || account.blocker !== null,
-      config.thresholds,
-    ),
+    severity: evaluateLimit(item.used_percent, item.reached, config.thresholds),
     pace: pace(item, now),
   }));
+  const reserveFallback =
+    account.limit_summary?.reason === "usage_limit" &&
+    account.limit_summary.fallback_available === true;
   const severity: Severity =
-    account.blocker !== null ? "blocked" : worstSeverity(limits.map((item) => item.severity));
+    account.blocker !== null || account.limit_summary?.reached === true
+      ? reserveFallback
+        ? "critical"
+        : "blocked"
+      : worstSeverity(limits.map((item) => item.severity));
   return {
     ...account,
     limits,

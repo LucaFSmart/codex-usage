@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+    OptionsFlowWithReload,
+)
 from homeassistant.core import callback
 from homeassistant.helpers import aiohttp_client
 
@@ -24,7 +31,11 @@ from .api import (
 )
 from .const import (
     CONF_ACCOUNT_ID,
+    CONF_FETCH_PROFILE,
+    CONF_FETCH_RESET_DETAILS,
     CONF_UPDATE_INTERVAL,
+    CONF_USER_ID,
+    CONF_WORKSPACE_DISCOVERY,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MAX_UPDATE_INTERVAL,
@@ -60,6 +71,7 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         self._workspace_credentials: CodexCredentials | None = None
         self._workspace_accounts: tuple[AvailableAccount, ...] = ()
         self._workspace_reauth = False
+        self._workspace_discovered_at: datetime | None = None
 
     @property
     def _client(self) -> CodexApiClient:
@@ -149,9 +161,21 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
             accounts = await self._client.async_get_accounts(credentials)
         except CodexOptionalEndpointUnavailable, CodexConnectionError, CodexApiError:
             accounts = ()
+        else:
+            self._workspace_discovered_at = datetime.now(UTC)
 
         if reauth:
             entry = self._reauth_entry or self._get_reauth_entry()
+            existing_user_id = entry.data.get(CONF_USER_ID)
+            if (
+                isinstance(existing_user_id, str)
+                and existing_user_id
+                and credentials.user_id
+                and credentials.user_id != existing_user_id
+            ):
+                return self.async_abort(reason="wrong_account")
+            if not credentials.user_id and isinstance(existing_user_id, str) and existing_user_id:
+                credentials = replace(credentials, user_id=existing_user_id)
             existing_account = entry.data.get(CONF_ACCOUNT_ID)
             matching = next(
                 (account for account in accounts if account.account_id == existing_account), None
@@ -213,19 +237,25 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         except CodexApiError:
             return self.async_abort(reason="unknown")
 
-        await self.async_set_unique_id(self._unique_id(credentials))
+        entry_data = credentials_to_entry_data(credentials)
+        if self._workspace_discovered_at is not None:
+            entry_data[CONF_WORKSPACE_DISCOVERY] = self._workspace_discovered_at.isoformat()
         if reauth:
             entry = self._reauth_entry or self._get_reauth_entry()
+            await self.async_set_unique_id(entry.unique_id)
             self._abort_if_unique_id_mismatch()
-            return self.async_update_reload_and_abort(
-                entry, data_updates=credentials_to_entry_data(credentials)
-            )
+            return self.async_update_reload_and_abort(entry, data_updates=entry_data)
+        await self.async_set_unique_id(self._unique_id(credentials))
         self._abort_if_unique_id_configured()
         title = name or "Codex Usage"
         return self.async_create_entry(
             title=title,
-            data=credentials_to_entry_data(credentials),
-            options={CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL},
+            data=entry_data,
+            options={
+                CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL,
+                CONF_FETCH_PROFILE: True,
+                CONF_FETCH_RESET_DETAILS: True,
+            },
         )
 
     @staticmethod
@@ -241,7 +271,7 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         return CodexUsageOptionsFlow()
 
 
-class CodexUsageOptionsFlow(OptionsFlow):
+class CodexUsageOptionsFlow(OptionsFlowWithReload):
     """Handle Codex Usage options."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -254,7 +284,15 @@ class CodexUsageOptionsFlow(OptionsFlow):
                 {
                     vol.Required(CONF_UPDATE_INTERVAL, default=interval): vol.All(
                         int, vol.Range(min=MIN_UPDATE_INTERVAL, max=MAX_UPDATE_INTERVAL)
-                    )
+                    ),
+                    vol.Required(
+                        CONF_FETCH_PROFILE,
+                        default=self.config_entry.options.get(CONF_FETCH_PROFILE, True),
+                    ): bool,
+                    vol.Required(
+                        CONF_FETCH_RESET_DETAILS,
+                        default=self.config_entry.options.get(CONF_FETCH_RESET_DETAILS, True),
+                    ): bool,
                 }
             ),
         )

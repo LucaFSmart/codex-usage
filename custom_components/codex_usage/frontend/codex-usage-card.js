@@ -58,23 +58,23 @@ var e = globalThis, t = e.ShadowRoot && (e.ShadyCSS === void 0 || e.ShadyCSS.nat
 		}
 		return n;
 	}
-}, oe = (e, t) => !l(e, t), se = {
+}, h = (e, t) => !l(e, t), oe = {
 	attribute: !0,
 	type: String,
 	converter: m,
 	reflect: !1,
 	useDefault: !1,
-	hasChanged: oe
+	hasChanged: h
 };
 Symbol.metadata ??= Symbol("metadata"), f.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
-var h = class extends HTMLElement {
+var g = class extends HTMLElement {
 	static addInitializer(e) {
 		this._$Ei(), (this.l ??= []).push(e);
 	}
 	static get observedAttributes() {
 		return this.finalize(), this._$Eh && [...this._$Eh.keys()];
 	}
-	static createProperty(e, t = se) {
+	static createProperty(e, t = oe) {
 		if (t.state && (t.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(e) && ((t = Object.create(t)).wrapped = !0), this.elementProperties.set(e, t), !t.noAccessor) {
 			let n = Symbol(), r = this.getPropertyDescriptor(e, n, t);
 			r !== void 0 && u(this.prototype, e, r);
@@ -100,7 +100,7 @@ var h = class extends HTMLElement {
 		};
 	}
 	static getPropertyOptions(e) {
-		return this.elementProperties.get(e) ?? se;
+		return this.elementProperties.get(e) ?? oe;
 	}
 	static _$Ei() {
 		if (this.hasOwnProperty(p("elementProperties"))) return;
@@ -187,7 +187,7 @@ var h = class extends HTMLElement {
 	requestUpdate(e, t, n, r = !1, i) {
 		if (e !== void 0) {
 			let a = this.constructor;
-			if (!1 === r && (i = this[e]), n ??= a.getPropertyOptions(e), !((n.hasChanged ?? oe)(i, t) || n.useDefault && n.reflect && i === this._$Ej?.get(e) && !this.hasAttribute(a._$Eu(e, n)))) return;
+			if (!1 === r && (i = this[e]), n ??= a.getPropertyOptions(e), !((n.hasChanged ?? h)(i, t) || n.useDefault && n.reflect && i === this._$Ej?.get(e) && !this.hasAttribute(a._$Eu(e, n)))) return;
 			this.C(e, t, n);
 		}
 		!1 === this.isUpdatePending && (this._$ES = this._$EP());
@@ -251,89 +251,89 @@ var h = class extends HTMLElement {
 	updated(e) {}
 	firstUpdated(e) {}
 };
-h.elementStyles = [], h.shadowRootOptions = { mode: "open" }, h[p("elementProperties")] = /* @__PURE__ */ new Map(), h[p("finalized")] = /* @__PURE__ */ new Map(), ae?.({ ReactiveElement: h }), (f.reactiveElementVersions ??= []).push("2.1.2");
+g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[p("elementProperties")] = /* @__PURE__ */ new Map(), g[p("finalized")] = /* @__PURE__ */ new Map(), ae?.({ ReactiveElement: g }), (f.reactiveElementVersions ??= []).push("2.1.2");
 //#endregion
 //#region node_modules/lit-html/lit-html.js
-var ce = globalThis, le = (e) => e, g = ce.trustedTypes, ue = g ? g.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, de = "$lit$", _ = `lit$${Math.random().toFixed(9).slice(2)}$`, fe = "?" + _, pe = `<${fe}>`, v = document, y = () => v.createComment(""), b = (e) => e === null || typeof e != "object" && typeof e != "function", me = Array.isArray, he = (e) => me(e) || typeof e?.[Symbol.iterator] == "function", x = "[ 	\n\f\r]", S = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ge = /-->/g, _e = />/g, C = RegExp(`>|${x}(?:([^\\s"'>=/]+)(${x}*=${x}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), ve = /'/g, ye = /"/g, be = /^(?:script|style|textarea|title)$/i, w = ((e) => (t, ...n) => ({
+var _ = globalThis, se = (e) => e, v = _.trustedTypes, ce = v ? v.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, le = "$lit$", y = `lit$${Math.random().toFixed(9).slice(2)}$`, ue = "?" + y, de = `<${ue}>`, b = document, x = () => b.createComment(""), S = (e) => e === null || typeof e != "object" && typeof e != "function", fe = Array.isArray, pe = (e) => fe(e) || typeof e?.[Symbol.iterator] == "function", me = "[ 	\n\f\r]", C = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, ge = />/g, w = RegExp(`>|${me}(?:([^\\s"'>=/]+)(${me}*=${me}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), _e = /'/g, ve = /"/g, ye = /^(?:script|style|textarea|title)$/i, T = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
 	values: n
-}))(1), T = Symbol.for("lit-noChange"), E = Symbol.for("lit-nothing"), xe = /* @__PURE__ */ new WeakMap(), D = v.createTreeWalker(v, 129);
-function Se(e, t) {
-	if (!me(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
-	return ue === void 0 ? t : ue.createHTML(t);
+}))(1), E = Symbol.for("lit-noChange"), D = Symbol.for("lit-nothing"), be = /* @__PURE__ */ new WeakMap(), O = b.createTreeWalker(b, 129);
+function xe(e, t) {
+	if (!fe(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+	return ce === void 0 ? t : ce.createHTML(t);
 }
-var Ce = (e, t) => {
-	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = S;
+var Se = (e, t) => {
+	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = C;
 	for (let t = 0; t < n; t++) {
 		let n = e[t], s, c, l = -1, u = 0;
-		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === S ? c[1] === "!--" ? o = ge : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = C) : (be.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = C) : o = _e : o === C ? c[0] === ">" ? (o = i ?? S, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? C : c[3] === "\"" ? ye : ve) : o === ye || o === ve ? o = C : o === ge || o === _e ? o = S : (o = C, i = void 0);
-		let d = o === C && e[t + 1].startsWith("/>") ? " " : "";
-		a += o === S ? n + pe : l >= 0 ? (r.push(s), n.slice(0, l) + de + n.slice(l) + _ + d) : n + _ + (l === -2 ? t : d);
+		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === C ? c[1] === "!--" ? o = he : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = w) : (ye.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = w) : o = ge : o === w ? c[0] === ">" ? (o = i ?? C, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? w : c[3] === "\"" ? ve : _e) : o === ve || o === _e ? o = w : o === he || o === ge ? o = C : (o = w, i = void 0);
+		let d = o === w && e[t + 1].startsWith("/>") ? " " : "";
+		a += o === C ? n + de : l >= 0 ? (r.push(s), n.slice(0, l) + le + n.slice(l) + y + d) : n + y + (l === -2 ? t : d);
 	}
-	return [Se(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
-}, we = class e {
+	return [xe(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
+}, k = class e {
 	constructor({ strings: t, _$litType$: n }, r) {
 		let i;
 		this.parts = [];
-		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Ce(t, n);
-		if (this.el = e.createElement(l, r), D.currentNode = this.el.content, n === 2 || n === 3) {
+		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Se(t, n);
+		if (this.el = e.createElement(l, r), O.currentNode = this.el.content, n === 2 || n === 3) {
 			let e = this.el.content.firstChild;
 			e.replaceWith(...e.childNodes);
 		}
-		for (; (i = D.nextNode()) !== null && c.length < s;) {
+		for (; (i = O.nextNode()) !== null && c.length < s;) {
 			if (i.nodeType === 1) {
-				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(de)) {
-					let t = u[o++], n = i.getAttribute(e).split(_), r = /([.?@])?(.*)/.exec(t);
+				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(le)) {
+					let t = u[o++], n = i.getAttribute(e).split(y), r = /([.?@])?(.*)/.exec(t);
 					c.push({
 						type: 1,
 						index: a,
 						name: r[2],
 						strings: n,
-						ctor: r[1] === "." ? Ee : r[1] === "?" ? De : r[1] === "@" ? Oe : A
+						ctor: r[1] === "." ? we : r[1] === "?" ? Te : r[1] === "@" ? Ee : M
 					}), i.removeAttribute(e);
-				} else e.startsWith(_) && (c.push({
+				} else e.startsWith(y) && (c.push({
 					type: 6,
 					index: a
 				}), i.removeAttribute(e));
-				if (be.test(i.tagName)) {
-					let e = i.textContent.split(_), t = e.length - 1;
+				if (ye.test(i.tagName)) {
+					let e = i.textContent.split(y), t = e.length - 1;
 					if (t > 0) {
-						i.textContent = g ? g.emptyScript : "";
-						for (let n = 0; n < t; n++) i.append(e[n], y()), D.nextNode(), c.push({
+						i.textContent = v ? v.emptyScript : "";
+						for (let n = 0; n < t; n++) i.append(e[n], x()), O.nextNode(), c.push({
 							type: 2,
 							index: ++a
 						});
-						i.append(e[t], y());
+						i.append(e[t], x());
 					}
 				}
 			} else if (i.nodeType === 8) {
-				if (i.data === fe) c.push({
+				if (i.data === ue) c.push({
 					type: 2,
 					index: a
 				});
 				else {
 					let e = -1;
-					for (; (e = i.data.indexOf(_, e + 1)) !== -1;) c.push({
+					for (; (e = i.data.indexOf(y, e + 1)) !== -1;) c.push({
 						type: 7,
 						index: a
-					}), e += _.length - 1;
+					}), e += y.length - 1;
 				}
 			}
 			a++;
 		}
 	}
 	static createElement(e, t) {
-		let n = v.createElement("template");
+		let n = b.createElement("template");
 		return n.innerHTML = e, n;
 	}
 };
-function O(e, t, n = e, r) {
-	if (t === T) return t;
-	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = b(t) ? void 0 : t._$litDirective$;
-	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = O(e, i._$AS(e, t.values), i, r)), t;
+function A(e, t, n = e, r) {
+	if (t === E) return t;
+	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = S(t) ? void 0 : t._$litDirective$;
+	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = A(e, i._$AS(e, t.values), i, r)), t;
 }
-var Te = class {
+var Ce = class {
 	constructor(e, t) {
 		this._$AV = [], this._$AN = void 0, this._$AD = e, this._$AM = t;
 	}
@@ -344,28 +344,28 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	u(e) {
-		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? v).importNode(t, !0);
-		D.currentNode = r;
-		let i = D.nextNode(), a = 0, o = 0, s = n[0];
+		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? b).importNode(t, !0);
+		O.currentNode = r;
+		let i = O.nextNode(), a = 0, o = 0, s = n[0];
 		for (; s !== void 0;) {
 			if (a === s.index) {
 				let t;
-				s.type === 2 ? t = new k(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new ke(i, this, e)), this._$AV.push(t), s = n[++o];
+				s.type === 2 ? t = new j(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new De(i, this, e)), this._$AV.push(t), s = n[++o];
 			}
-			a !== s?.index && (i = D.nextNode(), a++);
+			a !== s?.index && (i = O.nextNode(), a++);
 		}
-		return D.currentNode = v, r;
+		return O.currentNode = b, r;
 	}
 	p(e) {
 		let t = 0;
 		for (let n of this._$AV) n !== void 0 && (n.strings === void 0 ? n._$AI(e[t]) : (n._$AI(e, n, t), t += n.strings.length - 2)), t++;
 	}
-}, k = class e {
+}, j = class e {
 	get _$AU() {
 		return this._$AM?._$AU ?? this._$Cv;
 	}
 	constructor(e, t, n, r) {
-		this.type = 2, this._$AH = E, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
+		this.type = 2, this._$AH = D, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
 	}
 	get parentNode() {
 		let e = this._$AA.parentNode, t = this._$AM;
@@ -378,7 +378,7 @@ var Te = class {
 		return this._$AB;
 	}
 	_$AI(e, t = this) {
-		e = O(this, e, t), b(e) ? e === E || e == null || e === "" ? (this._$AH !== E && this._$AR(), this._$AH = E) : e !== this._$AH && e !== T && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? he(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
+		e = A(this, e, t), S(e) ? e === D || e == null || e === "" ? (this._$AH !== D && this._$AR(), this._$AH = D) : e !== this._$AH && e !== E && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? pe(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
 	}
 	O(e) {
 		return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -387,36 +387,36 @@ var Te = class {
 		this._$AH !== e && (this._$AR(), this._$AH = this.O(e));
 	}
 	_(e) {
-		this._$AH !== E && b(this._$AH) ? this._$AA.nextSibling.data = e : this.T(v.createTextNode(e)), this._$AH = e;
+		this._$AH !== D && S(this._$AH) ? this._$AA.nextSibling.data = e : this.T(b.createTextNode(e)), this._$AH = e;
 	}
 	$(e) {
-		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = we.createElement(Se(n.h, n.h[0]), this.options)), n);
+		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = k.createElement(xe(n.h, n.h[0]), this.options)), n);
 		if (this._$AH?._$AD === r) this._$AH.p(t);
 		else {
-			let e = new Te(r, this), n = e.u(this.options);
+			let e = new Ce(r, this), n = e.u(this.options);
 			e.p(t), this.T(n), this._$AH = e;
 		}
 	}
 	_$AC(e) {
-		let t = xe.get(e.strings);
-		return t === void 0 && xe.set(e.strings, t = new we(e)), t;
+		let t = be.get(e.strings);
+		return t === void 0 && be.set(e.strings, t = new k(e)), t;
 	}
 	k(t) {
-		me(this._$AH) || (this._$AH = [], this._$AR());
+		fe(this._$AH) || (this._$AH = [], this._$AR());
 		let n = this._$AH, r, i = 0;
-		for (let a of t) i === n.length ? n.push(r = new e(this.O(y()), this.O(y()), this, this.options)) : r = n[i], r._$AI(a), i++;
+		for (let a of t) i === n.length ? n.push(r = new e(this.O(x()), this.O(x()), this, this.options)) : r = n[i], r._$AI(a), i++;
 		i < n.length && (this._$AR(r && r._$AB.nextSibling, i), n.length = i);
 	}
 	_$AR(e = this._$AA.nextSibling, t) {
 		for (this._$AP?.(!1, !0, t); e !== this._$AB;) {
-			let t = le(e).nextSibling;
-			le(e).remove(), e = t;
+			let t = se(e).nextSibling;
+			se(e).remove(), e = t;
 		}
 	}
 	setConnected(e) {
 		this._$AM === void 0 && (this._$Cv = e, this._$AP?.(e));
 	}
-}, A = class {
+}, M = class {
 	get tagName() {
 		return this.element.tagName;
 	}
@@ -424,47 +424,47 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	constructor(e, t, n, r, i) {
-		this.type = 1, this._$AH = E, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = E;
+		this.type = 1, this._$AH = D, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = D;
 	}
 	_$AI(e, t = this, n, r) {
 		let i = this.strings, a = !1;
-		if (i === void 0) e = O(this, e, t, 0), a = !b(e) || e !== this._$AH && e !== T, a && (this._$AH = e);
+		if (i === void 0) e = A(this, e, t, 0), a = !S(e) || e !== this._$AH && e !== E, a && (this._$AH = e);
 		else {
 			let r = e, o, s;
-			for (e = i[0], o = 0; o < i.length - 1; o++) s = O(this, r[n + o], t, o), s === T && (s = this._$AH[o]), a ||= !b(s) || s !== this._$AH[o], s === E ? e = E : e !== E && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
+			for (e = i[0], o = 0; o < i.length - 1; o++) s = A(this, r[n + o], t, o), s === E && (s = this._$AH[o]), a ||= !S(s) || s !== this._$AH[o], s === D ? e = D : e !== D && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
 		}
 		a && !r && this.j(e);
 	}
 	j(e) {
-		e === E ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
+		e === D ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
 	}
-}, Ee = class extends A {
+}, we = class extends M {
 	constructor() {
 		super(...arguments), this.type = 3;
 	}
 	j(e) {
-		this.element[this.name] = e === E ? void 0 : e;
+		this.element[this.name] = e === D ? void 0 : e;
 	}
-}, De = class extends A {
+}, Te = class extends M {
 	constructor() {
 		super(...arguments), this.type = 4;
 	}
 	j(e) {
-		this.element.toggleAttribute(this.name, !!e && e !== E);
+		this.element.toggleAttribute(this.name, !!e && e !== D);
 	}
-}, Oe = class extends A {
+}, Ee = class extends M {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r, i), this.type = 5;
 	}
 	_$AI(e, t = this) {
-		if ((e = O(this, e, t, 0) ?? E) === T) return;
-		let n = this._$AH, r = e === E && n !== E || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== E && (n === E || r);
+		if ((e = A(this, e, t, 0) ?? D) === E) return;
+		let n = this._$AH, r = e === D && n !== D || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== D && (n === D || r);
 		r && this.element.removeEventListener(this.name, this, n), i && this.element.addEventListener(this.name, this, e), this._$AH = e;
 	}
 	handleEvent(e) {
 		typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, e) : this._$AH.handleEvent(e);
 	}
-}, ke = class {
+}, De = class {
 	constructor(e, t, n) {
 		this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = n;
 	}
@@ -472,18 +472,18 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	_$AI(e) {
-		O(this, e);
+		A(this, e);
 	}
-}, Ae = ce.litHtmlPolyfillSupport;
-Ae?.(we, k), (ce.litHtmlVersions ??= []).push("3.3.3");
-var je = (e, t, n) => {
+}, Oe = _.litHtmlPolyfillSupport;
+Oe?.(k, j), (_.litHtmlVersions ??= []).push("3.3.3");
+var ke = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
-		r._$litPart$ = i = new k(t.insertBefore(y(), e), e, void 0, n ?? {});
+		r._$litPart$ = i = new j(t.insertBefore(x(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
-}, j = globalThis, M = class extends h {
+}, N = globalThis, P = class extends g {
 	constructor() {
 		super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
 	}
@@ -493,7 +493,7 @@ var je = (e, t, n) => {
 	}
 	update(e) {
 		let t = this.render();
-		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = je(t, this.renderRoot, this.renderOptions);
+		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = ke(t, this.renderRoot, this.renderOptions);
 	}
 	connectedCallback() {
 		super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -502,25 +502,25 @@ var je = (e, t, n) => {
 		super.disconnectedCallback(), this._$Do?.setConnected(!1);
 	}
 	render() {
-		return T;
+		return E;
 	}
 };
-M._$litElement$ = !0, M.finalized = !0, j.litElementHydrateSupport?.({ LitElement: M });
-var Me = j.litElementPolyfillSupport;
-Me?.({ LitElement: M }), (j.litElementVersions ??= []).push("4.2.2");
+P._$litElement$ = !0, P.finalized = !0, N.litElementHydrateSupport?.({ LitElement: P });
+var Ae = N.litElementPolyfillSupport;
+Ae?.({ LitElement: P }), (N.litElementVersions ??= []).push("4.2.2");
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/custom-element.js
-var Ne = (e) => (t, n) => {
+var je = (e) => (t, n) => {
 	n === void 0 ? customElements.define(e, t) : n.addInitializer(() => {
 		customElements.define(e, t);
 	});
-}, Pe = {
+}, Me = {
 	attribute: !0,
 	type: String,
 	converter: m,
 	reflect: !1,
-	hasChanged: oe
-}, Fe = (e = Pe, t, n) => {
+	hasChanged: h
+}, Ne = (e = Me, t, n) => {
 	let { kind: r, metadata: i } = n, a = globalThis.litPropertyMetadata.get(i);
 	if (a === void 0 && globalThis.litPropertyMetadata.set(i, a = /* @__PURE__ */ new Map()), r === "setter" && ((e = Object.create(e)).wrapped = !0), a.set(n.name, e), r === "accessor") {
 		let { name: r } = n;
@@ -543,16 +543,16 @@ var Ne = (e) => (t, n) => {
 	}
 	throw Error("Unsupported decorator location: " + r);
 };
-function Ie(e) {
-	return (t, n) => typeof n == "object" ? Fe(e, t, n) : ((e, t, n) => {
+function F(e) {
+	return (t, n) => typeof n == "object" ? Ne(e, t, n) : ((e, t, n) => {
 		let r = t.hasOwnProperty(n);
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
 }
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/state.js
-function N(e) {
-	return Ie({
+function I(e) {
+	return F({
 		...e,
 		state: !0,
 		attribute: !1
@@ -560,13 +560,37 @@ function N(e) {
 }
 //#endregion
 //#region src/card-data.ts
-var Le = [
+var Pe = [
+	"usage",
+	"profile",
+	"reset_details",
+	"workspace_discovery"
+], Fe = [
+	"ok",
+	"error",
+	"unsupported",
+	"disabled",
+	"never"
+], Ie = [
+	"rate_limited",
+	"connection",
+	"authentication",
+	"invalid_response",
+	"http_error"
+], Le = [
+	"spend",
+	"credits",
+	"usage_limit",
+	"additional_limit",
+	"unknown",
+	"none"
+], Re = [
 	"spend",
 	"credits",
 	"usage_limit",
 	"unknown",
 	null
-], Re = [
+], ze = [
 	"lifetime_tokens",
 	"peak_daily_tokens",
 	"current_streak_days",
@@ -578,36 +602,36 @@ var Le = [
 	"unique_skills_used",
 	"most_used_reasoning_effort",
 	"most_used_reasoning_effort_percentage"
-], ze = /* @__PURE__ */ new Set(["fast_mode_usage_percentage", "most_used_reasoning_effort_percentage"]);
-function P(e) {
+], Be = /* @__PURE__ */ new Set(["fast_mode_usage_percentage", "most_used_reasoning_effort_percentage"]);
+function L(e) {
 	return typeof e == "object" && e && !Array.isArray(e) ? e : null;
 }
-function F(e) {
+function R(e) {
 	return typeof e == "string" && e.trim() ? e.trim() : null;
 }
-function I(e) {
-	let t = F(e);
+function z(e) {
+	let t = R(e);
 	return t && Number.isFinite(Date.parse(t)) ? t : null;
 }
-function L(e) {
+function B(e) {
 	return typeof e == "number" && Number.isFinite(e) && e >= 0 && e <= 100 ? e : null;
 }
-function R(e) {
+function Ve(e) {
 	return typeof e == "number" && Number.isInteger(e) && e >= 0 ? e : null;
 }
-function z(e) {
+function V(e) {
 	return typeof e == "boolean" ? e : null;
 }
-function Be(e) {
-	let t = F(e);
+function He(e) {
+	let t = R(e);
 	return t && /^(sensor|binary_sensor)\.[a-z0-9_]+$/.test(t) ? t : null;
 }
-function Ve(e) {
-	let t = P(e);
+function Ue(e) {
+	let t = L(e);
 	if (!t) return null;
-	let n = F(t.id), r = F(t.name);
+	let n = R(t.id), r = R(t.name);
 	if (!n || !r || t.source !== "main" && t.source !== "additional") return null;
-	let i = L(t.used_percent), a = L(t.remaining_percent);
+	let i = B(t.used_percent), a = B(t.remaining_percent);
 	return {
 		id: n,
 		name: r,
@@ -615,38 +639,75 @@ function Ve(e) {
 		duration_seconds: typeof t.duration_seconds == "number" && Number.isFinite(t.duration_seconds) && t.duration_seconds > 0 ? t.duration_seconds : null,
 		used_percent: i,
 		remaining_percent: a,
-		resets_at: I(t.resets_at),
+		resets_at: z(t.resets_at),
 		reached: t.reached === !0,
-		entity_id: Be(t.entity_id)
+		entity_id: He(t.entity_id),
+		...Object.hasOwn(t, "budget_pph") ? { budget_pph: typeof t.budget_pph == "number" && Number.isFinite(t.budget_pph) && t.budget_pph >= 0 ? t.budget_pph : null } : {},
+		...Object.hasOwn(t, "budget_calculated_at") ? { budget_calculated_at: z(t.budget_calculated_at) } : {}
 	};
 }
-function He(e) {
-	let t = P(e);
-	return t ? {
-		balance: F(t.balance),
-		has_credits: z(t.has_credits),
-		unlimited: z(t.unlimited),
-		overage_reached: z(t.overage_reached)
-	} : null;
-}
-function Ue(e) {
-	let t = P(e);
-	return t ? {
-		source: F(t.source),
-		limit: F(t.limit),
-		used: F(t.used),
-		remaining: F(t.remaining),
-		used_percent: L(t.used_percent),
-		remaining_percent: L(t.remaining_percent),
-		resets_at: I(t.resets_at),
-		reached: z(t.reached)
-	} : null;
-}
 function We(e) {
-	let t = P(e);
+	let t = L(e), n = R(t?.id), r = R(t?.name);
+	return !t || !n || !r || t.source !== "main" && t.source !== "additional" ? null : {
+		id: n,
+		name: r,
+		source: t.source,
+		allowed: V(t.allowed),
+		reached: V(t.reached)
+	};
+}
+function Ge(e) {
+	let t = L(e);
+	if (!t || !Le.includes(t.reason)) return;
+	let n = Array.isArray(t.affected_limits) ? [...new Set(t.affected_limits.map(R).filter((e) => e !== null))].slice(0, 50) : [];
+	return {
+		reached: V(t.reached),
+		reason: t.reason,
+		affected_limits: n,
+		affected_limits_truncated: t.affected_limits_truncated === !0,
+		...Object.hasOwn(t, "fallback_available") ? { fallback_available: V(t.fallback_available) } : {},
+		...Object.hasOwn(t, "fallback_limit_id") ? { fallback_limit_id: R(t.fallback_limit_id) } : {}
+	};
+}
+function Ke(e) {
+	let t = L(e);
+	return !t || !Fe.includes(t.state) || t.refresh_mode !== "poll" && t.refresh_mode !== "on_auth" ? null : {
+		state: t.state,
+		last_attempt: z(t.last_attempt),
+		last_success: z(t.last_success),
+		retry_at: z(t.retry_at),
+		error_code: Ie.includes(t.error_code) ? t.error_code : null,
+		refresh_mode: t.refresh_mode,
+		expected_interval_seconds: typeof t.expected_interval_seconds == "number" && Number.isFinite(t.expected_interval_seconds) && t.expected_interval_seconds > 0 ? t.expected_interval_seconds : null
+	};
+}
+function qe(e) {
+	let t = L(e);
+	return t ? {
+		balance: R(t.balance),
+		has_credits: V(t.has_credits),
+		unlimited: V(t.unlimited),
+		overage_reached: V(t.overage_reached)
+	} : null;
+}
+function Je(e) {
+	let t = L(e);
+	return t ? {
+		source: R(t.source),
+		limit: R(t.limit),
+		used: R(t.used),
+		remaining: R(t.remaining),
+		used_percent: B(t.used_percent),
+		remaining_percent: B(t.remaining_percent),
+		resets_at: z(t.resets_at),
+		reached: V(t.reached)
+	} : null;
+}
+function Ye(e) {
+	let t = L(e);
 	if (!t) return null;
 	let n = [];
-	for (let e of Re) {
+	for (let e of ze) {
 		if (!Object.hasOwn(t, e)) continue;
 		let r = t[e];
 		if (r === null) {
@@ -654,61 +715,76 @@ function We(e) {
 			continue;
 		}
 		if (e === "most_used_reasoning_effort") {
-			let t = F(r);
+			let t = R(r);
 			t !== null && n.push([e, t]);
 			continue;
 		}
-		let i = ze.has(e) ? L(r) : R(r);
+		let i = Be.has(e) ? B(r) : Ve(r);
 		i !== null && n.push([e, i]);
 	}
 	return Object.fromEntries(n);
 }
-function Ge(e) {
-	let t = P(e);
+function Xe(e) {
+	let t = L(e);
 	if (!t) return null;
-	let n = F(t.id), r = F(t.name);
+	let n = R(t.id), r = R(t.name);
 	if (!n || !r || !Array.isArray(t.limits)) return null;
-	let i = Le.includes(t.blocker) ? t.blocker : "unknown", a = P(t.reset_credits);
+	let i = Re.includes(t.blocker) ? t.blocker : "unknown", a = L(t.reset_credits);
 	return {
 		id: n,
 		name: r,
-		plan: F(t.plan),
+		plan: R(t.plan),
 		available: t.available === !0,
-		updated_at: I(t.updated_at),
+		updated_at: z(t.updated_at),
 		blocker: i,
-		limits: t.limits.map(Ve).filter((e) => e !== null),
-		credits: He(t.credits),
-		spend: Ue(t.spend),
+		limits: t.limits.map(Ue).filter((e) => e !== null),
+		credits: qe(t.credits),
+		spend: Je(t.spend),
 		reset_credits: a ? {
-			available_count: R(a.available_count),
-			total_earned: R(a.total_earned),
-			next_expiry: I(a.next_expiry)
+			available_count: Ve(a.available_count),
+			total_earned: Ve(a.total_earned),
+			next_expiry: z(a.next_expiry),
+			...[
+				"usage",
+				"reset_details",
+				"none"
+			].includes(a.count_source) ? { count_source: a.count_source } : {},
+			...z(a.count_updated_at) ? { count_updated_at: z(a.count_updated_at) } : {},
+			...V(a.details_consistent) === null ? {} : { details_consistent: V(a.details_consistent) },
+			...typeof a.details_present == "boolean" ? { details_present: a.details_present } : {},
+			...z(a.details_updated_at) ? { details_updated_at: z(a.details_updated_at) } : {}
 		} : null,
-		profile: We(t.profile)
+		profile: Ye(t.profile),
+		...Array.isArray(t.limit_statuses) ? { limit_statuses: t.limit_statuses.map(We).filter((e) => e !== null) } : {},
+		...(() => {
+			let e = Ge(t.limit_summary);
+			return e ? { limit_summary: e } : {};
+		})(),
+		...L(t.sources) ? { sources: Object.fromEntries(Pe.map((e) => [e, Ke(L(t.sources)?.[e])]).filter(([, e]) => e !== null)) } : {}
 	};
 }
-function Ke(e) {
-	let t = P(e);
+function Ze(e) {
+	let t = L(e);
 	if (!t || t.schema_version !== 1 || !Array.isArray(t.accounts)) throw Error("Unsupported Codex Usage card data");
-	let n = F(t.integration_version), r = I(t.generated_at);
+	let n = R(t.integration_version), r = z(t.generated_at);
 	if (!n || !r) throw Error("Incomplete Codex Usage card data");
 	return {
 		schema_version: 1,
 		integration_version: n,
 		generated_at: r,
-		accounts: t.accounts.map(Ge).filter((e) => e !== null)
+		accounts: t.accounts.map(Xe).filter((e) => e !== null)
 	};
 }
-async function qe(e) {
-	return Ke(await e.callWS({ type: "codex_usage/card_data" }));
+async function Qe(e) {
+	return Ze(await e.callWS({ type: "codex_usage/card_data" }));
 }
 //#endregion
 //#region src/config.ts
-var Je = [
+var $e = [
 	"auto",
 	"single",
 	"all"
-], Ye = [
+], et = [
 	"limits",
 	"additional_limits",
 	"resets",
@@ -716,18 +792,20 @@ var Je = [
 	"account",
 	"credits",
 	"spending",
+	"budget",
+	"sources",
 	"profile",
 	"footer"
-], Xe = [
+], tt = [
 	"unknown",
 	"ok",
 	"warning",
 	"critical",
 	"blocked"
-], B = {
+], nt = {
 	warning: 75,
 	critical: 90
-}, V = {
+}, rt = {
 	ok: "var(--codex-usage-ok-color, #25b7f3)",
 	warning: "var(--codex-usage-warning-color, #ffb74d)",
 	critical: "var(--codex-usage-critical-color, #ff5f6d)",
@@ -752,11 +830,13 @@ var Je = [
 		account: H(),
 		credits: H("auto"),
 		spending: H("auto"),
+		budget: H("auto"),
+		sources: H(!1),
 		profile: H("auto"),
 		footer: H()
 	},
-	thresholds: { ...B },
-	colors: { ...V },
+	thresholds: { ...nt },
+	colors: { ...rt },
 	stale_after_minutes: 15,
 	appearance: {
 		card_radius: 20,
@@ -766,7 +846,7 @@ var Je = [
 function W(e) {
 	return typeof e == "object" && !!e && !Array.isArray(e);
 }
-function Ze(e) {
+function it(e) {
 	if (!W(e)) return {};
 	try {
 		return structuredClone(e);
@@ -774,18 +854,18 @@ function Ze(e) {
 		return {};
 	}
 }
-function Qe(e, t) {
+function at(e, t) {
 	return typeof e == "string" && t.includes(e);
 }
-function $e(e) {
+function ot(e) {
 	if (typeof e == "string") return e.trim() || void 0;
 }
-function et(e) {
-	return Array.isArray(e) ? [...new Set(e.map($e).filter((e) => !!e))] : [];
+function st(e) {
+	return Array.isArray(e) ? [...new Set(e.map(ot).filter((e) => !!e))] : [];
 }
-function tt(e) {
+function ct(e) {
 	let t = W(e) ? e : {};
-	return Object.fromEntries(Ye.map((e) => {
+	return Object.fromEntries(et.map((e) => {
 		let n = W(t[e]) ? t[e] : {}, r = W(n.values) ? Object.fromEntries(Object.entries(n.values).filter(([, e]) => typeof e == "boolean")) : {};
 		return [e, {
 			visible: typeof n.visible == "boolean" || n.visible === "auto" ? n.visible : U.sections[e].visible,
@@ -793,15 +873,15 @@ function tt(e) {
 		}];
 	}));
 }
-function nt(e) {
-	if (!W(e)) return { ...B };
+function lt(e) {
+	if (!W(e)) return { ...nt };
 	let t = e.warning, n = e.critical;
 	return typeof t == "number" && Number.isFinite(t) && typeof n == "number" && Number.isFinite(n) && t >= 0 && t < n && n <= 100 ? {
 		warning: t,
 		critical: n
-	} : { ...B };
+	} : { ...nt };
 }
-function rt(e) {
+function ut(e) {
 	if (typeof e != "string" || !e.trim()) return !1;
 	if (typeof CSS > "u" || typeof CSS.supports != "function") return !0;
 	try {
@@ -810,35 +890,35 @@ function rt(e) {
 		return !1;
 	}
 }
-function it(e) {
+function dt(e) {
 	let t = W(e) ? e : {};
-	return Object.fromEntries(Xe.map((e) => [e, rt(t[e]) ? t[e].trim() : V[e]]));
+	return Object.fromEntries(tt.map((e) => [e, ut(t[e]) ? t[e].trim() : rt[e]]));
 }
-function at(e, t, n, r) {
+function ft(e, t, n, r) {
 	return typeof e == "number" && Number.isFinite(e) && e >= n && e <= r ? e : t;
 }
-function ot(e) {
+function pt(e) {
 	let t = W(e) ? e : {};
 	return {
-		card_radius: at(t.card_radius, U.appearance.card_radius, 0, 48),
-		spacing: at(t.spacing, U.appearance.spacing, 4, 32)
+		card_radius: ft(t.card_radius, U.appearance.card_radius, 0, 48),
+		spacing: ft(t.spacing, U.appearance.spacing, 4, 32)
 	};
 }
 function G(e) {
-	let t = Ze(e), n = {
+	let t = it(e), n = {
 		type: typeof t.type == "string" ? t.type : U.type,
-		account_mode: Qe(t.account_mode, Je) ? t.account_mode : U.account_mode,
-		included_entry_ids: et(t.included_entry_ids),
+		account_mode: at(t.account_mode, $e) ? t.account_mode : U.account_mode,
+		included_entry_ids: st(t.included_entry_ids),
 		allow_account_switching: typeof t.allow_account_switching == "boolean" ? t.allow_account_switching : U.allow_account_switching,
 		compact: typeof t.compact == "boolean" ? t.compact : U.compact,
 		title: typeof t.title == "string" ? t.title : U.title,
 		show_unavailable_limits: typeof t.show_unavailable_limits == "boolean" ? t.show_unavailable_limits : U.show_unavailable_limits,
-		sections: tt(t.sections),
-		thresholds: nt(t.thresholds),
-		colors: it(t.colors),
+		sections: ct(t.sections),
+		thresholds: lt(t.thresholds),
+		colors: dt(t.colors),
 		stale_after_minutes: typeof t.stale_after_minutes == "number" && Number.isFinite(t.stale_after_minutes) && t.stale_after_minutes >= 5 && t.stale_after_minutes <= 1440 ? t.stale_after_minutes : U.stale_after_minutes,
-		appearance: ot(t.appearance)
-	}, r = $e(t.selected_entry_id);
+		appearance: pt(t.appearance)
+	}, r = ot(t.selected_entry_id);
 	r && (n.selected_entry_id = r);
 	for (let e of [
 		"view_layout",
@@ -849,7 +929,7 @@ function G(e) {
 }
 //#endregion
 //#region src/format.ts
-var st = {
+var mt = {
 	guest: "Guest",
 	free: "Free",
 	go: "Go",
@@ -873,12 +953,12 @@ var st = {
 	edu_pro: "Edu Pro",
 	unknown: "Unknown plan"
 };
-function ct(e) {
+function ht(e) {
 	if (!e) return "";
 	let t = e.trim().toLowerCase();
-	return st[t] ? st[t] : lt(t);
+	return mt[t] ? mt[t] : gt(t);
 }
-function lt(e) {
+function gt(e) {
 	return e.trim().toLowerCase().split(/[_-]+/u).filter(Boolean).map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(" ");
 }
 function K(e, t, n = !1) {
@@ -887,16 +967,12 @@ function K(e, t, n = !1) {
 		maximumFractionDigits: n ? 2 : 1
 	}).format(e);
 }
-function ut(e, t) {
+function q(e, t) {
 	if (e === null) return "—";
 	let n = Number(e);
 	return Number.isFinite(n) ? new Intl.NumberFormat(t, { maximumFractionDigits: 2 }).format(n) : e;
 }
-function q(e, t) {
-	let n = ut(e, t);
-	return n === "—" ? n : `$${n}`;
-}
-function dt(e, t) {
+function _t(e, t) {
 	if (!e) return null;
 	let n = new Date(e);
 	if (!Number.isFinite(n.getTime())) return null;
@@ -908,7 +984,7 @@ function dt(e, t) {
 		minutes: r % 60
 	};
 }
-function ft(e, t) {
+function vt(e, t) {
 	if (!e) return "—";
 	let n = new Date(e);
 	return Number.isFinite(n.getTime()) ? new Intl.DateTimeFormat(t, {
@@ -921,7 +997,7 @@ function ft(e, t) {
 }
 //#endregion
 //#region src/localize.ts
-var pt = {
+var yt = {
 	en: {
 		available: "Available",
 		blocked: "Blocked",
@@ -1009,13 +1085,15 @@ var pt = {
 		severityWarning: "Low usage remaining",
 		severityCritical: "Critically low usage remaining",
 		severityBlocked: "Limit reached",
+		severityReserveFallback: "Luna Reserve available",
 		dataMayBeOutdated: "Data may be outdated",
 		mostConstrainedTightest: "{limit} is currently your tightest constraint.",
 		mostConstrainedLowRemaining: "{limit} has only {percent}% remaining.",
-		mostConstrainedBlockedUsage: "Codex usage is currently blocked by your {limit}.",
-		mostConstrainedBlockedSpend: "Usage is currently blocked by your spending limit.",
-		mostConstrainedBlockedCredits: "Usage is currently blocked by your credit limit.",
-		mostConstrainedBlockedUnknown: "Codex usage is currently unavailable.",
+		mostConstrainedBlockedUsage: "The included usage limit for {limit} has been reached.",
+		mostConstrainedBlockedSpend: "The reported spending limit has been reached.",
+		mostConstrainedBlockedCredits: "The reported credit limit has been reached.",
+		mostConstrainedBlockedUnknown: "A usage restriction was reported.",
+		regularUsageReachedReserveAvailable: "Regular usage is exhausted. Luna Reserve is reported available.",
 		resetsImminently: "Resets shortly",
 		resetsInMinutes: "Resets in {minutes} min",
 		resetsInHours: "Resets in {hours}h",
@@ -1031,7 +1109,26 @@ var pt = {
 		creditsAvailableAmount: "{amount} available",
 		resetCreditAvailable: "{count} reset credit available",
 		resetCreditsAvailable: "{count} reset credits available",
-		expiresOn: "Expires {date}"
+		expiresOn: "Expires {date}",
+		budget: "Budget",
+		sources: "Sources",
+		sourceUsage: "Usage",
+		sourceProfile: "Profile",
+		sourceResetDetails: "Reset details",
+		sourceWorkspaceDiscovery: "Last workspace discovery",
+		sourceOk: "Current",
+		sourceStale: "Out of date",
+		sourceError: "Error",
+		sourceUnsupported: "Unsupported",
+		sourceDisabled: "Disabled",
+		sourceNever: "No reading yet",
+		sourcePoll: "Polling",
+		sourceOnAuth: "On sign-in",
+		alwaysShow: "Always show",
+		hide: "Hide",
+		historical: "Historical profile data",
+		restrictionNamed: "Included usage limit reached: {limit}.",
+		restrictionSomeLimit: "At least one included usage limit is reached."
 	},
 	de: {
 		available: "Verfügbar",
@@ -1120,13 +1217,15 @@ var pt = {
 		severityWarning: "Wenig Nutzung übrig",
 		severityCritical: "Kritisch wenig Nutzung übrig",
 		severityBlocked: "Limit erreicht",
+		severityReserveFallback: "Luna Reserve verfügbar",
 		dataMayBeOutdated: "Daten könnten veraltet sein",
 		mostConstrainedTightest: "{limit} ist derzeit dein engstes Limit.",
 		mostConstrainedLowRemaining: "{limit} hat nur noch {percent}% übrig.",
-		mostConstrainedBlockedUsage: "Die Codex-Nutzung wird derzeit durch dein {limit} blockiert.",
-		mostConstrainedBlockedSpend: "Die Nutzung wird derzeit durch dein Ausgabenlimit blockiert.",
-		mostConstrainedBlockedCredits: "Die Nutzung wird derzeit durch dein Guthabenlimit blockiert.",
-		mostConstrainedBlockedUnknown: "Die Codex-Nutzung ist derzeit nicht verfügbar.",
+		mostConstrainedBlockedUsage: "Das enthaltene Nutzungslimit für {limit} ist erreicht.",
+		mostConstrainedBlockedSpend: "Das gemeldete Ausgabenlimit ist erreicht.",
+		mostConstrainedBlockedCredits: "Das gemeldete Guthabenlimit ist erreicht.",
+		mostConstrainedBlockedUnknown: "Eine Nutzungseinschränkung wurde gemeldet.",
+		regularUsageReachedReserveAvailable: "Die reguläre Nutzung ist ausgeschöpft. Luna Reserve wird als verfügbar gemeldet.",
 		resetsImminently: "Setzt sich gleich zurück",
 		resetsInMinutes: "Setzt sich in {minutes} Min. zurück",
 		resetsInHours: "Setzt sich in {hours}h zurück",
@@ -1142,11 +1241,30 @@ var pt = {
 		creditsAvailableAmount: "{amount} verfügbar",
 		resetCreditAvailable: "{count} Reset-Guthaben verfügbar",
 		resetCreditsAvailable: "{count} Reset-Guthaben verfügbar",
-		expiresOn: "Läuft ab am {date}"
+		expiresOn: "Läuft ab am {date}",
+		budget: "Budget",
+		sources: "Quellen",
+		sourceUsage: "Nutzung",
+		sourceProfile: "Profil",
+		sourceResetDetails: "Reset-Details",
+		sourceWorkspaceDiscovery: "Letzte Workspace-Erkennung",
+		sourceOk: "Aktuell",
+		sourceStale: "Veraltet",
+		sourceError: "Fehler",
+		sourceUnsupported: "Nicht unterstützt",
+		sourceDisabled: "Deaktiviert",
+		sourceNever: "Noch keine Daten",
+		sourcePoll: "Abfrage",
+		sourceOnAuth: "Bei Anmeldung",
+		alwaysShow: "Immer anzeigen",
+		hide: "Ausblenden",
+		historical: "Historische Profildaten",
+		restrictionNamed: "Inklusivlimit erreicht: {limit}.",
+		restrictionSomeLimit: "Mindestens ein Inklusivlimit ist erreicht."
 	}
 };
-function mt(e, t, n) {
-	let r = pt[e?.toLowerCase().startsWith("de") ? "de" : "en"][t];
+function bt(e, t, n) {
+	let r = yt[e?.toLowerCase().startsWith("de") ? "de" : "en"][t];
 	return n ? r.replace(/\{(\w+)\}/g, (e, t) => t in n ? String(n[t]) : e) : r;
 }
 //#endregion
@@ -1158,74 +1276,79 @@ var J = {
 	critical: 3,
 	blocked: 4
 };
-function ht(e, t, n) {
+function xt(e, t, n) {
 	return t ? "blocked" : typeof e != "number" || !Number.isFinite(e) ? "unknown" : e >= n.critical ? "critical" : e >= n.warning ? "warning" : "ok";
 }
-function gt(e) {
+function St(e) {
 	return e.reduce((e, t) => J[t] > J[e] ? t : e, "unknown");
 }
 //#endregion
 //#region src/view-model.ts
-function _t(e) {
+function Ct(e) {
 	if (!e) return null;
 	let t = new Date(e);
 	return Number.isFinite(t.getTime()) ? t : null;
 }
-function vt(e, t, n) {
-	let r = _t(e);
+function wt(e, t, n) {
+	let r = Ct(e);
 	return r === null || n.getTime() - r.getTime() > t * 6e4;
 }
-function yt(e, t) {
+function Tt(e, t) {
+	return !e || e.refresh_mode !== "poll" || e.state === "disabled" || e.state === "unsupported" ? !1 : e.state === "error" || e.state === "never" ? !0 : !e.last_success || !e.expected_interval_seconds ? !1 : t.getTime() - new Date(e.last_success).getTime() > e.expected_interval_seconds * 2e3;
+}
+function Et(e, t) {
 	if (!e.duration_seconds || !e.resets_at || e.used_percent === null) return null;
-	let n = _t(e.resets_at);
+	let n = Ct(e.resets_at);
 	if (!n) return null;
 	let r = n.getTime() - e.duration_seconds * 1e3, i = (t.getTime() - r) / (e.duration_seconds * 1e3) * 100;
 	return !Number.isFinite(i) || i < 0 || i > 100 ? null : e.used_percent - i;
 }
-function bt(e, t) {
+function Dt(e, t) {
 	if (e.reached !== t.reached) return e.reached;
 	let n = e.remaining_percent ?? Infinity, r = t.remaining_percent ?? Infinity;
 	return n === r ? e.source !== t.source && e.source === "main" : n < r;
 }
-function xt(e) {
-	return e.length === 0 ? null : e.reduce((e, t) => bt(t, e) ? t : e);
+function Ot(e) {
+	return e.length === 0 ? null : e.reduce((e, t) => Dt(t, e) ? t : e);
 }
-function Y(e, t, n) {
+function Y(e, t, n, r) {
 	if (t !== "auto") return t;
 	switch (e) {
 		case "credits": return n.credits !== null || n.reset_credits !== null;
 		case "spending": return n.spend !== null;
 		case "profile": return n.profile !== null;
 		case "additional_limits": return n.limits.some((e) => e.source === "additional");
+		case "budget": return n.limits.some((e) => e.budget_pph !== null && e.budget_pph !== void 0);
+		case "sources": return Object.values(n.sources ?? {}).some((e) => Tt(e, r));
 		default: return !0;
 	}
 }
-function St(e, t, n) {
-	let r = !e.available || vt(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((r) => ({
-		...r,
-		severity: ht(r.used_percent, r.reached || e.blocker !== null, t.thresholds),
-		pace: yt(r, n)
-	})), a = e.blocker === null ? gt(i.map((e) => e.severity)) : "blocked";
+function kt(e, t, n) {
+	let r = !e.available || wt(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((e) => ({
+		...e,
+		severity: xt(e.used_percent, e.reached, t.thresholds),
+		pace: Et(e, n)
+	})), a = e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0, o = e.blocker !== null || e.limit_summary?.reached === !0 ? a ? "critical" : "blocked" : St(i.map((e) => e.severity));
 	return {
 		...e,
 		limits: i,
-		severity: a,
+		severity: o,
 		stale: r,
-		mostConstrainedLimit: xt(i)
+		mostConstrainedLimit: Ot(i)
 	};
 }
-function Ct(e, t, n, r = /* @__PURE__ */ new Date()) {
+function At(e, t, n, r = /* @__PURE__ */ new Date()) {
 	let i = e.accounts;
 	t.included_entry_ids.length > 0 && (i = i.filter((e) => t.included_entry_ids.includes(e.id)));
-	let a = i.map((e) => St(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
+	let a = i.map((e) => kt(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
 	s ||= t.account_mode === "single" ? a[0] ?? null : [...a].sort((e, t) => J[t.severity] - J[e.severity])[0] ?? null;
 	let c = t.account_mode === "single" ? s : null;
 	return {
 		accounts: a,
 		selectedAccount: s,
-		severity: c ? c.severity : gt(a.map((e) => e.severity)),
+		severity: c ? c.severity : St(a.map((e) => e.severity)),
 		stale: c ? c.stale : a.some((e) => e.stale),
-		generatedAt: _t(e.generated_at),
+		generatedAt: Ct(e.generated_at),
 		integrationVersion: e.integration_version
 	};
 }
@@ -1239,7 +1362,7 @@ function X(e, t, n, r) {
 }
 //#endregion
 //#region src/codex-usage-card.ts
-var wt = "codex_usage_card_data_updated", Tt = "https://github.com/LucaFSmart/codex-usage#dashboard-card", Et = [
+var jt = "codex_usage_card_data_updated", Mt = [
 	{
 		key: "lifetime_tokens",
 		label: "lifetimeTokens",
@@ -1292,7 +1415,7 @@ var wt = "codex_usage_card_data_updated", Tt = "https://github.com/LucaFSmart/co
 		key: "most_used_reasoning_effort_percentage",
 		label: "reasoningShare"
 	}
-], Dt = {
+], Nt = {
 	unknown: "severityUnknown",
 	ok: "severityOk",
 	warning: "severityWarning",
@@ -1302,31 +1425,10 @@ var wt = "codex_usage_card_data_updated", Tt = "https://github.com/LucaFSmart/co
 function Z(e, t) {
 	return e === null ? "—" : `${new Intl.NumberFormat(t, { maximumFractionDigits: 1 }).format(e)}%`;
 }
-function Ot(e) {
+function Pt(e) {
 	return e.length > 4 ? `…${e.slice(-4)}` : e;
 }
-var kt = [
-	"ok",
-	"warning",
-	"critical",
-	"blocked",
-	"unknown"
-], At = {
-	ok: "colorOk",
-	warning: "colorWarning",
-	critical: "colorCritical",
-	blocked: "colorBlocked",
-	unknown: "colorUnknown"
-}, jt = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
-function Mt(e, t) {
-	let n = e.match(jt);
-	return n ? n[2] : /^#[0-9a-fA-F]{6}$/i.test(e) ? e : t;
-}
-function Nt(e, t) {
-	let n = e.match(jt);
-	return n ? `var(${n[1]}, ${t})` : t;
-}
-var Q = class extends M {
+var Q = class extends P {
 	#e = void 0;
 	get hass() {
 		return this.#e;
@@ -1362,10 +1464,21 @@ var Q = class extends M {
 	set detailsExpanded(e) {
 		this.#i = e;
 	}
+	#a = /* @__PURE__ */ new Date();
+	get now() {
+		return this.#a;
+	}
+	set now(e) {
+		this.#a = e;
+	}
 	config = structuredClone(U);
 	unsubscribe;
 	subscribedConnection;
 	loading = !1;
+	minuteTimer;
+	connectedCallback() {
+		super.connectedCallback(), this.startMinuteTimer();
+	}
 	static getStubConfig() {
 		return {};
 	}
@@ -1392,7 +1505,15 @@ var Q = class extends M {
 		});
 	}
 	disconnectedCallback() {
-		super.disconnectedCallback(), this.unsubscribe?.(), this.unsubscribe = void 0, this.subscribedConnection = void 0;
+		super.disconnectedCallback(), this.unsubscribe?.(), this.unsubscribe = void 0, this.subscribedConnection = void 0, this.stopMinuteTimer();
+	}
+	startMinuteTimer() {
+		this.minuteTimer ||= setInterval(() => {
+			this.now = /* @__PURE__ */ new Date();
+		}, 6e4);
+	}
+	stopMinuteTimer() {
+		this.minuteTimer && clearInterval(this.minuteTimer), this.minuteTimer = void 0;
 	}
 	async startClient() {
 		if (!this.hass) return;
@@ -1402,7 +1523,7 @@ var Q = class extends M {
 			let e = this.hass.connection;
 			this.subscribedConnection = e;
 			try {
-				let t = await e.subscribeEvents(() => void this.loadSnapshot(), wt);
+				let t = await e.subscribeEvents(() => void this.loadSnapshot(), jt);
 				this.subscribedConnection === e ? this.unsubscribe = t : t();
 			} catch {
 				this.subscribedConnection === e && (this.error = !0, this.subscribedConnection = void 0);
@@ -1414,7 +1535,7 @@ var Q = class extends M {
 		if (!(!this.hass || this.loading)) {
 			this.loading = !0;
 			try {
-				this.snapshot = await qe(this.hass), this.error = !1;
+				this.snapshot = await Qe(this.hass), this.error = !1;
 			} catch {
 				this.error = !0;
 			} finally {
@@ -1423,23 +1544,23 @@ var Q = class extends M {
 		}
 	}
 	t(e, t) {
-		return mt(this.hass?.locale?.language ?? this.hass?.language, e, t);
+		return bt(this.hass?.locale?.language ?? this.hass?.language, e, t);
 	}
 	get locale() {
 		return this.hass?.locale?.language ?? this.hass?.language;
 	}
-	statusLabel(e) {
-		return this.t(Dt[e]);
+	statusLabel(e, t) {
+		return t?.limit_summary?.reason === "usage_limit" && t.limit_summary.fallback_available === !0 ? this.t("severityReserveFallback") : this.t(Nt[e]);
 	}
 	limitLabel(e) {
-		let t = (t) => e.duration_seconds !== null && e.duration_seconds >= t * .95 && e.duration_seconds <= t * 1.05;
-		return t(18e3) ? this.t("fiveHours") : t(604800) ? this.t("week") : e.duration_seconds && e.duration_seconds % 86400 == 0 ? `${e.duration_seconds / 86400} ${this.t("days")}` : e.name || this.t("unknownWindow");
+		let t = (t) => e.duration_seconds !== null && e.duration_seconds >= t * .95 && e.duration_seconds <= t * 1.05, n = t(18e3) ? this.t("fiveHours") : t(604800) ? this.t("week") : e.duration_seconds && e.duration_seconds % 86400 == 0 ? `${e.duration_seconds / 86400} ${this.t("days")}` : null;
+		return e.source === "additional" && e.name ? n ? `${e.name} · ${n}` : e.name : n ?? e.name ?? this.t("unknownWindow");
 	}
 	absoluteResetLabel(e) {
-		return ft(e, this.locale);
+		return vt(e, this.locale);
 	}
 	relativeResetLabel(e) {
-		let t = dt(e, /* @__PURE__ */ new Date());
+		let t = _t(e, this.now);
 		if (!t) return "—";
 		let { totalMinutes: n, days: r, hours: i, minutes: a } = t;
 		return n === 0 ? this.t("resetsImminently") : n < 60 ? this.t("resetsInMinutes", { minutes: n }) : r === 0 ? a === 0 ? this.t("resetsInHours", { hours: i }) : this.t("resetsInHoursMinutes", {
@@ -1454,6 +1575,11 @@ var Q = class extends M {
 		if (e.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
 		if (e.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
 		if (e.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
+		if (e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0) return this.t("regularUsageReachedReserveAvailable");
+		if (e.limit_summary?.reason === "additional_limit") {
+			let t = e.limit_statuses?.find((e) => e.reached === !0);
+			return t ? this.t("restrictionNamed", { limit: t.name }) : this.t("restrictionSomeLimit");
+		}
 		let t = e.mostConstrainedLimit;
 		return t ? e.blocker === "usage_limit" || t.reached ? this.t("mostConstrainedBlockedUsage", { limit: this.limitLabel(t) }) : t.severity === "warning" || t.severity === "critical" ? this.t("mostConstrainedLowRemaining", {
 			limit: this.limitLabel(t),
@@ -1472,18 +1598,53 @@ var Q = class extends M {
 	}
 	eligibleLimits(e, t) {
 		let n = t === "main" ? "limits" : "additional_limits";
-		return e.limits.filter((e) => e.source === t && this.config.sections[n].values[e.id] !== !1 && (this.config.show_unavailable_limits || e.used_percent !== null || e.remaining_percent !== null));
+		return e.limits.filter((e) => e.source === t && this.config.sections[n].values[e.id] !== !1 && (t === "main" || this.config.show_unavailable_limits || e.used_percent !== null || e.remaining_percent !== null));
+	}
+	mainLimits(e) {
+		let t = [{
+			id: "codex:primary:five_hour",
+			name: "Codex",
+			source: "main",
+			duration_seconds: 18e3,
+			used_percent: null,
+			remaining_percent: null,
+			resets_at: null,
+			reached: !1,
+			entity_id: null,
+			severity: "unknown",
+			pace: null
+		}, {
+			id: "codex:secondary:weekly",
+			name: "Codex",
+			source: "main",
+			duration_seconds: 604800,
+			used_percent: null,
+			remaining_percent: null,
+			resets_at: null,
+			reached: !1,
+			entity_id: null,
+			severity: "unknown",
+			pace: null
+		}], n = e.limits.filter((e) => e.source === "main"), r = /* @__PURE__ */ new Set();
+		return [...t.flatMap((e) => {
+			let t = e.duration_seconds === 604800 ? [e.id, "codex:primary:weekly"] : [e.id], i = n.find((t) => t.id === e.id) ?? n.find((t) => !r.has(t.id) && t.duration_seconds === e.duration_seconds);
+			return i ? (r.add(i.id), [...t, i.id].some((e) => this.config.sections.limits.values[e] === !1) ? [] : [i]) : t.some((e) => this.config.sections.limits.values[e] === !1) ? [] : [e];
+		}), ...n.filter((e) => !r.has(e.id) && this.config.sections.limits.values[e.id] !== !1)];
 	}
 	renderLimitRow(e, t) {
-		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = w` <div class="limit-head">
+		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = T` <div class="limit-head">
         <span class="limit-name">${this.limitLabel(e)}</span>
-        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? w`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : E}
+        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : D}
       </div>
       <div class="limit-body">
         <div class="limit-metric">
-          ${t ? w`<div class="ring" style=${`--progress:${r ?? 0}`} aria-hidden="true">
+          ${t ? T`<div
+                  class="ring ${r === null ? "unknown" : ""}"
+                  style=${r === null ? D : `--progress:${r}`}
+                  aria-hidden="true"
+                >
                   <strong>${Z(r, this.locale)}</strong>
-                </div>` : w`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
+                </div>` : T`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
           <span class="limit-remaining-label">${this.t("remaining")}</span>
         </div>
         <div class="limit-copy">
@@ -1492,79 +1653,159 @@ var Q = class extends M {
             role="progressbar"
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuenow=${r ?? 0}
+            aria-valuetext=${Z(r, this.locale)}
+            aria-valuenow=${r === null ? D : r}
           >
-            <span style=${`width:${r ?? 0}%`}></span>
+            ${r === null ? D : T`<span style=${`width:${r}%`}></span>`}
           </div>
           <span class="limit-used"
             >${Z(n, this.locale)} ${this.t("usedInline")}</span
           >
-          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? w`<small
+          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? T`<small
                   >${this.t("pace")}: ${K(Math.abs(e.pace), this.locale)}
                   ${this.t("percentagePoints")}
                   ${e.pace >= 0 ? this.t("ahead") : this.t("behind")}</small
-                >` : E}
+                >` : D}
         </div>
       </div>
-      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? w`<small class="limit-absolute"
+      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<small class="limit-absolute"
               >${this.t("resets")}: ${this.absoluteResetLabel(e.resets_at)}</small
-            >` : E}`;
-		return e.entity_id ? w`<button
+            >` : D}`;
+		return e.entity_id ? T`<button
           class="limit-row"
           data-limit-id=${e.id}
           @click=${() => this.openMoreInfo(e.entity_id)}
         >
           ${i}
-        </button>` : w`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
+        </button>` : T`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
+	}
+	renderBudgetRows(e) {
+		if (!Y("budget", this.config.sections.budget.visible, e, this.now)) return D;
+		let t = e.stale || !e.available ? [] : e.limits.flatMap((e) => {
+			if (!this.valueVisible("budget", e.id) || e.budget_pph === null || e.budget_pph === void 0) return [];
+			let t = e.budget_calculated_at ? new Date(e.budget_calculated_at) : null;
+			if (!t || !Number.isFinite(t.getTime()) || this.now.getTime() - t.getTime() > this.config.stale_after_minutes * 6e4) return [];
+			let n = _t(e.resets_at, this.now);
+			if (!n || n.totalMinutes < 1) return [];
+			let r = (e.duration_seconds ?? 0) >= 86400, i = r ? e.budget_pph * 24 : e.budget_pph;
+			return [T`<div class="info-row" data-budget-id=${e.id}>
+                <span class="info-label">${this.limitLabel(e)}</span
+                ><span class="info-value"
+                  >${K(i, this.locale)} ${r ? "pp/day" : "pp/h"}</span
+                >
+              </div>`];
+		});
+		if (t.length) return T`<div class="section-label">${this.t("budget")}</div>
+        ${t}`;
+		let n = this.emptyOptional("budget");
+		return n === D ? D : T`<div class="section-label">${this.t("budget")}</div>
+          ${n}`;
+	}
+	renderSources(e) {
+		if (!Y("sources", this.config.sections.sources.visible, e, this.now)) return D;
+		let t = {
+			usage: "sourceUsage",
+			profile: "sourceProfile",
+			reset_details: "sourceResetDetails",
+			workspace_discovery: "sourceWorkspaceDiscovery"
+		}, n = {
+			ok: "sourceOk",
+			error: "sourceError",
+			unsupported: "sourceUnsupported",
+			disabled: "sourceDisabled",
+			never: "sourceNever"
+		}, r = Object.entries(e.sources ?? {}).map(([e, r]) => {
+			let i = r.state === "ok" && Tt(r, this.now) ? "sourceStale" : n[r.state] ?? "sourceNever";
+			return T`<div class="info-row" data-source=${e}>
+        <span class="info-label">${this.t(t[e] ?? "sources")}</span
+        ><span class="info-value"
+          >${this.t(i)} ·
+          ${this.t(r.refresh_mode === "poll" ? "sourcePoll" : "sourceOnAuth")}</span
+        >
+      </div>`;
+		});
+		if (r.length) return T`<div class="section-label">${this.t("sources")}</div>
+        ${r}`;
+		let i = this.emptyOptional("sources");
+		return i === D ? D : T`<div class="section-label">${this.t("sources")}</div>
+          ${i}`;
 	}
 	renderAdditionalLimits(e) {
-		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e)) return E;
+		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e, this.now)) return D;
 		let t = this.eligibleLimits(e, "additional");
-		return t.length ? w`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
-      ${t.map((e) => this.renderLimitRow(e, !1))}` : E;
+		if (!t.length) {
+			let e = this.emptyOptional("additional_limits");
+			return e === D ? D : T`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+            ${e}`;
+		}
+		return T`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+      ${t.map((e) => this.renderLimitRow(e, !1))}`;
 	}
-	renderCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e) || !e.credits || !this.valueVisible("credits", "balance")) return E;
-		let t = e.credits, n = t.unlimited ? this.t("unlimitedCredits") : t.has_credits === !1 ? this.t("unavailable") : this.t("creditsAvailableAmount", { amount: q(t.balance, this.locale) });
-		return w`<div class="info-row" data-detail="credits">
-      <span class="info-label">${this.t("credits")}</span>
-      <span class="info-value">${n}</span>
+	emptyOptional(e) {
+		let t = this.config.sections[e], n = Object.values(t.values);
+		return t.visible !== !0 || n.length > 0 && n.every((e) => e === !1) ? D : T`<div class="info-row" data-empty-section=${e}>
+      <span class="info-value">—</span>
     </div>`;
 	}
+	renderResetSummary(e) {
+		if (!e.reset_credits || !this.valueVisible("credits", "reset_credits") || !Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
+		let t = e.reset_credits.available_count, n = t === null ? "—" : this.t(t === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: t });
+		return T`<div class="info-row" data-core="resets">
+      <span class="info-label">${this.t("availableResets")}</span
+      ><span class="info-value">${n}</span>
+    </div>`;
+	}
+	renderCreditsRows(e) {
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
+		if (!e.credits) return e.reset_credits && this.valueVisible("credits", "reset_credits") ? D : this.emptyOptional("credits");
+		let t = e.credits, n = [];
+		if (this.valueVisible("credits", "balance")) {
+			let e = t.balance === null ? t.has_credits === !1 ? this.t("unavailable") : this.t("creditsAvailableAmount", { amount: "—" }) : t.has_credits === !1 ? `${this.t("balance")}: ${q(t.balance, this.locale)}` : this.t("creditsAvailableAmount", { amount: q(t.balance, this.locale) });
+			n.push(T`<div class="info-row" data-detail="credits">
+          <span class="info-label">${this.t("credits")}</span>
+          <span class="info-value">${e}</span>
+        </div>`);
+		}
+		return this.valueVisible("credits", "unlimited") && t.unlimited === !0 && n.push(T`<div class="info-row" data-credit-key="unlimited">
+          <span class="info-label">${this.t("creditState")}</span>
+          <span class="info-value">${this.t("unlimitedCredits")}</span>
+        </div>`), n.length ? T`${n}` : D;
+	}
 	renderResetCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return E;
-		let t = e.reset_credits, n = t.available_count ?? 0, r = [w`<div class="info-row" data-detail="reset-credits">
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return D;
+		let t = e.reset_credits, n = t.available_count, r = [T`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
-          >${this.t(n === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: n })}</span
+          >${n === null ? "—" : this.t(n === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: n })}</span
         >
       </div>`];
-		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && r.push(w`<div class="info-row" data-credit-key="total_earned">
+		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && r.push(T`<div class="info-row" data-credit-key="total_earned">
           <span class="info-label">${this.t("totalEarned")}</span>
           <span class="info-value">${K(t.total_earned, this.locale)}</span>
-        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && r.push(w`<div class="info-row" data-credit-key="next_expiry">
+        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && r.push(T`<div class="info-row" data-credit-key="next_expiry">
           <span class="info-label">${this.t("nextExpiry")}</span>
           <span class="info-value"
             >${this.t("expiresOn", { date: this.absoluteResetLabel(t.next_expiry) })}</span
           >
-        </div>`), w`${r}`;
+        </div>`), T`${r}`;
 	}
 	renderSpendingRows(e) {
-		if (!Y("spending", this.config.sections.spending.visible, e) || !e.spend) return E;
+		if (!Y("spending", this.config.sections.spending.visible, e, this.now)) return D;
+		if (!e.spend) return this.emptyOptional("spending");
 		let t = e.spend, n = [
 			["remaining", t.remaining],
 			["limit", t.limit],
 			["used", t.used],
 			["used_percent", t.used_percent]
 		].find(([e, t]) => this.valueVisible("spending", e) && t !== null);
-		if (!n) return E;
-		let [r, i] = n, a = [w`<div class="info-row" data-detail="spending">
+		if (!n) return this.emptyOptional("spending");
+		let [r, i] = n, a = [T`<div class="info-row" data-detail="spending">
         <span class="info-label">${this.t("spending")}</span>
         <span class="info-value"
           >${r === "used_percent" ? Z(i, this.locale) : q(i, this.locale)}</span
         >
       </div>`];
-		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(w`<div
+		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(T`<div
           class="bar bar--mini"
           role="progressbar"
           aria-valuemin="0"
@@ -1572,83 +1813,88 @@ var Q = class extends M {
           aria-valuenow=${t.used_percent}
         >
           <span style=${`width:${t.used_percent}%`}></span>
-        </div>`), a.push(w`<div class="info-row" data-spend-key="used_percent">
+        </div>`), a.push(T`<div class="info-row" data-spend-key="used_percent">
           <span class="info-label">${this.t("usage")}</span>
           <span class="info-value">${Z(t.used_percent, this.locale)}</span>
-        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(w`<div class="info-row" data-spend-key="used">
+        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(T`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
           <span class="info-value">${q(t.used, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(w`<div class="info-row" data-spend-key="limit">
+        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(T`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
           <span class="info-value">${q(t.limit, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "source") && t.source && a.push(w`<div class="info-row" data-spend-key="source">
+        </div>`), this.valueVisible("spending", "source") && t.source && a.push(T`<div class="info-row" data-spend-key="source">
           <span class="info-label">${this.t("source")}</span>
           <span class="info-value">${t.source}</span>
-        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(w`<div class="info-row" data-spend-key="reset">
+        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(T`<div class="info-row" data-spend-key="reset">
           <span class="info-label">${this.t("resets")}</span>
           <span class="info-value">${this.absoluteResetLabel(t.resets_at)}</span>
-        </div>`), w`${a}`;
+        </div>`), T`${a}`;
 	}
 	renderProfileRows(e) {
-		if (!Y("profile", this.config.sections.profile.visible, e) || !e.profile) return E;
-		let t = Et.flatMap((t) => {
+		if (!Y("profile", this.config.sections.profile.visible, e, this.now)) return D;
+		if (!e.profile) return this.emptyOptional("profile");
+		let t = Mt.flatMap((t) => {
 			if (!this.valueVisible("profile", t.key)) return [];
 			let n = e.profile?.[t.key];
 			if (n == null) return [];
-			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : K(n, this.locale, t.compact) : lt(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
-			return [w`<div class="info-row" data-profile-key=${t.key}>
+			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : K(n, this.locale, t.compact) : gt(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
+			return [T`<div class="info-row" data-profile-key=${t.key}>
           <span class="info-label">${this.t(t.label)}</span>
           <span class="info-value">${r}</span>
         </div>`];
 		});
-		return t.length ? w`${t}` : E;
+		if (!t.length) return this.emptyOptional("profile");
+		let n = e.sources?.profile;
+		return T`${n && (n.state !== "ok" || n.last_success && new Date(n.last_success).getTime() < this.now.getTime() - (n.expected_interval_seconds ?? 3600) * 2e3) ? T`<small data-profile-historical>${this.t("historical")}</small>` : D}${t}`;
 	}
 	renderAccountRows(e) {
-		if (!Y("account", this.config.sections.account.visible, e)) return E;
+		if (!Y("account", this.config.sections.account.visible, e, this.now)) return D;
 		let t = [];
-		return this.valueVisible("account", "plan") && e.plan && t.push(w`<div class="info-row">
+		return this.valueVisible("account", "plan") && e.plan && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("planLabel")}</span>
-          <span class="info-value">${ct(e.plan)}</span>
-        </div>`), this.valueVisible("account", "workspace") && t.push(w`<div class="info-row">
+          <span class="info-value">${ht(e.plan)}</span>
+        </div>`), this.valueVisible("account", "workspace") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("workspace")}</span>
           <span class="info-value">${e.name}</span>
-        </div>`), this.valueVisible("account", "account_id") && t.push(w`<div class="info-row">
+        </div>`), this.valueVisible("account", "account_id") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("accountId")}</span>
-          <span class="info-value">${Ot(e.id)}</span>
-        </div>`), t.length ? w`<div class="account-details" data-detail="account">${t}</div>` : E;
+          <span class="info-value">${Pt(e.id)}</span>
+        </div>`), t.length ? T`<div class="account-details" data-detail="account">${t}</div>` : this.emptyOptional("account");
 	}
 	renderDetails(e) {
-		let t = this.renderCreditsRows(e), n = this.renderResetCreditsRows(e), r = this.renderSpendingRows(e), i = this.renderProfileRows(e), a = this.renderAccountRows(e), o = [
+		let t = this.renderCreditsRows(e), n = this.renderResetCreditsRows(e), r = this.renderSpendingRows(e), i = this.renderProfileRows(e), a = this.renderAccountRows(e), o = this.renderBudgetRows(e), s = this.renderSources(e), c = [
 			this.renderAdditionalLimits(e),
-			t !== E || n !== E ? w`<div class="section-label">${this.t("sectionCredits")}</div>
-            ${t}${n}` : E,
-			r === E ? E : w`<div class="section-label">${this.t("sectionSpending")}</div>
+			t !== D || n !== D ? T`<div class="section-label">${this.t("sectionCredits")}</div>
+            ${t}${n}` : D,
+			r === D ? D : T`<div class="section-label">${this.t("sectionSpending")}</div>
             ${r}`,
-			i === E ? E : w`<div class="section-label">${this.t("sectionProfile")}</div>
+			i === D ? D : T`<div class="section-label">${this.t("sectionProfile")}</div>
             ${i}`,
-			a === E ? E : w`<div class="section-label">${this.t("sectionAccount")}</div>
-            ${a}`
-		].filter((e) => e !== E);
-		return o.length ? w`<div class="details">${o}</div>` : E;
+			a === D ? D : T`<div class="section-label">${this.t("sectionAccount")}</div>
+            ${a}`,
+			o,
+			s
+		].filter((e) => e !== D);
+		return c.length ? T`<div class="details">${c}</div>` : D;
 	}
 	render() {
-		let e = this.snapshot ? Ct(this.snapshot, this.config, this.sessionEntryId) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = ct(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.eligibleLimits(t, "main") : [], c = t ? this.renderDetails(t) : E, l = c !== E, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
-		return w`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
+		let e = this.snapshot ? At(this.snapshot, this.config, this.sessionEntryId, this.now) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = ht(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.mainLimits(t) : [], c = t ? this.renderDetails(t) : D, l = c !== D, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
+		return T`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
       <div class="surface">
         <header>
           <div>
             <h2>${this.config.title}</h2>
-            ${o ? w`<p>${o}</p>` : E}
+            ${o ? T`<p>${o}</p>` : D}
           </div>
           <span class="status"
-            >${i ? `${this.t("overall")} · ` : ""}${this.statusLabel(n)}</span
+            >${i ? `${this.t("overall")} · ` : ""}${this.statusLabel(n, i ? null : t)}</span
           >
         </header>
-        ${r ? w`<p class="freshness">
-                ${this.t("dataMayBeOutdated")}${t ? w` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : E}
-              </p>` : E}
-        ${i && e && this.config.allow_account_switching ? w`<nav aria-label=${this.t("account")}>
-                ${e.accounts.map((e) => w`<button
+        ${r ? T`<p class="freshness">
+                ${this.t("dataMayBeOutdated")}${t ? T` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : D}
+              </p>` : D}
+        ${i && e && this.config.allow_account_switching ? T`<nav aria-label=${this.t("account")}>
+                ${e.accounts.map((e) => T`<button
                       class="account-chip ${e.id === t?.id ? "selected" : ""}"
                       data-entry-id=${e.id}
                       @click=${() => this.sessionEntryId = e.id}
@@ -1656,27 +1902,28 @@ var Q = class extends M {
                       <i style=${`--chip-color:${this.config.colors[e.severity]}`}></i
                       >${e.name}
                     </button>`)}
-              </nav>` : E}
-        ${t && u ? w`<p class="callout">${u}</p>` : E}
-        ${t ? this.config.sections.limits.visible ? s.length ? w`<main class="limits">
+              </nav>` : D}
+        ${t && u ? T`<p class="callout">${u}</p>` : D}
+        ${t ? this.renderResetSummary(t) : D}
+        ${t ? this.config.sections.limits.visible ? s.length ? T`<main class="limits">
                     ${s.map((e) => this.renderLimitRow(e, !0))}
-                  </main>` : w`<div class="empty">
+                  </main>` : T`<div class="empty">
                     ${this.error ? this.t("unavailable") : this.t("noData")}
-                  </div>` : E : w`<div class="empty">${this.t("unavailable")}</div>`}
-        ${l ? w`<button
+                  </div>` : D : T`<div class="empty">${this.t("unavailable")}</div>`}
+        ${l ? T`<button
                 class="details-toggle"
                 @click=${() => this.detailsExpanded = !this.detailsExpanded}
               >
                 <span>${this.t(this.detailsExpanded ? "hideDetails" : "showDetails")}</span>
                 <i class="chevron ${this.detailsExpanded ? "open" : ""}"></i>
-              </button>` : E}
-        ${l && this.detailsExpanded ? c : E}
-        ${t && this.config.sections.footer.visible ? w`<footer>
-                ${this.valueVisible("footer", "updated") ? w`<span
+              </button>` : D}
+        ${l && this.detailsExpanded ? c : D}
+        ${t && this.config.sections.footer.visible ? T`<footer>
+                ${this.valueVisible("footer", "updated") ? T`<span
                         >${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}</span
-                      >` : E}
-                ${this.valueVisible("footer", "version") ? w`<span>v${e?.integrationVersion}</span>` : E}
-              </footer>` : E}
+                      >` : D}
+                ${this.valueVisible("footer", "version") ? T`<span>v${e?.integrationVersion}</span>` : D}
+              </footer>` : D}
       </div>
     </ha-card>`;
 	}
@@ -2008,8 +2255,76 @@ var Q = class extends M {
     }
   `;
 };
-X([Ie({ attribute: !1 })], Q.prototype, "hass", null), X([N()], Q.prototype, "snapshot", null), X([N()], Q.prototype, "error", null), X([N()], Q.prototype, "sessionEntryId", null), X([N()], Q.prototype, "detailsExpanded", null), Q = X([Ne("codex-usage-card")], Q);
-var $ = class extends M {
+X([F({ attribute: !1 })], Q.prototype, "hass", null), X([I()], Q.prototype, "snapshot", null), X([I()], Q.prototype, "error", null), X([I()], Q.prototype, "sessionEntryId", null), X([I()], Q.prototype, "detailsExpanded", null), X([I()], Q.prototype, "now", null), Q = X([je("codex-usage-card")], Q);
+//#endregion
+//#region src/codex-usage-card-editor.ts
+var Ft = "https://github.com/LucaFSmart/codex-usage#dashboard-card", It = [
+	{
+		key: "lifetime_tokens",
+		label: "lifetimeTokens"
+	},
+	{
+		key: "total_threads",
+		label: "threads"
+	},
+	{
+		key: "peak_daily_tokens",
+		label: "peakDailyTokens"
+	},
+	{
+		key: "current_streak_days",
+		label: "currentStreak"
+	},
+	{
+		key: "longest_streak_days",
+		label: "longestStreak"
+	},
+	{
+		key: "longest_running_turn_sec",
+		label: "longestTurn"
+	},
+	{
+		key: "fast_mode_usage_percentage",
+		label: "fastMode"
+	},
+	{
+		key: "total_skills_used",
+		label: "totalSkills"
+	},
+	{
+		key: "unique_skills_used",
+		label: "uniqueSkills"
+	},
+	{
+		key: "most_used_reasoning_effort",
+		label: "reasoning"
+	},
+	{
+		key: "most_used_reasoning_effort_percentage",
+		label: "reasoningShare"
+	}
+], Lt = [
+	"ok",
+	"warning",
+	"critical",
+	"blocked",
+	"unknown"
+], Rt = {
+	ok: "colorOk",
+	warning: "colorWarning",
+	critical: "colorCritical",
+	blocked: "colorBlocked",
+	unknown: "colorUnknown"
+}, zt = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
+function Bt(e, t) {
+	let n = e.match(zt);
+	return n ? n[2] : /^#[0-9a-fA-F]{6}$/i.test(e) ? e : t;
+}
+function Vt(e, t) {
+	let n = e.match(zt);
+	return n ? `var(${n[1]}, ${t})` : t;
+}
+var $ = class extends P {
 	#e = void 0;
 	get hass() {
 		return this.#e;
@@ -2060,18 +2375,18 @@ var $ = class extends M {
 	updated(e) {
 		if (!e.has("hass") || !this.hass || this.loadedConnection === this.hass.connection) return;
 		let t = this.hass.connection;
-		this.loadedConnection = t, qe(this.hass).then((e) => {
+		this.loadedConnection = t, Qe(this.hass).then((e) => {
 			this.loadedConnection === t && (this.accounts = e.accounts);
 		}).catch(() => {
 			this.loadedConnection === t && (this.accounts = [], this.loadedConnection = void 0);
 		});
 	}
 	t(e) {
-		return mt(this.hass?.locale?.language ?? this.hass?.language, e);
+		return bt(this.hass?.locale?.language ?? this.hass?.language, e);
 	}
-	toggleSection(e) {
-		let t = structuredClone(this.config);
-		t.sections[e].visible = t.sections[e].visible !== !0, this.emitConfig(t);
+	setSectionVisibility(e, t) {
+		let n = structuredClone(this.config), r = t.target.value;
+		n.sections[e].visible = r === "true" || r !== "false" && "auto", this.emitConfig(n);
 	}
 	toggleValue(e, t) {
 		let n = structuredClone(this.config);
@@ -2086,6 +2401,8 @@ var $ = class extends M {
 			account: "sectionAccount",
 			credits: "sectionCredits",
 			spending: "sectionSpending",
+			budget: "budget",
+			sources: "sources",
 			profile: "sectionProfile",
 			footer: "sectionFooter"
 		}[e]);
@@ -2103,11 +2420,11 @@ var $ = class extends M {
 		}));
 	}
 	colorSwatchValue(e) {
-		let t = Mt(V[e], "#000000");
-		return Mt(this.config.colors[e], t);
+		let t = Bt(rt[e], "#000000");
+		return Bt(this.config.colors[e], t);
 	}
 	updateColorSwatch(e, t) {
-		let n = t.target.value, r = Nt(this.config.colors[e], n);
+		let n = t.target.value, r = Vt(this.config.colors[e], n);
 		this.emitConfig(G({
 			...this.config,
 			colors: {
@@ -2167,6 +2484,10 @@ var $ = class extends M {
 				label: this.t("balance")
 			},
 			{
+				key: "unlimited",
+				label: this.t("unlimited")
+			},
+			{
 				key: "reset_credits",
 				label: this.t("resetCredits")
 			},
@@ -2203,7 +2524,7 @@ var $ = class extends M {
 				key: "reset",
 				label: this.t("resets")
 			}
-		] : e === "profile" ? Et.map((e) => ({
+		] : e === "profile" ? It.map((e) => ({
 			key: e.key,
 			label: this.t(e.label)
 		})) : e === "account" ? [
@@ -2304,7 +2625,7 @@ var $ = class extends M {
 				} }
 			}
 		];
-		return w`<div class="editor">
+		return T`<div class="editor">
       <ha-form
         .hass=${this.hass}
         .data=${this.config}
@@ -2314,23 +2635,28 @@ var $ = class extends M {
       <details open>
         <summary>${this.t("sections")}</summary>
         <div class="section-list">
-          ${Ye.map((e) => w`<div class="section-row">
+          ${et.map((e) => T`<div class="section-row">
                 <label class="section-toggle"
-                  ><input
-                    type="checkbox"
-                    .checked=${this.config.sections[e].visible !== !1}
-                    @change=${() => this.toggleSection(e)}
-                  />${this.sectionLabel(e)}</label
-                >
-                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? w`<div class="value-toggles">
-                        ${this.valueOptions(e).map((t) => w`<label data-value-key=${t.key}
+                  >${this.sectionLabel(e)}
+                  <select
+                    data-section-key=${e}
+                    .value=${String(this.config.sections[e].visible)}
+                    @change=${(t) => this.setSectionVisibility(e, t)}
+                  >
+                    <option value="auto">${this.t("accountAuto")}</option>
+                    <option value="true">${this.t("alwaysShow")}</option>
+                    <option value="false">${this.t("hide")}</option>
+                  </select>
+                </label>
+                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? T`<div class="value-toggles">
+                        ${this.valueOptions(e).map((t) => T`<label data-value-key=${t.key}
                               ><input
                                 type="checkbox"
                                 .checked=${this.config.sections[e].values[t.key] !== !1}
                                 @change=${() => this.toggleValue(e, t.key)}
                               />${t.label}</label
                             >`)}
-                      </div>` : E}
+                      </div>` : D}
               </div>`)}
         </div>
       </details>
@@ -2360,8 +2686,8 @@ var $ = class extends M {
         ></ha-form>
         <h4>${this.t("semanticColors")}</h4>
         <div class="color-list">
-          ${kt.map((e) => w`<label class="color-row" data-color-key=${e}>
-                <span>${this.t(At[e])}</span>
+          ${Lt.map((e) => T`<label class="color-row" data-color-key=${e}>
+                <span>${this.t(Rt[e])}</span>
                 <input
                   type="color"
                   .value=${this.colorSwatchValue(e)}
@@ -2399,7 +2725,7 @@ var $ = class extends M {
         <button class="reset-button" @click=${this.resetAdvanced}>
           ${this.t("resetDefaults")}
         </button>
-        <p><a href=${Tt} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
+        <p><a href=${Ft} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
       </details>
     </div>`;
 	}
@@ -2485,15 +2811,15 @@ var $ = class extends M {
     }
   `;
 };
-X([Ie({ attribute: !1 })], $.prototype, "hass", null), X([N()], $.prototype, "config", null), X([N()], $.prototype, "accounts", null), $ = X([Ne("codex-usage-card-editor")], $);
+X([F({ attribute: !1 })], $.prototype, "hass", null), X([I()], $.prototype, "config", null), X([I()], $.prototype, "accounts", null), $ = X([je("codex-usage-card-editor")], $);
 //#endregion
 //#region src/index.ts
-var Pt = {
+var Ht = {
 	type: "codex-usage-card",
 	name: "Codex Usage Card",
 	description: "Adaptive multi-account Codex usage overview.",
 	preview: !0,
 	documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card"
 };
-window.customCards ??= [], window.customCards.some((e) => e.type === Pt.type) || window.customCards.push(Pt);
+window.customCards ??= [], window.customCards.some((e) => e.type === Ht.type) || window.customCards.push(Ht);
 //#endregion

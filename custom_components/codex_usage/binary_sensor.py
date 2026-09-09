@@ -17,6 +17,7 @@ from .api import CodexUsageData
 from .const import CONF_ACCOUNT_ID
 from .coordinator import CodexUsageCoordinator
 from .entity import CodexUsageEntity
+from .monitoring import restriction_summary
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -26,15 +27,7 @@ class CodexBinarySensorDescription(BinarySensorEntityDescription):
 
 def _limit_reached(data: CodexUsageData) -> bool | None:
     """Return an explicit limit state without inventing data when absent."""
-    if data.blocker_reason:
-        return True
-    states = (
-        data.main_limit.limit_reached,
-        *(limit.limit_reached for limit in data.additional_limits),
-    )
-    if any(state is True for state in states):
-        return True
-    return False if any(state is False for state in states) else None
+    return restriction_summary(data).reached
 
 
 BINARY_SENSORS: tuple[CodexBinarySensorDescription, ...] = (
@@ -98,6 +91,21 @@ class CodexUsageBinarySensor(CodexUsageEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return self.entity_description.value_fn(self.coordinator.data.usage)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        if self.entity_description.key != "limit_reached":
+            return None
+        value = restriction_summary(self.coordinator.data.usage)
+        attributes: dict[str, object] = {
+            "reason": value.reason,
+            "affected_limits": list(value.affected_limits),
+            "affected_limits_truncated": value.affected_limits_truncated,
+        }
+        if value.fallback_limit_id:
+            attributes["fallback_available"] = value.fallback_available
+            attributes["fallback_limit_id"] = value.fallback_limit_id
+        return attributes
 
     @property
     def available(self) -> bool:

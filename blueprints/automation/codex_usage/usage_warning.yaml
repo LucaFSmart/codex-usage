@@ -1,0 +1,91 @@
+blueprint:
+  name: Codex Usage warning with hysteresis
+  description: >-
+    Warn once when a usage percentage reaches the threshold, then rearm after
+    usage falls by the hysteresis margin. Create a dedicated input_boolean
+    helper without a forced initial value so its state survives restarts.
+    Each automation needs its own helper. Unknown readings retain the warning
+    state. Failed actions may retry; delivery is not guaranteed exactly once.
+  domain: automation
+  homeassistant:
+    min_version: "2026.3.0"
+  input:
+    usage_sensor:
+      name: Usage percentage sensor
+      description: Select a consumed-usage sensor with the unit %, not a remaining-usage sensor.
+      selector:
+        entity:
+          filter:
+            domain: sensor
+    warning_threshold:
+      name: Warning threshold
+      default: 80
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: box
+    hysteresis:
+      name: Recovery margin
+      description: Percentage points below the threshold required to rearm the warning.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: pp
+          mode: box
+    warning_state:
+      name: Persistent warning helper
+      description: A separate input_boolean for this automation; leave its initial value unset.
+      selector:
+        entity:
+          filter:
+            domain: input_boolean
+    warning_action:
+      name: Warning action
+      description: The action to perform before marking this warning as delivered.
+      selector:
+        action: {}
+
+triggers:
+  - trigger: state
+    entity_id: !input usage_sensor
+  - trigger: homeassistant
+    event: start
+  - trigger: time_pattern
+    minutes: "/5"
+
+variables:
+  usage_entity: !input usage_sensor
+  threshold: !input warning_threshold
+  recovery_margin: !input hysteresis
+  warning_helper: !input warning_state
+
+actions:
+  - condition: template
+    value_template: >-
+      {{ is_number(states(usage_entity))
+         and 0 <= states(usage_entity) | float(-1) <= 100
+         and state_attr(usage_entity, 'unit_of_measurement') == '%'
+         and states(warning_helper) in ['on', 'off'] }}
+  - choose:
+      - conditions: >-
+          {{ states(usage_entity) | float(-1) >= threshold | float }}
+        sequence:
+          - condition: template
+            value_template: "{{ is_state(warning_helper, 'off') }}"
+          - sequence: !input warning_action
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input warning_state
+      - conditions: >-
+          {{ states(usage_entity) | float(-1) <= [0, threshold | float - recovery_margin | float] | max }}
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input warning_state
+
+mode: single
+max_exceeded: silent

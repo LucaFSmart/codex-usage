@@ -2,13 +2,13 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from "lit/decorators.js";
 
 import { fetchCardSnapshot } from "./card-data";
-import { DEFAULT_COLORS, DEFAULT_CONFIG, normalizeConfig, SECTION_KEYS } from "./config";
+import { DEFAULT_CONFIG, normalizeConfig } from "./config";
 import {
   formatAbsoluteReset,
   formatMetricLabel,
   formatNumber,
   formatPlanLabel,
-  formatUsd,
+  formatDecimal,
   relativeDurationUntil,
 } from "./format";
 import { localize, type TranslationKey } from "./localize";
@@ -23,10 +23,9 @@ import type {
   SectionKey,
   Severity,
 } from "./types";
-import { buildCardViewModel, isSectionVisible } from "./view-model";
+import { buildCardViewModel, isActionablyStaleSource, isSectionVisible } from "./view-model";
 
 const CARD_DATA_EVENT = "codex_usage_card_data_updated";
-const HELP_URL = "https://github.com/LucaFSmart/codex-usage#dashboard-card";
 
 const PROFILE_FIELDS: readonly {
   key: keyof CardProfile;
@@ -68,27 +67,6 @@ function truncateId(id: string): string {
   return id.length > 4 ? `…${id.slice(-4)}` : id;
 }
 
-const COLOR_KEYS: readonly Severity[] = ["ok", "warning", "critical", "blocked", "unknown"];
-const COLOR_LABELS: Record<Severity, TranslationKey> = {
-  ok: "colorOk",
-  warning: "colorWarning",
-  critical: "colorCritical",
-  blocked: "colorBlocked",
-  unknown: "colorUnknown",
-};
-const VAR_HEX_PATTERN = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
-
-function extractSwatchHex(value: string, fallback: string): string {
-  const match = value.match(VAR_HEX_PATTERN);
-  if (match) return match[2]!;
-  return /^#[0-9a-fA-F]{6}$/i.test(value) ? value : fallback;
-}
-
-function applySwatchHex(value: string, hex: string): string {
-  const match = value.match(VAR_HEX_PATTERN);
-  return match ? `var(${match[1]}, ${hex})` : hex;
-}
-
 @customElement("codex-usage-card")
 export class CodexUsageCard extends LitElement {
   @property({ attribute: false }) public accessor hass: HomeAssistant | undefined = undefined;
@@ -96,11 +74,18 @@ export class CodexUsageCard extends LitElement {
   @state() private accessor error = false;
   @state() private accessor sessionEntryId: string | undefined = undefined;
   @state() private accessor detailsExpanded = true;
+  @state() private accessor now = new Date();
 
   private config: CodexUsageCardConfig = structuredClone(DEFAULT_CONFIG);
   private unsubscribe: (() => void) | undefined;
   private subscribedConnection: HomeAssistant["connection"] | undefined;
   private loading = false;
+  private minuteTimer: ReturnType<typeof setInterval> | undefined;
+
+  public override connectedCallback(): void {
+    super.connectedCallback();
+    this.startMinuteTimer();
+  }
 
   public static getStubConfig(): Record<string, never> {
     return {};
@@ -139,6 +124,19 @@ export class CodexUsageCard extends LitElement {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.subscribedConnection = undefined;
+    this.stopMinuteTimer();
+  }
+
+  private startMinuteTimer(): void {
+    if (this.minuteTimer) return;
+    this.minuteTimer = setInterval(() => {
+      this.now = new Date();
+    }, 60_000);
+  }
+
+  private stopMinuteTimer(): void {
+    if (this.minuteTimer) clearInterval(this.minuteTimer);
+    this.minuteTimer = undefined;
   }
 
   private async startClient(): Promise<void> {
@@ -190,7 +188,13 @@ export class CodexUsageCard extends LitElement {
     return this.hass?.locale?.language ?? this.hass?.language;
   }
 
-  private statusLabel(severity: Severity): string {
+  private statusLabel(severity: Severity, account?: AccountViewModel | null): string {
+    if (
+      account?.limit_summary?.reason === "usage_limit" &&
+      account.limit_summary.fallback_available === true
+    ) {
+      return this.t("severityReserveFallback");
+    }
     return this.t(STATUS_LABEL_KEY[severity]);
   }
 
@@ -199,12 +203,17 @@ export class CodexUsageCard extends LitElement {
       limit.duration_seconds !== null &&
       limit.duration_seconds >= expected * 0.95 &&
       limit.duration_seconds <= expected * 1.05;
-    if (closeTo(18_000)) return this.t("fiveHours");
-    if (closeTo(604_800)) return this.t("week");
-    if (limit.duration_seconds && limit.duration_seconds % 86_400 === 0) {
-      return `${limit.duration_seconds / 86_400} ${this.t("days")}`;
+    const duration = closeTo(18_000)
+      ? this.t("fiveHours")
+      : closeTo(604_800)
+        ? this.t("week")
+        : limit.duration_seconds && limit.duration_seconds % 86_400 === 0
+          ? `${limit.duration_seconds / 86_400} ${this.t("days")}`
+          : null;
+    if (limit.source === "additional" && limit.name) {
+      return duration ? `${limit.name} · ${duration}` : limit.name;
     }
-    return limit.name || this.t("unknownWindow");
+    return duration ?? limit.name ?? this.t("unknownWindow");
   }
 
   private absoluteResetLabel(value: string | null): string {
@@ -212,7 +221,7 @@ export class CodexUsageCard extends LitElement {
   }
 
   private relativeResetLabel(value: string | null): string {
-    const duration = relativeDurationUntil(value, new Date());
+    const duration = relativeDurationUntil(value, this.now);
     if (!duration) return "—";
     const { totalMinutes, days, hours, minutes } = duration;
     if (totalMinutes === 0) return this.t("resetsImminently");
@@ -234,6 +243,18 @@ export class CodexUsageCard extends LitElement {
     if (account.blocker === "spend") return this.t("mostConstrainedBlockedSpend");
     if (account.blocker === "credits") return this.t("mostConstrainedBlockedCredits");
     if (account.blocker === "unknown") return this.t("mostConstrainedBlockedUnknown");
+    if (
+      account.limit_summary?.reason === "usage_limit" &&
+      account.limit_summary.fallback_available === true
+    ) {
+      return this.t("regularUsageReachedReserveAvailable");
+    }
+    if (account.limit_summary?.reason === "additional_limit") {
+      const restricted = account.limit_statuses?.find((item) => item.reached === true);
+      return restricted
+        ? this.t("restrictionNamed", { limit: restricted.name })
+        : this.t("restrictionSomeLimit");
+    }
     const limit = account.mostConstrainedLimit;
     if (!limit) return null;
     if (account.blocker === "usage_limit" || limit.reached) {
@@ -272,10 +293,69 @@ export class CodexUsageCard extends LitElement {
       (item) =>
         item.source === source &&
         this.config.sections[sectionKey].values[item.id] !== false &&
-        (this.config.show_unavailable_limits ||
+        (source === "main" ||
+          this.config.show_unavailable_limits ||
           item.used_percent !== null ||
           item.remaining_percent !== null),
     );
+  }
+
+  private mainLimits(account: AccountViewModel): LimitViewModel[] {
+    const defaults: Array<LimitViewModel & { duration_seconds: number }> = [
+      {
+        id: "codex:primary:five_hour",
+        name: "Codex",
+        source: "main",
+        duration_seconds: 18_000,
+        used_percent: null,
+        remaining_percent: null,
+        resets_at: null,
+        reached: false,
+        entity_id: null,
+        severity: "unknown",
+        pace: null,
+      },
+      {
+        id: "codex:secondary:weekly",
+        name: "Codex",
+        source: "main",
+        duration_seconds: 604_800,
+        used_percent: null,
+        remaining_percent: null,
+        resets_at: null,
+        reached: false,
+        entity_id: null,
+        severity: "unknown",
+        pace: null,
+      },
+    ];
+    const reported = account.limits.filter((item) => item.source === "main");
+    const selected = new Set<string>();
+    const standard = defaults.flatMap((slot) => {
+      const compatibleIds =
+        slot.duration_seconds === 604_800 ? [slot.id, "codex:primary:weekly"] : [slot.id];
+      const match =
+        reported.find((item) => item.id === slot.id) ??
+        reported.find(
+          (item) => !selected.has(item.id) && item.duration_seconds === slot.duration_seconds,
+        );
+      if (!match)
+        return compatibleIds.some((id) => this.config.sections.limits.values[id] === false)
+          ? []
+          : [slot];
+      selected.add(match.id);
+      return [...compatibleIds, match.id].some(
+        (id) => this.config.sections.limits.values[id] === false,
+      )
+        ? []
+        : [match];
+    });
+    return [
+      ...standard,
+      ...reported.filter(
+        (item) => !selected.has(item.id) && this.config.sections.limits.values[item.id] !== false,
+      ),
+    ];
   }
 
   private renderLimitRow(limit: LimitViewModel, ring: boolean): TemplateResult {
@@ -297,7 +377,11 @@ export class CodexUsageCard extends LitElement {
         <div class="limit-metric">
           ${
             ring
-              ? html`<div class="ring" style=${`--progress:${remaining ?? 0}`} aria-hidden="true">
+              ? html`<div
+                  class="ring ${remaining === null ? "unknown" : ""}"
+                  style=${remaining === null ? nothing : `--progress:${remaining}`}
+                  aria-hidden="true"
+                >
                   <strong>${formatPercent(remaining, this.locale)}</strong>
                 </div>`
               : html`<strong class="limit-value">${formatPercent(remaining, this.locale)}</strong>`
@@ -310,9 +394,10 @@ export class CodexUsageCard extends LitElement {
             role="progressbar"
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuenow=${remaining ?? 0}
+            aria-valuetext=${formatPercent(remaining, this.locale)}
+            aria-valuenow=${remaining === null ? nothing : remaining}
           >
-            <span style=${`width:${remaining ?? 0}%`}></span>
+            ${remaining === null ? nothing : html`<span style=${`width:${remaining}%`}></span>`}
           </div>
           <span class="limit-used"
             >${formatPercent(used, this.locale)} ${this.t("usedInline")}</span
@@ -350,61 +435,199 @@ export class CodexUsageCard extends LitElement {
       : html`<div class="limit-row" data-limit-id=${limit.id}>${content}</div>`;
   }
 
+  private renderBudgetRows(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (!isSectionVisible("budget", this.config.sections.budget.visible, account, this.now))
+      return nothing;
+    const rows =
+      account.stale || !account.available
+        ? []
+        : account.limits.flatMap((limit) => {
+            if (
+              !this.valueVisible("budget", limit.id) ||
+              limit.budget_pph === null ||
+              limit.budget_pph === undefined
+            )
+              return [];
+            const calculated = limit.budget_calculated_at
+              ? new Date(limit.budget_calculated_at)
+              : null;
+            if (
+              !calculated ||
+              !Number.isFinite(calculated.getTime()) ||
+              this.now.getTime() - calculated.getTime() > this.config.stale_after_minutes * 60_000
+            )
+              return [];
+            const remaining = relativeDurationUntil(limit.resets_at, this.now);
+            if (!remaining || remaining.totalMinutes < 1) return [];
+            const perDay = (limit.duration_seconds ?? 0) >= 86_400;
+            const value = perDay ? limit.budget_pph * 24 : limit.budget_pph;
+            return [
+              html`<div class="info-row" data-budget-id=${limit.id}>
+                <span class="info-label">${this.limitLabel(limit)}</span
+                ><span class="info-value"
+                  >${formatNumber(value, this.locale)} ${perDay ? "pp/day" : "pp/h"}</span
+                >
+              </div>`,
+            ];
+          });
+    if (rows.length) {
+      return html`<div class="section-label">${this.t("budget")}</div>
+        ${rows}`;
+    }
+    const empty = this.emptyOptional("budget");
+    return empty === nothing
+      ? nothing
+      : html`<div class="section-label">${this.t("budget")}</div>
+          ${empty}`;
+  }
+
+  private renderSources(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (!isSectionVisible("sources", this.config.sections.sources.visible, account, this.now))
+      return nothing;
+    const labels: Record<string, TranslationKey> = {
+      usage: "sourceUsage",
+      profile: "sourceProfile",
+      reset_details: "sourceResetDetails",
+      workspace_discovery: "sourceWorkspaceDiscovery",
+    };
+    const states: Record<string, TranslationKey> = {
+      ok: "sourceOk",
+      error: "sourceError",
+      unsupported: "sourceUnsupported",
+      disabled: "sourceDisabled",
+      never: "sourceNever",
+    };
+    const rows = Object.entries(account.sources ?? {}).map(([key, source]) => {
+      const stateLabel =
+        source.state === "ok" && isActionablyStaleSource(source, this.now)
+          ? "sourceStale"
+          : (states[source.state] ?? "sourceNever");
+      return html`<div class="info-row" data-source=${key}>
+        <span class="info-label">${this.t(labels[key] ?? "sources")}</span
+        ><span class="info-value"
+          >${this.t(stateLabel)} ·
+          ${this.t(source.refresh_mode === "poll" ? "sourcePoll" : "sourceOnAuth")}</span
+        >
+      </div>`;
+    });
+    if (rows.length) {
+      return html`<div class="section-label">${this.t("sources")}</div>
+        ${rows}`;
+    }
+    const empty = this.emptyOptional("sources");
+    return empty === nothing
+      ? nothing
+      : html`<div class="section-label">${this.t("sources")}</div>
+          ${empty}`;
+  }
+
   private renderAdditionalLimits(account: AccountViewModel): TemplateResult | typeof nothing {
     if (
       !isSectionVisible(
         "additional_limits",
         this.config.sections.additional_limits.visible,
         account,
+        this.now,
       )
     ) {
       return nothing;
     }
     const limits = this.eligibleLimits(account, "additional");
-    if (!limits.length) return nothing;
+    if (!limits.length) {
+      const empty = this.emptyOptional("additional_limits");
+      return empty === nothing
+        ? nothing
+        : html`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+            ${empty}`;
+    }
     return html`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
       ${limits.map((limit) => this.renderLimitRow(limit, false))}`;
   }
 
-  private renderCreditsRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (
-      !isSectionVisible("credits", this.config.sections.credits.visible, account) ||
-      !account.credits
-    ) {
+  private emptyOptional(section: SectionKey): TemplateResult | typeof nothing {
+    const config = this.config.sections[section];
+    const values = Object.values(config.values);
+    if (config.visible !== true || (values.length > 0 && values.every((value) => value === false)))
       return nothing;
-    }
-    if (!this.valueVisible("credits", "balance")) return nothing;
-    const credits = account.credits;
-    const value = credits.unlimited
-      ? this.t("unlimitedCredits")
-      : credits.has_credits === false
-        ? this.t("unavailable")
-        : this.t("creditsAvailableAmount", {
-            amount: formatUsd(credits.balance, this.locale),
-          });
-    return html`<div class="info-row" data-detail="credits">
-      <span class="info-label">${this.t("credits")}</span>
-      <span class="info-value">${value}</span>
+    return html`<div class="info-row" data-empty-section=${section}>
+      <span class="info-value">—</span>
     </div>`;
+  }
+
+  private renderResetSummary(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (
+      !account.reset_credits ||
+      !this.valueVisible("credits", "reset_credits") ||
+      !isSectionVisible("credits", this.config.sections.credits.visible, account, this.now)
+    )
+      return nothing;
+    const count = account.reset_credits.available_count;
+    const value =
+      count === null
+        ? "—"
+        : this.t(count === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count });
+    return html`<div class="info-row" data-core="resets">
+      <span class="info-label">${this.t("availableResets")}</span
+      ><span class="info-value">${value}</span>
+    </div>`;
+  }
+
+  private renderCreditsRows(account: AccountViewModel): TemplateResult | typeof nothing {
+    if (!isSectionVisible("credits", this.config.sections.credits.visible, account, this.now))
+      return nothing;
+    if (!account.credits) {
+      return account.reset_credits && this.valueVisible("credits", "reset_credits")
+        ? nothing
+        : this.emptyOptional("credits");
+    }
+    const credits = account.credits;
+    const rows: TemplateResult[] = [];
+    if (this.valueVisible("credits", "balance")) {
+      const value =
+        credits.balance !== null
+          ? credits.has_credits === false
+            ? `${this.t("balance")}: ${formatDecimal(credits.balance, this.locale)}`
+            : this.t("creditsAvailableAmount", {
+                amount: formatDecimal(credits.balance, this.locale),
+              })
+          : credits.has_credits === false
+            ? this.t("unavailable")
+            : this.t("creditsAvailableAmount", {
+                amount: "—",
+              });
+      rows.push(
+        html`<div class="info-row" data-detail="credits">
+          <span class="info-label">${this.t("credits")}</span>
+          <span class="info-value">${value}</span>
+        </div>`,
+      );
+    }
+    if (this.valueVisible("credits", "unlimited") && credits.unlimited === true) {
+      rows.push(
+        html`<div class="info-row" data-credit-key="unlimited">
+          <span class="info-label">${this.t("creditState")}</span>
+          <span class="info-value">${this.t("unlimitedCredits")}</span>
+        </div>`,
+      );
+    }
+    return rows.length ? html`${rows}` : nothing;
   }
 
   private renderResetCreditsRows(account: AccountViewModel): TemplateResult | typeof nothing {
     if (
-      !isSectionVisible("credits", this.config.sections.credits.visible, account) ||
+      !isSectionVisible("credits", this.config.sections.credits.visible, account, this.now) ||
       !account.reset_credits ||
       !this.valueVisible("credits", "reset_credits")
     ) {
       return nothing;
     }
     const resetCredits = account.reset_credits;
-    const availableCount = resetCredits.available_count ?? 0;
+    const availableCount = resetCredits.available_count;
     const rows: TemplateResult[] = [
       html`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
-          >${this.t(availableCount === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", {
-            count: availableCount,
-          })}</span
+          >${availableCount === null ? "—" : this.t(availableCount === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: availableCount })}</span
         >
       </div>`,
     ];
@@ -430,12 +653,9 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderSpendingRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (
-      !isSectionVisible("spending", this.config.sections.spending.visible, account) ||
-      !account.spend
-    ) {
+    if (!isSectionVisible("spending", this.config.sections.spending.visible, account, this.now))
       return nothing;
-    }
+    if (!account.spend) return this.emptyOptional("spending");
     const spend = account.spend;
     const candidates: Array<[string, string | number | null]> = [
       ["remaining", spend.remaining],
@@ -446,7 +666,7 @@ export class CodexUsageCard extends LitElement {
     const primary = candidates.find(
       ([key, value]) => this.valueVisible("spending", key) && value !== null,
     );
-    if (!primary) return nothing;
+    if (!primary) return this.emptyOptional("spending");
     const [primaryKey, primaryValue] = primary;
     const rows: TemplateResult[] = [
       html`<div class="info-row" data-detail="spending">
@@ -455,7 +675,7 @@ export class CodexUsageCard extends LitElement {
           >${
             primaryKey === "used_percent"
               ? formatPercent(primaryValue as number | null, this.locale)
-              : formatUsd(primaryValue as string | null, this.locale)
+              : formatDecimal(primaryValue as string | null, this.locale)
           }</span
         >
       </div>`,
@@ -483,7 +703,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
-          <span class="info-value">${formatUsd(spend.used, this.locale)}</span>
+          <span class="info-value">${formatDecimal(spend.used, this.locale)}</span>
         </div>`,
       );
     }
@@ -491,7 +711,7 @@ export class CodexUsageCard extends LitElement {
       rows.push(
         html`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
-          <span class="info-value">${formatUsd(spend.limit, this.locale)}</span>
+          <span class="info-value">${formatDecimal(spend.limit, this.locale)}</span>
         </div>`,
       );
     }
@@ -515,12 +735,9 @@ export class CodexUsageCard extends LitElement {
   }
 
   private renderProfileRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (
-      !isSectionVisible("profile", this.config.sections.profile.visible, account) ||
-      !account.profile
-    ) {
+    if (!isSectionVisible("profile", this.config.sections.profile.visible, account, this.now))
       return nothing;
-    }
+    if (!account.profile) return this.emptyOptional("profile");
     const rows = PROFILE_FIELDS.flatMap((field) => {
       if (!this.valueVisible("profile", field.key)) return [];
       const value = account.profile?.[field.key];
@@ -540,11 +757,20 @@ export class CodexUsageCard extends LitElement {
         </div>`,
       ];
     });
-    return rows.length ? html`${rows}` : nothing;
+    if (!rows.length) return this.emptyOptional("profile");
+    const profile = account.sources?.profile;
+    const historical =
+      profile &&
+      (profile.state !== "ok" ||
+        (profile.last_success &&
+          new Date(profile.last_success).getTime() <
+            this.now.getTime() - (profile.expected_interval_seconds ?? 3600) * 2_000));
+    return html`${historical ? html`<small data-profile-historical>${this.t("historical")}</small>` : nothing}${rows}`;
   }
 
   private renderAccountRows(account: AccountViewModel): TemplateResult | typeof nothing {
-    if (!isSectionVisible("account", this.config.sections.account.visible, account)) return nothing;
+    if (!isSectionVisible("account", this.config.sections.account.visible, account, this.now))
+      return nothing;
     const rows: TemplateResult[] = [];
     if (this.valueVisible("account", "plan") && account.plan) {
       rows.push(
@@ -572,7 +798,7 @@ export class CodexUsageCard extends LitElement {
     }
     return rows.length
       ? html`<div class="account-details" data-detail="account">${rows}</div>`
-      : nothing;
+      : this.emptyOptional("account");
   }
 
   private renderDetails(account: AccountViewModel): TemplateResult | typeof nothing {
@@ -581,6 +807,8 @@ export class CodexUsageCard extends LitElement {
     const spendingRows = this.renderSpendingRows(account);
     const profileRows = this.renderProfileRows(account);
     const accountRows = this.renderAccountRows(account);
+    const budgetRows = this.renderBudgetRows(account);
+    const sourceRows = this.renderSources(account);
 
     const sections = [
       this.renderAdditionalLimits(account),
@@ -600,13 +828,15 @@ export class CodexUsageCard extends LitElement {
         ? html`<div class="section-label">${this.t("sectionAccount")}</div>
             ${accountRows}`
         : nothing,
+      budgetRows,
+      sourceRows,
     ].filter((section) => section !== nothing);
     return sections.length ? html`<div class="details">${sections}</div>` : nothing;
   }
 
   protected override render(): TemplateResult {
     const view = this.snapshot
-      ? buildCardViewModel(this.snapshot, this.config, this.sessionEntryId)
+      ? buildCardViewModel(this.snapshot, this.config, this.sessionEntryId, this.now)
       : null;
     const account = view?.selectedAccount ?? null;
     const severity: Severity = view?.severity ?? "unknown";
@@ -619,7 +849,7 @@ export class CodexUsageCard extends LitElement {
         ? `${account.name}${plan ? ` · ${plan}` : ""}`
         : plan
       : "";
-    const primaryLimits = account ? this.eligibleLimits(account, "main") : [];
+    const primaryLimits = account ? this.mainLimits(account) : [];
     const detailsContent = account ? this.renderDetails(account) : nothing;
     const hasDetails = detailsContent !== nothing;
     const callout = account ? this.calloutLabel(account) : null;
@@ -634,7 +864,10 @@ export class CodexUsageCard extends LitElement {
             ${subtitle ? html`<p>${subtitle}</p>` : nothing}
           </div>
           <span class="status"
-            >${multipleAccounts ? `${this.t("overall")} · ` : ""}${this.statusLabel(severity)}</span
+            >${multipleAccounts ? `${this.t("overall")} · ` : ""}${this.statusLabel(
+              severity,
+              multipleAccounts ? null : account,
+            )}</span
           >
         </header>
         ${
@@ -666,6 +899,7 @@ export class CodexUsageCard extends LitElement {
             : nothing
         }
         ${account && callout ? html`<p class="callout">${callout}</p>` : nothing}
+        ${account ? this.renderResetSummary(account) : nothing}
         ${
           !account
             ? html`<div class="empty">${this.t("unavailable")}</div>`
@@ -1037,438 +1271,6 @@ export class CodexUsageCard extends LitElement {
       }
       .details {
         animation: none;
-      }
-    }
-  `;
-}
-
-@customElement("codex-usage-card-editor")
-export class CodexUsageCardEditor extends LitElement {
-  @property({ attribute: false }) public accessor hass: HomeAssistant | undefined = undefined;
-  @state() private accessor config: CodexUsageCardConfig = structuredClone(DEFAULT_CONFIG);
-  @state() private accessor accounts: CardSnapshot["accounts"] = [];
-  private loadedConnection: HomeAssistant["connection"] | undefined;
-
-  private readonly handleValueChanged = (event: Event): void => {
-    if (!(event instanceof CustomEvent) || !event.detail?.value) return;
-    event.stopPropagation();
-    const next = normalizeConfig({ ...this.config, ...structuredClone(event.detail.value) });
-    this.emitConfig(next);
-  };
-
-  private emitConfig(next: CodexUsageCardConfig): void {
-    this.config = next;
-    this.dispatchEvent(
-      new CustomEvent("config-changed", {
-        detail: { config: structuredClone(next) },
-        bubbles: true,
-        composed: true,
-      }),
-    );
-  }
-
-  public override connectedCallback(): void {
-    super.connectedCallback();
-    this.addEventListener("value-changed", this.handleValueChanged);
-  }
-
-  public override disconnectedCallback(): void {
-    this.removeEventListener("value-changed", this.handleValueChanged);
-    super.disconnectedCallback();
-  }
-
-  public setConfig(config: LovelaceCardConfig): void {
-    this.config = normalizeConfig(config);
-  }
-
-  protected override updated(changed: PropertyValues<this>): void {
-    if (!changed.has("hass") || !this.hass || this.loadedConnection === this.hass.connection)
-      return;
-    const connection = this.hass.connection;
-    this.loadedConnection = connection;
-    void fetchCardSnapshot(this.hass)
-      .then((snapshot) => {
-        if (this.loadedConnection !== connection) return;
-        this.accounts = snapshot.accounts;
-      })
-      .catch(() => {
-        if (this.loadedConnection !== connection) return;
-        this.accounts = [];
-        this.loadedConnection = undefined;
-      });
-  }
-
-  private t(key: TranslationKey): string {
-    return localize(this.hass?.locale?.language ?? this.hass?.language, key);
-  }
-
-  private toggleSection(key: SectionKey): void {
-    const next = structuredClone(this.config);
-    next.sections[key].visible = next.sections[key].visible === true ? false : true;
-    this.emitConfig(next);
-  }
-
-  private toggleValue(section: SectionKey, key: string): void {
-    const next = structuredClone(this.config);
-    next.sections[section].values[key] = next.sections[section].values[key] === false;
-    this.emitConfig(next);
-  }
-
-  private sectionLabel(key: SectionKey): string {
-    const labels: Record<SectionKey, TranslationKey> = {
-      limits: "sectionLimits",
-      additional_limits: "sectionAdditionalLimits",
-      resets: "sectionResets",
-      pace: "sectionPace",
-      account: "sectionAccount",
-      credits: "sectionCredits",
-      spending: "sectionSpending",
-      profile: "sectionProfile",
-      footer: "sectionFooter",
-    };
-    return this.t(labels[key]);
-  }
-
-  private updateThresholds(event: CustomEvent<{ value: Record<string, unknown> }>): void {
-    event.stopPropagation();
-    this.emitConfig(normalizeConfig({ ...this.config, thresholds: event.detail.value }));
-  }
-
-  private updateAppearance(event: CustomEvent<{ value: Record<string, unknown> }>): void {
-    event.stopPropagation();
-    this.emitConfig(normalizeConfig({ ...this.config, appearance: event.detail.value }));
-  }
-
-  private colorSwatchValue(key: Severity): string {
-    const fallback = extractSwatchHex(DEFAULT_COLORS[key], "#000000");
-    return extractSwatchHex(this.config.colors[key], fallback);
-  }
-
-  private updateColorSwatch(key: Severity, event: Event): void {
-    const hex = (event.target as HTMLInputElement).value;
-    const next = applySwatchHex(this.config.colors[key], hex);
-    this.emitConfig(
-      normalizeConfig({ ...this.config, colors: { ...this.config.colors, [key]: next } }),
-    );
-  }
-
-  private updateColorText(key: Severity, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.emitConfig(
-      normalizeConfig({ ...this.config, colors: { ...this.config.colors, [key]: value } }),
-    );
-  }
-
-  private readonly computeLabel = (schema: { name?: string }): string => {
-    const labels: Record<string, TranslationKey> = {
-      title: "cardTitle",
-      compact: "compactMode",
-      account_mode: "accountMode",
-      selected_entry_id: "selectedAccount",
-      included_entry_ids: "includedAccounts",
-      allow_account_switching: "accountSwitching",
-      show_unavailable_limits: "showUnavailable",
-      stale_after_minutes: "staleAfter",
-      card_radius: "cardRadius",
-      spacing: "spacing",
-    };
-    const label = schema.name ? labels[schema.name] : undefined;
-    return label ? this.t(label) : (schema.name ?? "");
-  };
-
-  private readonly computeThresholdLabel = (schema: { name?: string }): string => {
-    const labels: Record<string, TranslationKey> = {
-      warning: "thresholdWarning",
-      critical: "colorCritical",
-    };
-    const label = schema.name ? labels[schema.name] : undefined;
-    return label ? this.t(label) : (schema.name ?? "");
-  };
-
-  private valueOptions(section: SectionKey): Array<{ key: string; label: string }> {
-    if (["limits", "additional_limits", "resets", "pace"].includes(section)) {
-      const seen = new Set<string>();
-      return this.accounts.flatMap((account) =>
-        account.limits.flatMap((limit) => {
-          if (seen.has(limit.id)) return [];
-          seen.add(limit.id);
-          return [{ key: limit.id, label: `${account.name}: ${limit.name}` }];
-        }),
-      );
-    }
-    if (section === "credits") {
-      return [
-        { key: "balance", label: this.t("balance") },
-        { key: "reset_credits", label: this.t("resetCredits") },
-        { key: "total_earned", label: this.t("totalEarned") },
-        { key: "next_expiry", label: this.t("nextExpiry") },
-      ];
-    }
-    if (section === "spending") {
-      return [
-        { key: "remaining", label: this.t("remaining") },
-        { key: "used", label: this.t("used") },
-        { key: "limit", label: this.t("limit") },
-        { key: "used_percent", label: this.t("usage") },
-        { key: "source", label: this.t("source") },
-        { key: "reset", label: this.t("resets") },
-      ];
-    }
-    if (section === "profile") {
-      return PROFILE_FIELDS.map((field) => ({ key: field.key, label: this.t(field.label) }));
-    }
-    if (section === "account") {
-      return [
-        { key: "plan", label: this.t("planLabel") },
-        { key: "workspace", label: this.t("workspace") },
-        { key: "account_id", label: this.t("accountId") },
-      ];
-    }
-    if (section === "footer") {
-      return [
-        { key: "updated", label: this.t("updated") },
-        { key: "version", label: "Version" },
-      ];
-    }
-    return [];
-  }
-
-  private resetAdvanced(): void {
-    this.emitConfig(
-      normalizeConfig({
-        ...this.config,
-        thresholds: DEFAULT_CONFIG.thresholds,
-        stale_after_minutes: DEFAULT_CONFIG.stale_after_minutes,
-        colors: DEFAULT_CONFIG.colors,
-        appearance: DEFAULT_CONFIG.appearance,
-      }),
-    );
-  }
-
-  protected override render(): TemplateResult {
-    const schema: Record<string, unknown>[] = [
-      { name: "title", selector: { text: {} } },
-      { name: "compact", selector: { boolean: {} } },
-      {
-        name: "account_mode",
-        selector: {
-          select: {
-            mode: "dropdown",
-            options: [
-              { value: "auto", label: this.t("accountAuto") },
-              { value: "single", label: this.t("accountSingle") },
-              { value: "all", label: this.t("accountAll") },
-            ],
-          },
-        },
-      },
-      {
-        name: "included_entry_ids",
-        selector: {
-          select: {
-            multiple: true,
-            options: this.accounts.map((account) => ({ value: account.id, label: account.name })),
-          },
-        },
-      },
-      ...(this.config.account_mode === "single"
-        ? [
-            {
-              name: "selected_entry_id",
-              selector: {
-                select: {
-                  mode: "dropdown",
-                  options: this.accounts.map((account) => ({
-                    value: account.id,
-                    label: account.name,
-                  })),
-                },
-              },
-            },
-          ]
-        : []),
-      {
-        name: "allow_account_switching",
-        selector: { boolean: {} },
-      },
-      {
-        name: "show_unavailable_limits",
-        selector: { boolean: {} },
-      },
-      {
-        name: "stale_after_minutes",
-        selector: { number: { min: 5, max: 1440, mode: "box", unit_of_measurement: "min" } },
-      },
-    ];
-    return html`<div class="editor">
-      <ha-form
-        .hass=${this.hass}
-        .data=${this.config}
-        .schema=${schema}
-        .computeLabel=${this.computeLabel}
-      ></ha-form>
-      <details open>
-        <summary>${this.t("sections")}</summary>
-        <div class="section-list">
-          ${SECTION_KEYS.map(
-            (key) =>
-              html`<div class="section-row">
-                <label class="section-toggle"
-                  ><input
-                    type="checkbox"
-                    .checked=${this.config.sections[key].visible !== false}
-                    @change=${() => this.toggleSection(key)}
-                  />${this.sectionLabel(key)}</label
-                >
-                ${
-                  this.config.sections[key].visible !== false && this.valueOptions(key).length > 0
-                    ? html`<div class="value-toggles">
-                        ${this.valueOptions(key).map(
-                          (item) =>
-                            html`<label data-value-key=${item.key}
-                              ><input
-                                type="checkbox"
-                                .checked=${this.config.sections[key].values[item.key] !== false}
-                                @change=${() => this.toggleValue(key, item.key)}
-                              />${item.label}</label
-                            >`,
-                        )}
-                      </div>`
-                    : nothing
-                }
-              </div>`,
-          )}
-        </div>
-      </details>
-      <details>
-        <summary>${this.t("advanced")}</summary>
-        <h4>${this.t("thresholds")}</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${this.config.thresholds}
-          .schema=${[
-            { name: "warning", selector: { number: { min: 0, max: 99, mode: "slider" } } },
-            { name: "critical", selector: { number: { min: 1, max: 100, mode: "slider" } } },
-          ]}
-          .computeLabel=${this.computeThresholdLabel}
-          @value-changed=${this.updateThresholds}
-        ></ha-form>
-        <h4>${this.t("semanticColors")}</h4>
-        <div class="color-list">
-          ${COLOR_KEYS.map(
-            (key) =>
-              html`<label class="color-row" data-color-key=${key}>
-                <span>${this.t(COLOR_LABELS[key])}</span>
-                <input
-                  type="color"
-                  .value=${this.colorSwatchValue(key)}
-                  @input=${(event: Event) => this.updateColorSwatch(key, event)}
-                />
-                <input
-                  type="text"
-                  .value=${this.config.colors[key]}
-                  @change=${(event: Event) => this.updateColorText(key, event)}
-                />
-              </label>`,
-          )}
-        </div>
-        <h4>${this.t("appearance")}</h4>
-        <ha-form
-          .hass=${this.hass}
-          .data=${this.config.appearance}
-          .schema=${[
-            { name: "card_radius", selector: { number: { min: 0, max: 48, mode: "box" } } },
-            { name: "spacing", selector: { number: { min: 4, max: 32, mode: "box" } } },
-          ]}
-          .computeLabel=${this.computeLabel}
-          @value-changed=${this.updateAppearance}
-        ></ha-form>
-        <button class="reset-button" @click=${this.resetAdvanced}>
-          ${this.t("resetDefaults")}
-        </button>
-        <p><a href=${HELP_URL} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
-      </details>
-    </div>`;
-  }
-
-  static override styles = css`
-    .editor {
-      display: grid;
-      gap: 16px;
-    }
-    details {
-      border-top: 1px solid var(--divider-color);
-      padding-top: 10px;
-    }
-    .color-list {
-      display: grid;
-      gap: 8px;
-    }
-    .color-row {
-      display: grid;
-      grid-template-columns: minmax(90px, 1fr) 40px minmax(0, 2fr);
-      align-items: center;
-      gap: 8px;
-    }
-    .color-row input[type="color"] {
-      width: 40px;
-      height: 32px;
-      padding: 2px;
-    }
-    .color-row input[type="text"] {
-      min-width: 0;
-      box-sizing: border-box;
-      padding: 8px;
-    }
-    summary {
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .section-list {
-      display: grid;
-      gap: 12px;
-      margin-top: 12px;
-    }
-    .section-row {
-      display: grid;
-      gap: 8px;
-    }
-    .section-toggle {
-      font-weight: 600;
-    }
-    .value-toggles {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 7px 12px;
-      padding-inline-start: 24px;
-      color: var(--secondary-text-color);
-      font-size: 0.88rem;
-    }
-    label {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    p {
-      color: var(--secondary-text-color);
-    }
-    a {
-      color: var(--primary-color);
-    }
-    h4 {
-      margin-bottom: 4px;
-    }
-    .reset-button {
-      border: 1px solid var(--divider-color);
-      border-radius: 8px;
-      padding: 8px 12px;
-      background: transparent;
-      color: var(--primary-text-color);
-      cursor: pointer;
-    }
-    @media (max-width: 520px) {
-      .value-toggles {
-        grid-template-columns: 1fr;
       }
     }
   `;
