@@ -10,7 +10,7 @@ This file records the checks for the local 0.7 candidate. It is updated from fre
 | Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 255 unit/component, 4 Blueprint and 3 runtime tests passed |
 | Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
 
-The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.9.1 Linux job additionally installs `pytest-homeassistant-custom-component==0.13.364`; local Windows verification uses the portable harness because the plugin imports the Unix-only `fcntl` module.
+The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.9.1 Linux job additionally installs `pytest-homeassistant-custom-component==0.13.364`; local Windows verification uses the portable harness because the plugin imports the Unix-only `fcntl` module. Pytest asyncio auto mode and function-scoped fixture loops are configured as required by that upstream harness, including its native asynchronous autouse fixtures.
 
 ## Required gates
 
@@ -35,7 +35,7 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 
 The bundle reproducibility check passed: a repeated Vite build produced the same SHA-256 hash for the Home Assistant card bundle.
 
-HACS validation, hassfest and CodeQL are configured GitHub publication gates and remain pending until the branch is intentionally pushed. No live OpenAI credentials were used.
+HACS validation, hassfest and CodeQL are configured GitHub publication gates. Their final result is recorded in GitHub Actions for the release commit. No live OpenAI credentials were used.
 
 ## Known limits
 
