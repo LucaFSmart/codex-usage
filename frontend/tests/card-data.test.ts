@@ -38,6 +38,35 @@ describe("normalizeCardSnapshot", () => {
     expect(account!.limits[1]?.entity_id).toBeNull();
   });
 
+  it("preserves a quota_exceeded source error code (openai/codex#44492)", () => {
+    const sourceAccount = SNAPSHOT.accounts[0]!;
+    const result = normalizeCardSnapshot({
+      ...SNAPSHOT,
+      accounts: [
+        {
+          ...sourceAccount,
+          sources: {
+            usage: {
+              state: "error",
+              last_attempt: "2026-09-10T10:00:00Z",
+              last_success: null,
+              retry_at: "2026-09-10T11:00:00Z",
+              error_code: "quota_exceeded",
+              refresh_mode: "poll",
+              expected_interval_seconds: 300,
+            },
+          },
+        },
+      ],
+    });
+
+    const account = result.accounts[0]! as (typeof result.accounts)[number] &
+      Record<string, unknown>;
+    expect(account.sources).toEqual({
+      usage: expect.objectContaining({ error_code: "quota_exceeded" }),
+    });
+  });
+
   it("normalizes optional aggregates without retaining unsupported fields", () => {
     const sourceAccount = SNAPSHOT.accounts[0]!;
     const result = normalizeCardSnapshot({

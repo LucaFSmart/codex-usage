@@ -236,6 +236,7 @@ def test_sources_validate_safe_enums_and_derive_age():
     source = monitoring.SourceState(state="error", last_success=NOW, error_code="connection")
     assert source.stale(now=NOW + timedelta(seconds=901), threshold_seconds=900)
     assert not source.stale(now=NOW, threshold_seconds=900)
+    monitoring.SourceState(error_code="quota_exceeded")
     with pytest.raises(ValueError):
         monitoring.SourceState(error_code="private server response")
     assert set(monitoring.initial_sources()) == {

@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.7.2 - 2026-09-16
+
+Refines rate-limit and quota reporting based on a verified upstream change and OpenAI's documented account types that have no fixed 5-hour limit; no other user-facing behavior changes.
+
+- Distinguish HTTP 429 responses caused by exhausted quota, credit balance, or an organization/project spend or usage limit from an ordinary, retryable rate limit ([openai/codex#44492](https://github.com/openai/codex/commit/102fc57e4ac485f7a669d3bc6a8994335c3fbe46)). These now surface as a new `quota_exceeded` source state instead of the generic `rate_limited` one; unrecognized or missing error bodies keep the previous behavior unchanged.
+- Report the five-hour and weekly usage sensors as unavailable, instead of a misleading "Unknown", when an existing account no longer has that limit — for example ChatGPT Business Premium Seats or Enterprise/Edu workspaces on Flexible Pricing, both of which OpenAI documents as having no fixed 5-hour window. New config entries already omitted these sensors entirely; this only affects entries that already had the entity registered.
+- Add regression tests covering both changes.
+
 ## 0.7.1 - 2026-09-09
 
 Independent post-release audit of 0.7.0. Fixes two real defects and adds targeted regression coverage; no user-facing behavior changes beyond the fixes below.

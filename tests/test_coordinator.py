@@ -155,6 +155,42 @@ def test_usage_429_cooldown_blocks_subsequent_reads():
     assert client.usage_calls == 1
 
 
+def test_usage_429_with_quota_exceeded_error_is_reported_distinctly():
+    """A quota/credit/spend-exhaustion 429 must not be presented as an ordinary,
+    transient rate limit (openai/codex#44492)."""
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.usage_result = CodexHttpError(429, until, quota_exceeded=True)
+    coordinator = _coordinator(client)
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["usage"].error_code == "quota_exceeded"
+    # The provider retry deadline still gates later cycles the same way it does
+    # for an ordinary rate limit; only the reported reason changes.
+    assert coordinator._read_retry_at == until
+
+
+def test_profile_429_with_quota_exceeded_error_is_reported_distinctly():
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.profile_result = CodexHttpError(429, until, quota_exceeded=True)
+    coordinator = _coordinator(client)
+
+    asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["profile"].error_code == "quota_exceeded"
+
+
+def test_reset_details_429_with_quota_exceeded_error_is_reported_distinctly():
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.reset_result = CodexHttpError(429, until, quota_exceeded=True)
+    coordinator = _coordinator(client)
+
+    asyncio.run(coordinator._async_update_data())
+    assert coordinator.sources["reset_details"].error_code == "quota_exceeded"
+
+
 def test_reset_details_429_does_not_stop_core_usage_or_profile_reads():
     """A reset_details-endpoint 429 must not poison the core usage retry gate."""
     client = _FakeClient()

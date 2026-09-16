@@ -1004,6 +1004,88 @@ def test_credentials_refresh_preserves_provider_retry_deadline(status: int) -> N
     assert caught.value.retry_at >= started_at + timedelta(hours=47, minutes=59)
 
 
+@pytest.mark.parametrize(
+    "code",
+    [
+        "insufficient_quota",
+        "credit_balance_exhausted",
+        "organization_spend_limit_exceeded",
+        "project_spend_limit_exceeded",
+        "organization_usage_limit_exceeded",
+    ],
+)
+def test_usage_429_with_known_quota_code_is_marked_quota_exceeded(code: str) -> None:
+    response = _FakeResponse(429, {"error": {"code": code}})
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))  # type: ignore[arg-type]
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+
+    assert caught.value.quota_exceeded is True
+
+
+def test_usage_429_with_insufficient_quota_type_is_marked_quota_exceeded() -> None:
+    response = _FakeResponse(429, {"error": {"type": "insufficient_quota"}})
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))  # type: ignore[arg-type]
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+
+    assert caught.value.quota_exceeded is True
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {},
+        {"error": {"code": "rate_limit_exceeded", "type": "rate_limit_error"}},
+        {"error": {"code": "slow_down", "type": "rate_limit_error"}},
+        {"error": "not a dict"},
+        {"not_error": {"code": "insufficient_quota"}},
+    ],
+)
+def test_usage_429_without_a_recognized_quota_code_is_an_ordinary_rate_limit(
+    payload: object,
+) -> None:
+    response = _FakeResponse(429, payload)
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))  # type: ignore[arg-type]
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+
+    assert caught.value.quota_exceeded is False
+
+
+def test_usage_429_with_undecodable_body_is_an_ordinary_rate_limit() -> None:
+    class _MalformedJsonResponse(_FakeResponse):
+        async def json(self, *, content_type: str | None = None) -> object:
+            raise json.JSONDecodeError("bad json", "doc", 0)
+
+    response = _MalformedJsonResponse(429, None)
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))  # type: ignore[arg-type]
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+
+    assert caught.value.quota_exceeded is False
+
+
+def test_503_is_never_marked_quota_exceeded() -> None:
+    response = _FakeResponse(503, {"error": {"code": "credit_balance_exhausted"}})
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))  # type: ignore[arg-type]
+
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+
+    assert caught.value.quota_exceeded is False
+
+
 def test_missing_limit_state_stays_unavailable() -> None:
     data = parse_usage({"plan_type": "free", "rate_limit": None})
     assert _limit_reached(data) is None
@@ -1085,7 +1167,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.2",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1184,7 +1266,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.2",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1209,7 +1291,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.1",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.2",
         "Cache-Control": "no-store",
     }
 

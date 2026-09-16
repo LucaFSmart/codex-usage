@@ -394,7 +394,14 @@ class CodexUsageSensor(CodexUsageEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available
+        if not super().available:
+            return False
+        key = self.entity_description.key
+        if key.startswith("five_hour_"):
+            return self.coordinator.data.usage.five_hour_window is not None
+        if key.startswith("weekly_"):
+            return self.coordinator.data.usage.weekly_window is not None
+        return True
 
 
 class CodexAdditionalLimitSensor(CodexUsageEntity, SensorEntity):

@@ -97,7 +97,13 @@ export interface CardSource {
   last_success: string | null;
   retry_at: string | null;
   error_code:
-    "rate_limited" | "connection" | "authentication" | "invalid_response" | "http_error" | null;
+    | "rate_limited"
+    | "quota_exceeded"
+    | "connection"
+    | "authentication"
+    | "invalid_response"
+    | "http_error"
+    | null;
   refresh_mode: SourceRefreshMode;
   expected_interval_seconds: number | null;
 }

@@ -22,6 +22,22 @@ from custom_components.codex_usage.sensor import (
 
 
 def test_missing_optional_value_is_unknown_without_making_entity_unavailable() -> None:
+    """A genuinely optional field (not tied to a backend window) stays available."""
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=True,
+        data=SimpleNamespace(usage=parse_usage({"plan_type": "plus"})),
+    )
+    entity.entity_description = descriptions["credit_balance"]
+
+    assert entity.native_value is None
+    assert entity.available is True
+
+
+def test_missing_five_hour_window_makes_the_legacy_entity_unavailable() -> None:
+    """A Business Premium/Flexible-Pricing account with no 5-hour window must not
+    show a misleading "Unknown" state on an entity kept for registry continuity."""
     descriptions = {description.key: description for description in SENSORS}
     entity = object.__new__(CodexUsageSensor)
     entity.coordinator = SimpleNamespace(
@@ -31,7 +47,73 @@ def test_missing_optional_value_is_unknown_without_making_entity_unavailable() -
     entity.entity_description = descriptions["five_hour_usage"]
 
     assert entity.native_value is None
+    assert entity.available is False
+
+
+def test_missing_weekly_window_makes_the_legacy_entity_unavailable() -> None:
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=True,
+        data=SimpleNamespace(usage=parse_usage({"plan_type": "plus"})),
+    )
+    entity.entity_description = descriptions["weekly_reset"]
+
+    assert entity.available is False
+
+
+def test_missing_window_makes_the_disabled_budget_entity_unavailable_too() -> None:
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=True,
+        data=SimpleNamespace(usage=parse_usage({"plan_type": "plus"})),
+    )
+    entity.entity_description = descriptions["five_hour_budget"]
+
+    assert entity.available is False
+
+
+def test_reported_window_keeps_the_entity_available() -> None:
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=True,
+        data=SimpleNamespace(
+            usage=parse_usage(
+                {
+                    "rate_limit": {
+                        "primary_window": {"used_percent": 10, "limit_window_seconds": 18_000}
+                    }
+                }
+            )
+        ),
+    )
+    entity.entity_description = descriptions["five_hour_remaining"]
+
     assert entity.available is True
+
+
+def test_coordinator_failure_takes_priority_over_the_window_check() -> None:
+    """A transient coordinator failure must still make the entity unavailable,
+    the same as before, even while the window itself is reported."""
+    descriptions = {description.key: description for description in SENSORS}
+    entity = object.__new__(CodexUsageSensor)
+    entity.coordinator = SimpleNamespace(
+        last_update_success=False,
+        data=SimpleNamespace(
+            usage=parse_usage(
+                {
+                    "rate_limit": {
+                        "primary_window": {"used_percent": 10, "limit_window_seconds": 18_000}
+                    }
+                }
+            )
+        ),
+    )
+    entity.entity_description = descriptions["five_hour_usage"]
+
+    assert entity.available is False
 
 
 def test_reset_sensor_reads_the_shared_coordinator_summary() -> None:

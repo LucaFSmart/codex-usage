@@ -16,6 +16,7 @@ const SOURCE_KEYS = ["usage", "profile", "reset_details", "workspace_discovery"]
 const SOURCE_STATES = ["ok", "error", "unsupported", "disabled", "never"] as const;
 const ERROR_CODES = [
   "rate_limited",
+  "quota_exceeded",
   "connection",
   "authentication",
   "invalid_response",

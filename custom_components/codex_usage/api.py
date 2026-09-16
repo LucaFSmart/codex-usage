@@ -38,6 +38,18 @@ REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=20)
 USER_AGENT = f"HomeAssistant-CodexUsage/{CARD_VERSION}"
 MAX_ADDITIONAL_RATE_LIMITS = 50
 
+# Error codes the official Codex client treats as quota/credit/spend exhaustion
+# rather than an ordinary, retryable rate limit (openai/codex#44492).
+_QUOTA_ERROR_CODES = frozenset(
+    {
+        "insufficient_quota",
+        "credit_balance_exhausted",
+        "organization_spend_limit_exceeded",
+        "project_spend_limit_exceeded",
+        "organization_usage_limit_exceeded",
+    }
+)
+
 
 class CodexApiError(Exception):
     """Base error raised by the Codex API client."""
@@ -46,15 +58,37 @@ class CodexApiError(Exception):
 class CodexHttpError(CodexApiError):
     """A safe HTTP status and provider retry deadline, without response contents."""
 
-    def __init__(self, status: int, retry_at: datetime) -> None:
+    def __init__(self, status: int, retry_at: datetime, quota_exceeded: bool = False) -> None:
         super().__init__(f"Codex request failed ({status})")
         self.status = status
         self.retry_at = retry_at
+        self.quota_exceeded = quota_exceeded
 
 
-def _check_retry(response: aiohttp.ClientResponse) -> None:
+async def _is_quota_exceeded(response: aiohttp.ClientResponse) -> bool:
+    """Best-effort check for a recognized quota/credit/spend-exhaustion 429 body.
+
+    Falls back to False (an ordinary rate limit) whenever the body is missing,
+    unparseable, or does not match a known code. This is not yet confirmed for
+    every Codex backend endpoint, so a non-matching body must never change
+    existing retry behavior.
+    """
+    try:
+        payload = await response.json(content_type=None)
+    except aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError:
+        return False
+    if not isinstance(payload, dict):
+        return False
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return False
+    return error.get("code") in _QUOTA_ERROR_CODES or error.get("type") == "insufficient_quota"
+
+
+async def _check_retry(response: aiohttp.ClientResponse) -> None:
     if response.status in (429, 503):
         headers = getattr(response, "headers", {})
+        quota_exceeded = response.status == 429 and await _is_quota_exceeded(response)
         raise CodexHttpError(
             response.status,
             retry_deadline(
@@ -63,6 +97,7 @@ def _check_retry(response: aiohttp.ClientResponse) -> None:
                 now=datetime.now(UTC),
                 floor_seconds=60,
             ),
+            quota_exceeded=quota_exceeded,
         )
 
 
@@ -950,7 +985,7 @@ class CodexApiClient:
             ) as response:
                 if response.status in (400, 401, 403):
                     raise CodexAuthenticationError("The OpenAI session can no longer be refreshed")
-                _check_retry(response)
+                await _check_retry(response)
                 if response.status >= 400:
                     raise CodexApiError(f"Token refresh failed ({response.status})")
                 payload = await self._async_decode_json(response)
@@ -973,8 +1008,7 @@ class CodexApiClient:
             status, payload = await self._async_usage_request(current)
         if status in (401, 403):
             raise CodexAuthenticationError("OpenAI rejected the stored credentials")
-        if status == 429:
-            raise CodexApiError("OpenAI rate-limited the usage request")
+        # 429/503 already raised as CodexHttpError inside _async_usage_request.
         if status >= 400:
             raise CodexApiError(f"Codex usage request failed ({status})")
         if not isinstance(payload, dict):
@@ -995,13 +1029,12 @@ class CodexApiClient:
             async with self._session.get(
                 PROFILE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
-                _check_retry(response)
+                await _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexProfileUnavailable
                 if response.status == 401:
                     raise CodexAuthenticationError("OpenAI rejected the profile request")
-                if response.status == 429:
-                    raise CodexApiError("OpenAI rate-limited the profile request")
+                # 429/503 already raised as CodexHttpError by _check_retry above.
                 if response.status >= 400:
                     raise CodexApiError(f"Codex profile request failed ({response.status})")
                 payload = await self._async_decode_json(response)
@@ -1038,13 +1071,12 @@ class CodexApiClient:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
             async with self._session.get(url, headers=headers, timeout=REQUEST_TIMEOUT) as response:
-                _check_retry(response)
+                await _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexOptionalEndpointUnavailable
                 if response.status == 401:
                     raise CodexAuthenticationError("OpenAI rejected the read-only request")
-                if response.status == 429:
-                    raise CodexApiError("OpenAI rate-limited the read-only request")
+                # 429/503 already raised as CodexHttpError by _check_retry above.
                 if response.status >= 400:
                     raise CodexApiError(f"Codex read-only request failed ({response.status})")
                 payload = await self._async_decode_json(response)
@@ -1069,7 +1101,7 @@ class CodexApiClient:
                 USAGE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
                 status = response.status
-                _check_retry(response)
+                await _check_retry(response)
                 try:
                     payload = await response.json(content_type=None)
                 except aiohttp.ContentTypeError, json.JSONDecodeError:

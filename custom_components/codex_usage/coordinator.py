@@ -108,6 +108,12 @@ def _optional_error_code(err: CodexApiError) -> str:
     return "invalid_response"
 
 
+def _http_error_code(err: CodexHttpError) -> str:
+    if err.status != 429:
+        return "http_error"
+    return "quota_exceeded" if err.quota_exceeded else "rate_limited"
+
+
 class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
     """Fetch and normalize Codex usage data."""
 
@@ -245,7 +251,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 attempted_at,
                 self._last_success,
                 deadline,
-                "rate_limited" if err.status == 429 else "http_error",
+                _http_error_code(err),
                 expected_interval_seconds=interval,
             )
             raise UpdateFailed(str(err)) from err
@@ -301,7 +307,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     refreshed_at,
                     self._profile_last_success,
                     deadline,
-                    "rate_limited" if err.status == 429 else "http_error",
+                    _http_error_code(err),
                     expected_interval_seconds=PROFILE_UPDATE_SECONDS,
                 )
                 if err.status == 429:
@@ -349,7 +355,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                     refreshed_at,
                     self._reset_last_success,
                     deadline,
-                    "rate_limited" if err.status == 429 else "http_error",
+                    _http_error_code(err),
                     expected_interval_seconds=PROFILE_UPDATE_SECONDS,
                 )
             except (CodexAuthenticationError, CodexConnectionError, CodexApiError) as err:

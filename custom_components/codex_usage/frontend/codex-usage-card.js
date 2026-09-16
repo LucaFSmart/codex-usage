@@ -573,6 +573,7 @@ var Pe = [
 	"never"
 ], Ie = [
 	"rate_limited",
+	"quota_exceeded",
 	"connection",
 	"authentication",
 	"invalid_response",

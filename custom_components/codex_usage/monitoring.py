@@ -28,6 +28,7 @@ class SourceState:
         if self.error_code not in {
             None,
             "rate_limited",
+            "quota_exceeded",
             "connection",
             "authentication",
             "invalid_response",
