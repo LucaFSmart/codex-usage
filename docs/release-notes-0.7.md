@@ -1,8 +1,20 @@
-# Codex Usage 0.7.0
+# Codex Usage 0.7
 
-0.7 is a broad consistency, resilience and dashboard release. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
+0.7 is a broad consistency, resilience and dashboard release line. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
 
-## Highlights
+## 0.7.3 maintenance update
+
+Version 0.7.3 keeps the provider data model and card schema unchanged while updating the supported maintenance baseline:
+
+- Authenticated OpenAI GET requests no longer follow redirects, keeping credentials and workspace headers bound to the intended origin.
+- CI validates Home Assistant 2026.9.3 while retaining 2026.3.0 as the declared and tested minimum.
+- Exact, hash-verified Python environments are maintained separately for the latest and minimum runtime lanes.
+- Frontend development dependencies, hassfest and CodeQL are updated; TypeScript remains on the newest version supported by typescript-eslint.
+- Protected-branch checks include both CodeQL languages, and automated dependency security updates, linear history and conversation resolution are enabled.
+
+See the [changelog](../CHANGELOG.md) for the 0.7.1 and 0.7.2 fixes and the complete version history.
+
+## 0.7.0 highlights
 
 - A redesigned bilingual card keeps the standard five-hour and weekly positions stable, uses neutral placeholders for missing values, and moves optional data into configurable sections.
 - Card configuration now controls each section and individual metric with Automatic, Always show and Hide modes. Source diagnostics remain hidden by default.
@@ -18,7 +30,7 @@
 - Four disabled diagnostic timestamp sensors expose the last successful usage, profile, reset-detail and workspace-discovery observations.
 - The documentation distinguishes the WHAM HTTP transport used by this integration from OpenAI's separately documented experimental Codex App Server RPC interface.
 - An optional warning Blueprint provides persisted hysteresis with a user-selected action and Toggle helper.
-- Recorder metadata for aggregate counters was corrected, English canonical strings were added, and tests now cover Home Assistant 2026.3.0 and 2026.9.1.
+- Recorder metadata for aggregate counters was corrected, English canonical strings were added, and tests cover both the declared minimum and current Home Assistant runtime.
 
 Read [upgrading to 0.7](upgrading-to-0.7.md) before updating. Installation, entity, card, automation, privacy and troubleshooting guides are linked from the [README](../README.md).
 

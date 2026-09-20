@@ -105,6 +105,8 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
+The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the supported minimum and validates the current runtime against Home Assistant 2026.9.3.
+
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -118,7 +120,7 @@ Diagnostics are available from **Settings → Devices & services → Codex Usage
 ```bash
 python -m venv .venv
 .venv/Scripts/activate
-pip install homeassistant==2026.9.1 pytest ruff
+pip install homeassistant==2026.9.3 pytest==9.0.3 ruff==0.16.8
 ruff format --check .
 ruff check .
 pytest
@@ -135,6 +137,6 @@ npm run check:bundle
 npm run test:visual
 ```
 
-CI repeats the Python runtime suite on the declared minimum Home Assistant version. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI installs the hash-locked Linux environments in `requirements/latest/requirements.txt` and `requirements/minimum/requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Dependabot maintains both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License. See [LICENSE](LICENSE) and [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).

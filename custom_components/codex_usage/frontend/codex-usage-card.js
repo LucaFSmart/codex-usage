@@ -1354,7 +1354,7 @@ function At(e, t, n, r = /* @__PURE__ */ new Date()) {
 	};
 }
 //#endregion
-//#region \0@oxc-project+runtime@0.144.0/helpers/esm/decorate.js
+//#region \0@oxc-project+runtime@0.150.0/helpers/esm/decorate.js
 function X(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
@@ -1533,7 +1533,7 @@ var Q = class extends P {
 		e && await this.loadSnapshot();
 	}
 	async loadSnapshot() {
-		if (!(!this.hass || this.loading)) {
+		if (this.hass && !this.loading) {
 			this.loading = !0;
 			try {
 				this.snapshot = await Qe(this.hass), this.error = !1;

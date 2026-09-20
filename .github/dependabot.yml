@@ -13,3 +13,15 @@ updates:
       # TypeScript bump has to wait for that peer range to widen.
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: pip
+    directory: /requirements/latest
+    schedule:
+      interval: monthly
+  - package-ecosystem: pip
+    directory: /requirements/minimum
+    schedule:
+      interval: monthly
+    ignore:
+      # The supported Home Assistant floor is advanced deliberately after a
+      # compatibility review. Other direct and transitive fixes remain tracked.
+      - dependency-name: homeassistant
