@@ -1,20 +1,21 @@
 # 0.7 verification record
 
-This file records the checks for the local 0.7 candidate. It is updated from fresh command output before the candidate is declared complete. A passing local record is not a GitHub release, tag, push or HACS publication.
+This file records the checks for the 0.7.3 candidate. It was updated from fresh command output on 2026-09-20 before publication. A passing local record is not by itself a GitHub release, tag, push or HACS publication; those remote results remain visible in GitHub.
 
 ## Runtime targets
 
-| Target | Purpose | Result |
-| --- | --- | --- |
-| Home Assistant 2026.3.0 | Declared minimum; complete Python suite plus real runtime | 255 unit/component, 4 Blueprint and 3 runtime tests passed |
-| Home Assistant 2026.9.1 | Current stable target; complete Python suite plus real runtime | 255 unit/component, 4 Blueprint and 3 runtime tests passed |
-| Node.js 24.19.0 / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below |
+| Target                                               | Purpose                                                   | Result                                                                          |
+| ---------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Home Assistant 2026.3.0                              | Declared minimum                                          | 292 repository tests passed; CI also runs the portable runtime/Blueprint matrix |
+| Home Assistant 2026.9.3                              | Current stable target                                     | 292 repository tests plus 3 real runtime tests passed                           |
+| Node.js 22.23.1 locally, Node.js 24 in CI / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below                                                           |
 
-The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0; forcing its 2026.3.1 dependency would skip the declared minimum. The 2026.9.1 Linux job additionally installs `pytest-homeassistant-custom-component==0.13.364`; local Windows verification uses the portable harness because the plugin imports the Unix-only `fcntl` module. Its CI invocation enables pytest asyncio auto mode and function-scoped fixture loops as required by that upstream harness, including its native asynchronous autouse fixtures.
+The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0 without advancing Home Assistant, so the minimum lock deliberately omits that plugin. The 2026.9.3 Linux job installs `pytest-homeassistant-custom-component==0.13.366`; local Windows verification uses the portable harness plus `pytest-asyncio==1.4.0` because the plugin imports the Unix-only `fcntl` module. Its CI invocation enables pytest asyncio auto mode and function-scoped fixture loops as required by that upstream harness, including its native asynchronous autouse fixtures.
 
 ## Required gates
 
-- Python formatting, Ruff and complete test suites on both Home Assistant targets.
+- Python formatting with Ruff 0.16.8, lint and complete test suites on both Home Assistant targets.
+- Byte-for-byte regeneration and hash-verified dry installation of the latest and minimum Python locks.
 - Real component setup, entity registration and unload on both targets.
 - Real Blueprint Script execution, restored helper state, hysteresis and restart reconciliation on both targets.
 - Metadata/version consistency, translation parity, privacy allowlist, authentication lifecycle, retry/cooldown and diagnostics tests.
@@ -23,17 +24,21 @@ The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No
 
 ## Final evidence
 
-- Ruff format check and lint: passed for `custom_components`, `tests` and `tests_integration`.
-- Python: 255 unit/component tests, 4 Blueprint tests and 3 runtime tests passed on each HA target. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. The Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
-- Frontend on Node.js 24.19.0: Prettier, ESLint and TypeScript passed; 137 Vitest tests passed.
+- Ruff 0.16.8 format check and lint: 59 Python files passed.
+- Python: 292 tests passed on Home Assistant 2026.3.0. On Home Assistant 2026.9.3, those 292 tests plus 3 real runtime tests passed. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
+- Frontend on local Node.js 22.23.1 with Node.js 24 configured in CI: Prettier, ESLint and TypeScript passed; 138 Vitest tests passed.
 - Frontend coverage: 97.03% statements, 94.44% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
 - Dependency audit: zero vulnerabilities at npm's high severity threshold.
-- Vite production build: passed; bundle size 91.96 kB (24.18 kB gzip).
+- Vite 8.3.0 production build: passed; bundle size 91.97 kB (24.20 kB gzip), and the committed bundle reproduced without a diff.
 - Playwright Chromium: 18 responsive, semantic-state and interaction tests passed from 320 to 1,200 pixels in light and dark modes.
 - Visual review: real card harness rendered and inspected as a wide English overview, wide English details and narrow German layout. Synthetic labels contain no provider account identifiers or credentials.
-- Markdown link check: all 22 Git-tracked Markdown files checked with no missing relative targets.
+- Markdown formatting: the seven newly included research/plan documents pass Prettier 3.9.8.
+- Markdown link check: all 29 tracked/staged Markdown files were scanned; 52 repository-relative targets were found with no missing files. All 77 external URLs were reachable or returned an expected authentication/bot-protection response; none returned a hard HTTP or network failure.
+- Metadata: manifest, Python card version, frontend package/lock and visual harness all report 0.7.3.
+- Supply chain: all 15 workflow actions use full commit SHAs; npm reported zero vulnerabilities, 160 verified registry signatures and 66 verified attestations.
+- Independent staged-diff review: no remaining critical, important or minor findings.
 
-The bundle reproducibility check passed: a repeated Vite build produced the same SHA-256 hash for the Home Assistant card bundle.
+Both Python lock files regenerated byte-for-byte under their documented Linux/Python 3.14 inputs, and dry hash-verified resolution succeeded for Python 3.14.6 on `x86_64-manylinux_2_28`.
 
 HACS validation, hassfest and CodeQL are configured GitHub publication gates. Their final result is recorded in GitHub Actions for the release commit. No live OpenAI credentials were used.
 

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 0.7.3 - 2026-09-20
+
+Maintenance and security-hardening release with no provider-schema changes.
+
+- Validate against Home Assistant 2026.9.3 while retaining Home Assistant 2026.3.0 as the tested minimum.
+- Disable redirects on every authenticated OpenAI GET request so credentials and workspace headers remain bound to the intended origin.
+- Hash-lock the Python CI environments and add monthly Python dependency updates.
+- Update hassfest, CodeQL, Playwright, Vitest, ESLint, happy-dom, Prettier, typescript-eslint and Vite.
+- Require both CodeQL language checks on the protected branch and enable automated dependency-security updates, linear history and conversation resolution.
+
 ## 0.7.2 - 2026-09-16
 
 Refines rate-limit and quota reporting based on a verified upstream change and OpenAI's documented account types that have no fixed 5-hour limit; no other user-facing behavior changes.

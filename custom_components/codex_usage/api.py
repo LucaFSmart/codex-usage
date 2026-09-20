@@ -1027,7 +1027,10 @@ class CodexApiClient:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
             async with self._session.get(
-                PROFILE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
+                PROFILE_API_URL,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 await _check_retry(response)
                 if response.status in (403, 404):
@@ -1070,7 +1073,12 @@ class CodexApiClient:
         if credentials.fedramp:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
-            async with self._session.get(url, headers=headers, timeout=REQUEST_TIMEOUT) as response:
+            async with self._session.get(
+                url,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
+            ) as response:
                 await _check_retry(response)
                 if response.status in (403, 404):
                     raise CodexOptionalEndpointUnavailable
@@ -1098,7 +1106,10 @@ class CodexApiClient:
             headers["X-OpenAI-Fedramp"] = "true"
         try:
             async with self._session.get(
-                USAGE_API_URL, headers=headers, timeout=REQUEST_TIMEOUT
+                USAGE_API_URL,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
             ) as response:
                 status = response.status
                 await _check_retry(response)
