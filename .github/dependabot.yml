@@ -17,6 +17,8 @@ updates:
     directory: /requirements/latest
     schedule:
       interval: monthly
+    # Files in this directory contain `test` in their names so GitHub records
+    # the complete Home Assistant CI environment as development-only.
   - package-ecosystem: pip
     directory: /requirements/minimum
     schedule:
