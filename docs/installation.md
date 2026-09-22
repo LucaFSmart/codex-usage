@@ -1,6 +1,6 @@
 # Installation and setup
 
-Requires Home Assistant 2026.3.0 or newer and a ChatGPT account or workspace with Codex access. Allow outbound HTTPS to `auth.openai.com` and `chatgpt.com`. This integration uses the Codex device-code login; OpenAI Platform API keys are a different product.
+Requires Home Assistant 2026.3.0 or newer and a ChatGPT account or workspace with Codex access. This is the functionally tested compatibility floor; use the latest stable Home Assistant release for security updates. Allow outbound HTTPS to `auth.openai.com` and `chatgpt.com`. This integration uses the Codex device-code login; OpenAI Platform API keys are a different product.
 
 ## Install
 

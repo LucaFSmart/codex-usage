@@ -32,7 +32,7 @@ The integration never purchases credits, redeems resets, changes limits, sends p
 
 ## Requirements
 
-- Home Assistant 2026.3.0 or newer
+- Home Assistant 2026.3.0 or newer; use the [latest stable Home Assistant release](https://www.home-assistant.io/security/) for security updates
 - A ChatGPT account or workspace with Codex access
 - Device-code login enabled by the account or workspace administrator
 - Outbound HTTPS to `auth.openai.com` and `chatgpt.com`
@@ -105,7 +105,7 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
-The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the supported minimum and validates the current runtime against Home Assistant 2026.9.3.
+The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.3. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
@@ -137,6 +137,6 @@ npm run check:bundle
 npm run test:visual
 ```
 
-CI installs the hash-locked Linux environments in `requirements/latest/requirements.txt` and `requirements/minimum/requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Dependabot maintains both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI installs the development-only, hash-locked Linux environments in `requirements/latest/test-requirements.txt` and `requirements/minimum/test-requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Their `test` filenames let GitHub classify them as development dependencies rather than shipped runtime packages. Dependabot checks both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License. See [LICENSE](LICENSE) and [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).

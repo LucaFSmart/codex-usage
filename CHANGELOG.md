@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+- Mark the hash-locked Home Assistant CI environments as development-only dependencies without changing their pinned package sets.
+- Clarify that Home Assistant 2026.3.0 is the functionally tested compatibility floor while the latest stable release is recommended for security updates.
+
 ## 0.7.3 - 2026-09-20
 
 Maintenance and security-hardening release with no provider-schema changes.

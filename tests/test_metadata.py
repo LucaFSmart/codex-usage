@@ -51,6 +51,7 @@ def test_hacs_and_manifest_metadata() -> None:
     assert manifest["domain"] == "codex_usage"
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
+    assert manifest["requirements"] == []
     frontend_package = _load_json(ROOT / "frontend" / "package.json")
     frontend_lock = _load_json(ROOT / "frontend" / "package-lock.json")
 
@@ -62,6 +63,26 @@ def test_hacs_and_manifest_metadata() -> None:
     assert USER_AGENT == f"HomeAssistant-CodexUsage/{manifest['version']}"
     assert hacs["homeassistant"] == "2026.3.0"
     assert set(hacs) == {"homeassistant", "name"}
+
+
+def test_python_ci_locks_are_development_scoped() -> None:
+    for environment in ("latest", "minimum"):
+        requirement_dir = ROOT / "requirements" / environment
+        input_files = list(requirement_dir.glob("*.in"))
+        lock_files = list(requirement_dir.glob("*.txt"))
+
+        assert len(input_files) == 1
+        assert len(lock_files) == 1
+        assert any(marker in input_files[0].name for marker in ("dev", "test"))
+        assert any(marker in lock_files[0].name for marker in ("dev", "test"))
+
+
+def test_lock_reproduction_seeds_the_pinned_outputs() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+
+    for environment in ("latest", "minimum"):
+        lock_path = f"requirements/{environment}/test-requirements.txt"
+        assert f'cp {lock_path} "${{RUNNER_TEMP}}/lock-check/{lock_path}"' in workflow
 
 
 def test_brand_icon_contract() -> None:
