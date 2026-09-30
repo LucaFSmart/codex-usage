@@ -105,7 +105,7 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
-The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.3. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
+The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.4. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
@@ -118,12 +118,13 @@ Diagnostics are available from **Settings → Devices & services → Codex Usage
 ## Development
 
 ```bash
-python -m venv .venv
-.venv/Scripts/activate
-pip install homeassistant==2026.9.3 pytest==9.0.3 ruff==0.16.8
+python3.14 -m venv .venv
+source .venv/bin/activate
+pip install --require-hashes -r requirements/latest/test-requirements.txt
 ruff format --check .
 ruff check .
-pytest
+pytest -o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=function
+pytest tests_integration -o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=function
 
 cd frontend
 npm ci

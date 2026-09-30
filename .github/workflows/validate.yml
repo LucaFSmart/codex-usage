@@ -57,7 +57,7 @@ jobs:
           - ha_version: "2026.3.0"
             requirements: "requirements/minimum/test-requirements.txt"
             pytest_args: ""
-          - ha_version: "2026.9.3"
+          - ha_version: "2026.9.4"
             requirements: "requirements/latest/test-requirements.txt"
             pytest_args: "-o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=function"
     steps:
