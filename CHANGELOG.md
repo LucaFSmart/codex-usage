@@ -5,6 +5,9 @@ All notable changes to this project are documented here.
 ## Unreleased
 
 - Mark the hash-locked Home Assistant CI environments as development-only dependencies without changing their pinned package sets.
+- Update the development-only `brace-expansion` dependency to 5.0.12 to resolve high-severity denial-of-service advisories (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p) that fail the frontend `npm audit` gate.
+- Validate the current-runtime lane against Home Assistant 2026.9.4 with pytest-homeassistant-custom-component 0.13.367.
+- Make the README development setup match CI: a Linux/macOS virtual environment, the hash-locked test requirements and the real Home Assistant smoke tests.
 - Clarify that Home Assistant 2026.3.0 is the functionally tested compatibility floor while the latest stable release is recommended for security updates.
 
 ## 0.7.3 - 2026-09-20
