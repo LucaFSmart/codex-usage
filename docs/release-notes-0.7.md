@@ -2,6 +2,18 @@
 
 0.7 is a broad consistency, resilience and dashboard release line. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
 
+## 0.7.4 maintenance update
+
+Version 0.7.4 fixes multi-account card selection: color, status, Luna Reserve availability and freshness follow the displayed account. Other accounts retain their independent chip statuses, and the initial automatic choice remains the most constrained account. Card subscriptions recover after detach/reattach, obsolete connection responses are discarded, and updates during a pending fetch trigger one follow-up read.
+
+Backend fixes preserve a quota-exceeded source reason during the retry cooldown, safely handle malformed error codes, oversized numeric values and invalid response encoding, and register main-window sensors when their windows first appear after setup. Relative reset times use one observation timestamp per response so identical duplicate windows remain usable.
+
+Frontend tooling, Ruff and pinned GitHub Actions are updated. Coupled Vitest and CodeQL updates are grouped so future dependency PRs do not split incompatible versions. The frontend audit is clear, and both Python test locks remain reproducible. CI validates Home Assistant 2026.3.0 and 2026.9.4.
+
+The [October OpenAI documentation review](research/2026-10-04-openai-documentation-recheck.md) records current plan-window and shared-usage guidance. Existing main-window entities become unavailable when a provider stops reporting that window; plan names never create inferred windows. Refresh the browser after upgrading, and update manually managed card resources to `?v=0.7.4`.
+
+The provider data model, card schema and entity identities remain unchanged. Older verification and research records describe their dated baselines; the [verification record](verification-0.7.md) records this release's checks.
+
 ## 0.7.3 maintenance update
 
 Version 0.7.3 keeps the provider data model and card schema unchanged while updating the supported maintenance baseline:

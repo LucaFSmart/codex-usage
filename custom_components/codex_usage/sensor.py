@@ -317,6 +317,7 @@ async def async_setup_entry(
     descriptions = _static_sensor_descriptions(
         coordinator.data.usage, existing_unique_ids, identity
     )
+    known_static = {description.key for description in descriptions}
     async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in descriptions)
     async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
     async_add_entities(source_timestamp_entities(coordinator, entry))
@@ -338,8 +339,14 @@ async def async_setup_entry(
             for limit_id, window_name, metric in sorted(known)
         )
 
-    def discover_additional_limits() -> None:
-        entities: list[CodexAdditionalLimitSensor] = []
+    def discover_limits() -> None:
+        entities: list[CodexUsageSensor | CodexAdditionalLimitSensor] = []
+        for description in _static_sensor_descriptions(
+            coordinator.data.usage, existing_unique_ids, identity
+        ):
+            if description.key not in known_static:
+                known_static.add(description.key)
+                entities.append(CodexUsageSensor(coordinator, entry, description))
         for limit in coordinator.data.usage.additional_limits:
             for window_name, window in (("primary", limit.primary), ("secondary", limit.secondary)):
                 if window is None:
@@ -359,8 +366,8 @@ async def async_setup_entry(
         if entities:
             async_add_entities(entities)
 
-    discover_additional_limits()
-    entry.async_on_unload(coordinator.async_add_listener(discover_additional_limits))
+    discover_limits()
+    entry.async_on_unload(coordinator.async_add_listener(discover_limits))
 
 
 class CodexUsageSensor(CodexUsageEntity, SensorEntity):

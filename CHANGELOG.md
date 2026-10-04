@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.7.4 - 2026-10-04
+
+- Fix multi-account cards retaining another account's limit-reached color, status or freshness warning after switching accounts. Luna Reserve availability now also follows the selected account.
+- Preserve the provider's quota-exceeded reason throughout the usage cooldown instead of relabeling it as an ordinary rate limit.
+- Restore card event subscriptions after dashboard detach/reattach, discard obsolete connection responses and coalesce updates received during a pending fetch.
+- Handle malformed quota error codes and oversized numeric values safely, and discover newly reported main-window sensors without requiring a reload.
+- Reject invalid response encoding safely and normalize relative reset times against one response observation so identical duplicate windows do not falsely conflict.
+- Update the frontend development dependencies, Ruff and pinned GitHub Actions; group coupled Vitest and CodeQL updates to avoid incompatible partial upgrades.
+- Regenerate both Python test locks with the CI resolver so dependency updates retain reproducible hashes and annotations.
+- Recheck current OpenAI guidance, document plans without fixed usage windows and correct main-window availability documentation. Update setup/resource examples and release verification.
 - Mark the hash-locked Home Assistant CI environments as development-only dependencies without changing their pinned package sets.
 - Update the development-only `brace-expansion` dependency to 5.0.12 to resolve high-severity denial-of-service advisories (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p) that fail the frontend `npm audit` gate.
 - Validate the current-runtime lane against Home Assistant 2026.9.4 with pytest-homeassistant-custom-component 0.13.367.
@@ -267,7 +277,7 @@ to the integration or the bundled dashboard card.
   at runtime; `translations/en.json` is now the canonical key set that
   `translations/de.json` is checked against.
 - Allow Prettier to accept either LF or CRLF line endings (`endOfLine:
-  "auto"`) so a Windows checkout with `core.autocrlf=true` no longer fails
+"auto"`) so a Windows checkout with `core.autocrlf=true` no longer fails
   `format:check` locally, while all other style rules stay strict.
 - Update CI to `actions/setup-python@v7` and `actions/setup-node@v7`,
   matching the already-current `actions/checkout@v7`.

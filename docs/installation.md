@@ -33,7 +33,7 @@ For YAML-managed resources, register the bundle manually:
 
 ```yaml
 resources:
-  - url: /codex_usage/frontend/codex-usage-card.js?v=0.7.3
+  - url: /codex_usage/frontend/codex-usage-card.js?v=0.7.4
     type: module
 ```
 

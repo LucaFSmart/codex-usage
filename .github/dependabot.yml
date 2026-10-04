@@ -4,10 +4,30 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    groups:
+      codeql:
+        applies-to: version-updates
+        patterns:
+          - github/codeql-action/*
+      codeql-security:
+        applies-to: security-updates
+        patterns:
+          - github/codeql-action/*
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: monthly
+    groups:
+      vitest:
+        applies-to: version-updates
+        patterns:
+          - vitest
+          - "@vitest/*"
+      vitest-security:
+        applies-to: security-updates
+        patterns:
+          - vitest
+          - "@vitest/*"
     ignore:
       # typescript-eslint pins its supported TypeScript range; a major
       # TypeScript bump has to wait for that peer range to widen.

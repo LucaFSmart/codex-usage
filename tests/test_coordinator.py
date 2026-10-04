@@ -171,6 +171,24 @@ def test_usage_429_with_quota_exceeded_error_is_reported_distinctly():
     assert coordinator._read_retry_at == until
 
 
+def test_usage_quota_exceeded_cause_survives_cooldown_updates():
+    client = _FakeClient()
+    until = datetime.now(UTC) + timedelta(days=1)
+    client.usage_result = CodexHttpError(429, until, quota_exceeded=True)
+    coordinator = _coordinator(client)
+
+    with pytest.raises(UpdateFailed):
+        asyncio.run(coordinator._async_update_data())
+    attempted_at = coordinator.sources["usage"].last_attempt
+    for _ in range(2):
+        with pytest.raises(UpdateFailed):
+            asyncio.run(coordinator._async_update_data())
+        assert coordinator.sources["usage"].error_code == "quota_exceeded"
+        assert coordinator.sources["usage"].last_attempt == attempted_at
+        assert coordinator.sources["usage"].retry_at == until
+    assert client.usage_calls == 1
+
+
 def test_profile_429_with_quota_exceeded_error_is_reported_distinctly():
     client = _FakeClient()
     until = datetime.now(UTC) + timedelta(days=1)

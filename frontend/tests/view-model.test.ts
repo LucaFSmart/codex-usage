@@ -25,12 +25,28 @@ describe("buildCardViewModel", () => {
     expect(result.accounts).toHaveLength(1);
   });
 
-  it("uses the worst account as the aggregate state", () => {
+  it("initially selects the most constrained account", () => {
     const result = buildCardViewModel(SNAPSHOT, DEFAULT_CONFIG);
 
     expect(result.selectedAccount?.name).toBe("Beta");
     expect(result.severity).toBe("critical");
     expect(result.accounts.map((account) => account.severity)).toEqual(["ok", "critical"]);
+  });
+
+  it.each(["auto", "all"] as const)("follows the selected account status in %s mode", (mode) => {
+    const snapshot: CardSnapshot = {
+      ...SNAPSHOT,
+      accounts: [alpha, { ...beta, blocker: "usage_limit" }],
+    };
+    const config = { ...DEFAULT_CONFIG, account_mode: mode };
+
+    const healthy = buildCardViewModel(snapshot, config, "entry-a");
+    expect(healthy.selectedAccount?.name).toBe("Alpha");
+    expect(healthy.severity).toBe("ok");
+    expect(healthy.accounts[1]?.severity).toBe("blocked");
+
+    const blocked = buildCardViewModel(snapshot, config, "entry-b");
+    expect(blocked.severity).toBe("blocked");
   });
 
   it("honors a fixed single-account selection", () => {
@@ -196,15 +212,14 @@ describe("buildCardViewModel", () => {
     expect(result.selectedAccount?.mostConstrainedLimit?.id).toBe("codex:primary:five_hour");
   });
 
-  it("aggregates stale across accounts in all-account mode", () => {
-    const fresh: CardSnapshot = { ...SNAPSHOT, accounts: [alpha, beta] };
-    expect(buildCardViewModel(fresh, DEFAULT_CONFIG).stale).toBe(false);
-
+  it.each(["auto", "all"] as const)("follows selected account freshness in %s mode", (mode) => {
     const oneStale: CardSnapshot = {
       ...SNAPSHOT,
       accounts: [{ ...alpha, updated_at: "2026-07-15T09:00:00Z" }, beta],
     };
-    expect(buildCardViewModel(oneStale, DEFAULT_CONFIG).stale).toBe(true);
+    const config = { ...DEFAULT_CONFIG, account_mode: mode };
+    expect(buildCardViewModel(oneStale, config, "entry-a").stale).toBe(true);
+    expect(buildCardViewModel(oneStale, config, "entry-b").stale).toBe(false);
   });
 });
 

@@ -31,25 +31,27 @@ sections:
 
 Card visibility affects presentation. Enabling an entity affects Home Assistant's entity registry. Disabling an optional source affects HTTP requests and its payload. These are three different controls. More Info is available only for an enabled entity the viewer may access.
 
-| Section key | Default | Contents |
-| --- | --- | --- |
-| `limits` | Show | Standard main usage windows |
-| `additional_limits` | Automatic | Named feature windows |
-| `resets` | Show | Relative and absolute window reset times |
-| `pace` | Show | Elapsed-window comparison |
-| `account` | Show | Plan, workspace and shortened entry selector |
-| `credits` | Automatic | Credit balance and saved resets |
-| `spending` | Automatic | Account/workspace spend control |
-| `profile` | Automatic | Aggregate profile statistics |
-| `budget` | Automatic | Valid observed usage budgets |
-| `sources` | Hide | Polling lifecycle and freshness |
-| `footer` | Show | Last update and integration version |
+| Section key         | Default   | Contents                                     |
+| ------------------- | --------- | -------------------------------------------- |
+| `limits`            | Show      | Standard main usage windows                  |
+| `additional_limits` | Automatic | Named feature windows                        |
+| `resets`            | Show      | Relative and absolute window reset times     |
+| `pace`              | Show      | Elapsed-window comparison                    |
+| `account`           | Show      | Plan, workspace and shortened entry selector |
+| `credits`           | Automatic | Credit balance and saved resets              |
+| `spending`          | Automatic | Account/workspace spend control              |
+| `profile`           | Automatic | Aggregate profile statistics                 |
+| `budget`            | Automatic | Valid observed usage budgets                 |
+| `sources`           | Hide      | Polling lifecycle and freshness              |
+| `footer`            | Show      | Last update and integration version          |
 
 The visual editor exposes available per-value switches. YAML uses the normalized limit IDs or metric keys written by the editor; keep those IDs opaque rather than constructing them from plan names.
 
 ## Accounts and appearance
 
 `account_mode` supports `auto`, `single`, and `all`. Use the editor for `selected_entry_id` and `included_entry_ids`; these are Home Assistant entry IDs. `allow_account_switching` controls switching. Existing saved values and Home Assistant `view_layout`, `layout_options`, `grid_options` and `visibility` are retained.
+
+Card color, status, Luna Reserve availability and the freshness warning always describe the currently selected account. Switching accounts updates these indicators along with the usage values. Each account button retains its own status dot. Without a saved selection, multi-account cards initially select the most constrained account.
 
 Color thresholds describe percentage **used**: the defaults are warning 75 and critical 90. Configure them with `thresholds.warning` and `thresholds.critical`. Semantic colors, `appearance.card_radius`, `appearance.spacing`, `stale_after_minutes`, and existing HA themes remain supported. The outer element is `ha-card` for card-mod. There is no free-form JavaScript configuration.
 

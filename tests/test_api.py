@@ -7,12 +7,14 @@ import time
 from dataclasses import fields
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
 from custom_components.codex_usage.api import (
     AvailableAccount,
     CodexApiClient,
+    CodexApiError,
     CodexAuthenticationError,
     CodexConnectionError,
     CodexCredentials,
@@ -564,7 +566,7 @@ def test_parse_non_finite_numbers_as_unavailable() -> None:
     assert data.main_limit.primary is None
 
 
-@pytest.mark.parametrize("value", [-1, 101, True, "Infinity", "NaN"])
+@pytest.mark.parametrize("value", [-1, 101, True, "Infinity", "NaN", 10**400])
 def test_rate_limit_percentages_are_bounded(value: object) -> None:
     data = parse_usage(
         {
@@ -597,7 +599,7 @@ def test_unknown_duration_main_window_is_preserved() -> None:
     assert any(limit.limit_id == "codex_unknown_primary" for limit in data.additional_limits)
 
 
-@pytest.mark.parametrize("duration", [-1, 0, "invalid", float("inf")])
+@pytest.mark.parametrize("duration", [-1, 0, "invalid", float("inf"), 10**400])
 def test_invalid_window_duration_keeps_valid_usage(duration: object) -> None:
     data = parse_usage(
         {
@@ -688,7 +690,7 @@ def test_absolute_reset_timestamp_wins_over_relative_seconds() -> None:
 
 @pytest.mark.parametrize(
     "reset_after_seconds",
-    [True, -1, None, float("inf"), "not-a-number", {"seconds": 60}, 10**100],
+    [True, -1, None, float("inf"), "not-a-number", {"seconds": 60}, 10**100, 10**400],
 )
 def test_invalid_relative_reset_offsets_are_ignored(reset_after_seconds: object) -> None:
     data = parse_usage(
@@ -1065,6 +1067,8 @@ def test_usage_429_with_insufficient_quota_type_is_marked_quota_exceeded() -> No
         {},
         {"error": {"code": "rate_limit_exceeded", "type": "rate_limit_error"}},
         {"error": {"code": "slow_down", "type": "rate_limit_error"}},
+        {"error": {"code": []}},
+        {"error": {"code": {}}},
         {"error": "not a dict"},
         {"not_error": {"code": "insufficient_quota"}},
     ],
@@ -1095,6 +1099,18 @@ def test_usage_429_with_undecodable_body_is_an_ordinary_rate_limit() -> None:
         asyncio.run(client.async_get_usage(credentials))
 
     assert caught.value.quota_exceeded is False
+
+
+def test_usage_with_invalid_body_encoding_is_a_safe_api_error() -> None:
+    class _InvalidEncodingResponse(_FakeResponse):
+        async def json(self, *, content_type: str | None = None) -> object:
+            raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+
+    response = _InvalidEncodingResponse(200, None)
+    credentials = CodexCredentials("access", "refresh", "id", 9_999_999_999, "workspace")
+    client = CodexApiClient(_FakeSession(response))
+    with pytest.raises(CodexApiError, match="invalid usage response"):
+        asyncio.run(client.async_get_usage(credentials))
 
 
 def test_503_is_never_marked_quota_exceeded() -> None:
@@ -1189,7 +1205,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.3",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1288,7 +1304,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.3",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1313,7 +1329,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.3",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
         "Cache-Control": "no-store",
     }
 
@@ -1415,6 +1431,33 @@ def test_conflicting_duplicate_windows_are_unknown_but_restriction_survives():
     assert usage.additional_limits[0].limit_reached is True
     assert usage.duplicate_limit_ids == 2
     assert usage.conflicting_windows == 1
+
+
+@pytest.mark.parametrize("second_offset", [3600, 7200])
+def test_duplicate_relative_windows_share_one_response_observation(second_offset):
+    def row(offset):
+        return {
+            "metered_feature": "feature",
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 10,
+                    "limit_window_seconds": 604_800,
+                    "reset_after_seconds": offset,
+                }
+            },
+        }
+
+    observed_at = datetime(2026, 10, 4, 12, tzinfo=UTC)
+    with patch("custom_components.codex_usage.api.datetime") as datetime_mock:
+        datetime_mock.now.side_effect = [observed_at, observed_at + timedelta(seconds=1)]
+        usage = parse_usage({"additional_rate_limits": [row(3600), row(second_offset)]})
+    assert usage.duplicate_limit_ids == 1
+    if second_offset == 3600:
+        assert usage.conflicting_windows == 0
+        assert usage.additional_limits[0].primary.resets_at == observed_at + timedelta(hours=1)
+    else:
+        assert usage.conflicting_windows == 1
+        assert usage.additional_limits[0].primary is None
 
 
 def test_conflicting_duplicate_model_slugs_are_not_published():

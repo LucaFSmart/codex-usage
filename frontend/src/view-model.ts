@@ -143,12 +143,11 @@ export function buildCardViewModel(
             (left, right) => SEVERITY_RANK[right.severity] - SEVERITY_RANK[left.severity],
           )[0] ?? null);
   }
-  const single = config.account_mode === "single" ? selectedAccount : null;
   return {
     accounts,
     selectedAccount,
-    severity: single ? single.severity : worstSeverity(accounts.map((item) => item.severity)),
-    stale: single ? single.stale : accounts.some((item) => item.stale),
+    severity: selectedAccount?.severity ?? "unknown",
+    stale: selectedAccount?.stale ?? false,
     generatedAt: parsedDate(snapshot.generated_at),
     integrationVersion: snapshot.integration_version,
   };

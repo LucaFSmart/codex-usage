@@ -234,7 +234,7 @@ class CodexUsageCoordinator(DataUpdateCoordinator[CodexCoordinatorData]):
                 previous.last_attempt,
                 self._last_success,
                 retry_at,
-                error_code,
+                previous.error_code or error_code,
                 expected_interval_seconds=interval,
             )
             raise UpdateFailed("Waiting for the provider retry deadline")

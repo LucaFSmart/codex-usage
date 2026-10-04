@@ -1,9 +1,11 @@
 """Tests for entity availability and defaults."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 
 from custom_components.codex_usage.api import parse_usage
@@ -18,6 +20,7 @@ from custom_components.codex_usage.sensor import (
     _existing_additional_keys,
     _static_sensor_descriptions,
     _weekly_pace,
+    async_setup_entry,
 )
 
 
@@ -177,6 +180,83 @@ def test_existing_registry_window_entities_are_preserved() -> None:
     }
 
     assert "five_hour_usage" in keys
+
+
+@pytest.mark.parametrize("existing_five_hour", [False, True])
+def test_main_windows_discovered_after_setup_create_stable_entities_once(existing_five_hour):
+    added = []
+    listeners = []
+    existing = (
+        [SimpleNamespace(unique_id="identity_five_hour_usage", disabled_by="user")]
+        if existing_five_hour
+        else []
+    )
+    coordinator = SimpleNamespace(
+        data=SimpleNamespace(usage=parse_usage({})),
+        last_update_success=True,
+        async_add_listener=lambda listener: listeners.append(listener) or (lambda: None),
+    )
+    entry = SimpleNamespace(
+        runtime_data=coordinator,
+        unique_id="identity",
+        data={"account_id": "workspace"},
+        entry_id="entry",
+        title="Account",
+        async_on_unload=lambda callback: None,
+    )
+    with (
+        patch("custom_components.codex_usage.sensor.er.async_get"),
+        patch(
+            "custom_components.codex_usage.sensor.er.async_entries_for_config_entry",
+            return_value=existing,
+        ),
+    ):
+        asyncio.run(
+            async_setup_entry(SimpleNamespace(), entry, lambda entities: added.extend(entities))
+        )
+    initial = {entity.unique_id for entity in added}
+    assert ("identity_five_hour_usage" in initial) is existing_five_hour
+    assert "identity_weekly_usage" not in initial
+    coordinator.data.usage = parse_usage(
+        {
+            "rate_limit": {
+                "primary_window": {"used_percent": 10, "limit_window_seconds": 18_000},
+                "secondary_window": {"used_percent": 20, "limit_window_seconds": 604_800},
+            }
+        }
+    )
+    for listener in listeners:
+        listener()
+    weekly_usage = next(entity for entity in added if entity.unique_id == "identity_weekly_usage")
+    assert weekly_usage.native_value == 20
+    assert weekly_usage.available is True
+    count = len(added)
+    coordinator.data.usage = parse_usage({})
+    for listener in listeners:
+        listener()
+    assert weekly_usage.available is False
+    coordinator.data.usage = parse_usage(
+        {
+            "rate_limit": {
+                "secondary_window": {
+                    "used_percent": 25,
+                    "limit_window_seconds": 604_800,
+                }
+            }
+        }
+    )
+    for listener in listeners:
+        listener()
+    assert weekly_usage.native_value == 25
+    assert weekly_usage.available is True
+    assert len(added) == count
+    assert len({entity.unique_id for entity in added}) == count
+    assert (
+        next(
+            entity for entity in added if entity.unique_id == "identity_weekly_budget"
+        ).entity_registry_enabled_default
+        is False
+    )
 
 
 def test_existing_dynamic_limit_entities_are_recovered_from_unique_ids() -> None:

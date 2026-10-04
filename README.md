@@ -7,10 +7,10 @@
 [![GitHub Release](https://img.shields.io/github/v/release/LucaFSmart/codex-usage)](https://github.com/LucaFSmart/codex-usage/releases)
 [![License](https://img.shields.io/github/license/LucaFSmart/codex-usage)](LICENSE)
 
-Codex Usage is a read-only Home Assistant integration for reported Codex and other eligible agentic allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card. Depending on the plan, [Codex, ChatGPT Work, ChatGPT for Excel, ChatGPT for PowerPoint and Workspace Agents may draw from the same allowance and credit pool](https://help.openai.com/en/articles/11369540). A change cannot be attributed to a particular app, model, task or conversation.
+Codex Usage is a read-only Home Assistant integration for reported Codex and other eligible agentic allowances included with ChatGPT plans. It monitors reported usage windows, reset times, feature restrictions and optional account data, and includes an English/German dashboard card. [ChatGPT Work and Codex share usage](https://learn.chatgpt.com/docs/pricing); other eligible agentic features can share the allowance when their pricing takes effect. Eligibility depends on the plan and workspace. A change cannot be attributed to a particular app, model, task or conversation.
 
 > [!IMPORTANT]
-> This independent community project is not affiliated with or supported by OpenAI. It uses authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API and may change. OpenAI separately documents an experimental [Codex App Server RPC interface](https://learn.chatgpt.com/docs/app-server); this integration does not require or connect to that service.
+> This independent community project is not affiliated with or supported by OpenAI. It uses authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API and may change. OpenAI separately documents a [Codex App Server RPC interface](https://learn.chatgpt.com/docs/app-server) with stable and opt-in experimental methods; this integration does not require or connect to that service.
 
 ![Codex Usage card overview](docs/images/card-overview-en.png)
 
@@ -38,6 +38,8 @@ The integration never purchases credits, redeems resets, changes limits, sends p
 - Outbound HTTPS to `auth.openai.com` and `chatgpt.com`
 
 OpenAI Platform API keys and API billing are a separate product.
+
+Not every plan has a fixed five-hour window. OpenAI currently documents Pro plans without that limit and Enterprise/Edu flexible pricing without fixed rate limits. The integration follows reported windows rather than inferring them from the plan name. See [OpenAI pricing](https://learn.chatgpt.com/docs/pricing).
 
 ## Installation
 
@@ -105,12 +107,13 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
-The current maintenance release is **0.7.3**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.4. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
+The current maintenance release is **0.7.4**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.4. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [0.7 verification record](docs/verification-0.7.md)
+- [OpenAI documentation review, October 2026](docs/research/2026-10-04-openai-documentation-recheck.md)
 - [Changelog](CHANGELOG.md)
 
 Diagnostics are available from **Settings → Devices & services → Codex Usage** and omit credentials and backend identities. Report defects through the [issue tracker](https://github.com/LucaFSmart/codex-usage/issues).
