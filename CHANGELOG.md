@@ -12,7 +12,7 @@ All notable changes to this project are documented here.
 - Handle malformed quota error codes and oversized numeric values safely, and discover newly reported main-window sensors without requiring a reload.
 - Reject invalid response encoding safely and normalize relative reset times against one response observation so identical duplicate windows do not falsely conflict.
 - Update the frontend development dependencies, Ruff and pinned GitHub Actions; group coupled Vitest and CodeQL updates to avoid incompatible partial upgrades.
-- Include the final dependency refresh: Vitest/coverage 5.0.3, Vite 8.3.2 and Ruff 0.16.10, with rebuilt card and reproducible locks.
+- Include the final dependency refresh: ESLint 10.12.0, Vitest/coverage 5.0.3, Vite 8.3.2 and Ruff 0.16.10, with rebuilt card and reproducible locks.
 - Regenerate both Python test locks with the CI resolver so dependency updates retain reproducible hashes and annotations.
 - Recheck current OpenAI guidance, document plans without fixed usage windows and correct main-window availability documentation. Update setup/resource examples and release verification.
 - Mark the hash-locked Home Assistant CI environments as development-only dependencies without changing their pinned package sets.
