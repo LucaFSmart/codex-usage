@@ -127,8 +127,8 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
         with (
             patch(
                 "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
-                return_value=(usage, _credentials()),
-            ),
+                return_value=(parse_usage({"plan_type": "plus"}), _credentials()),
+            ) as usage_request,
             patch(
                 "custom_components.codex_usage.api.CodexApiClient.async_get_profile",
                 return_value=None,
@@ -147,6 +147,27 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             if entry.state is ConfigEntryState.NOT_LOADED:
                 assert await hass.config_entries.async_setup(entry.entry_id)
             await hass.async_block_till_done()
+
+            registry = entity_registry.async_get(hass)
+            initial_entities = entity_registry.async_entries_for_config_entry(
+                registry, entry.entry_id
+            )
+            assert not any(
+                item.unique_id.endswith(("_five_hour_usage", "_weekly_usage"))
+                for item in initial_entities
+            )
+            usage_request.return_value = (usage, _credentials())
+            await entry.runtime_data.async_refresh()
+            await hass.async_block_till_done()
+            first_count = len(
+                entity_registry.async_entries_for_config_entry(registry, entry.entry_id)
+            )
+            await entry.runtime_data.async_refresh()
+            await hass.async_block_till_done()
+            assert (
+                len(entity_registry.async_entries_for_config_entry(registry, entry.entry_id))
+                == first_count
+            )
 
         registry = entity_registry.async_get(hass)
         entities = entity_registry.async_entries_for_config_entry(registry, entry.entry_id)
@@ -184,6 +205,11 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
         assert _state_for("_total_threads") is None
         assert _state_for("_most_used_reasoning_effort") is None
 
+        weekly_usage = next(item for item in entities if item.unique_id.endswith("_weekly_usage"))
+        registry.async_update_entity(
+            weekly_usage.entity_id, disabled_by=entity_registry.RegistryEntryDisabler.USER
+        )
+
         previous_coordinator = entry.runtime_data
         with (
             patch(
@@ -210,6 +236,11 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             await hass.async_block_till_done()
         assert entry.runtime_data is not previous_coordinator
         assert entry.runtime_data.update_interval == timedelta(seconds=60)
+        assert (
+            registry.async_get(weekly_usage.entity_id).disabled_by
+            is entity_registry.RegistryEntryDisabler.USER
+        )
+        assert hass.states.get(weekly_usage.entity_id) is None
 
         with patch(
             "custom_components.codex_usage.api.CodexApiClient.async_get_usage",

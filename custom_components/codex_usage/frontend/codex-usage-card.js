@@ -1473,10 +1473,13 @@ var Q = class extends j {
 	config = structuredClone(U);
 	unsubscribe;
 	subscribedConnection;
-	loading = !1;
+	clientGeneration = 0;
+	subscribingGeneration;
+	loadingGeneration;
+	pendingRefresh = !1;
 	minuteTimer;
 	connectedCallback() {
-		super.connectedCallback(), this.startMinuteTimer();
+		super.connectedCallback(), this.startMinuteTimer(), this.hass && this.startClient();
 	}
 	static getStubConfig() {
 		return {};
@@ -1504,7 +1507,7 @@ var Q = class extends j {
 		});
 	}
 	disconnectedCallback() {
-		super.disconnectedCallback(), this.unsubscribe?.(), this.unsubscribe = void 0, this.subscribedConnection = void 0, this.stopMinuteTimer();
+		super.disconnectedCallback(), this.unsubscribe?.(), this.unsubscribe = void 0, this.subscribedConnection = void 0, this.clientGeneration += 1, this.pendingRefresh = !1, this.stopMinuteTimer();
 	}
 	startMinuteTimer() {
 		this.minuteTimer ||= setInterval(() => {
@@ -1515,31 +1518,46 @@ var Q = class extends j {
 		this.minuteTimer && clearInterval(this.minuteTimer), this.minuteTimer = void 0;
 	}
 	async startClient() {
-		if (!this.hass) return;
-		let e = this.subscribedConnection !== this.hass.connection || !this.snapshot;
+		if (!this.hass || !this.isConnected) return;
+		let e = this.subscribedConnection !== this.hass.connection || !this.snapshot && this.loadingGeneration !== this.clientGeneration && this.subscribingGeneration !== this.clientGeneration;
 		if (this.subscribedConnection !== this.hass.connection) {
 			this.unsubscribe?.(), this.unsubscribe = void 0;
 			let e = this.hass.connection;
 			this.subscribedConnection = e;
+			let t = ++this.clientGeneration;
+			this.subscribingGeneration = t, this.pendingRefresh = !1, this.snapshot = void 0, this.error = !1;
 			try {
-				let t = await e.subscribeEvents(() => void this.loadSnapshot(), jt);
-				this.subscribedConnection === e ? this.unsubscribe = t : t();
+				let n = await e.subscribeEvents(() => {
+					this.clientGeneration === t && this.isConnected && this.loadSnapshot();
+				}, jt);
+				if (this.clientGeneration !== t || !this.isConnected) {
+					n();
+					return;
+				}
+				this.unsubscribe = n;
 			} catch {
-				this.subscribedConnection === e && (this.error = !0, this.subscribedConnection = void 0);
+				if (this.clientGeneration === t && this.isConnected && (this.error = !0, this.subscribedConnection = void 0), this.clientGeneration !== t || !this.isConnected) return;
+			} finally {
+				this.subscribingGeneration === t && (this.subscribingGeneration = void 0);
 			}
 		}
 		e && await this.loadSnapshot();
 	}
 	async loadSnapshot() {
-		if (this.hass && !this.loading) {
-			this.loading = !0;
-			try {
-				this.snapshot = await et(this.hass), this.error = !1;
-			} catch {
-				this.error = !0;
-			} finally {
-				this.loading = !1;
-			}
+		if (!this.hass || !this.isConnected) return;
+		let e = this.clientGeneration, t = this.hass;
+		if (this.loadingGeneration === e) {
+			this.pendingRefresh = !0;
+			return;
+		}
+		this.loadingGeneration = e;
+		try {
+			let n = await et(t);
+			this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.snapshot = n, this.error = this.subscribedConnection !== t.connection);
+		} catch {
+			this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.error = !0);
+		} finally {
+			this.loadingGeneration === e && (this.loadingGeneration = void 0), this.clientGeneration === e && this.pendingRefresh && this.isConnected && (this.pendingRefresh = !1, this.loadSnapshot());
 		}
 	}
 	t(e, t) {

@@ -1,47 +1,37 @@
-# 0.7 verification record
+# Codex Usage 0.7.4 verification
 
-This file records the checks for the 0.7.3 candidate. It was updated from fresh command output on 2026-09-20 before publication. A passing local record is not by itself a GitHub release, tag, push or HACS publication; those remote results remain visible in GitHub.
+Reviewed on 2026-10-04 from fresh command output. The [0.7.3 record](verification-0.7.3.md) preserves the previous release evidence. Publication is gated on the final commit's remote checks, not this local record alone.
 
-## Runtime targets
+## Environments and gates
 
-| Target                                               | Purpose                                                   | Result                                                                          |
-| ---------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Home Assistant 2026.3.0                              | Declared minimum                                          | 292 repository tests passed; CI also runs the portable runtime/Blueprint matrix |
-| Home Assistant 2026.9.3                              | Current stable target                                     | 292 repository tests plus 3 real runtime tests passed                           |
-| Node.js 22.23.1 locally, Node.js 24 in CI / Chromium | Card unit, coverage, build and responsive visual behavior | Passed; details below                                                           |
+| Environment                                      | Role                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Python 3.14.6 / Home Assistant 2026.8.3, Windows | Local full Python suite and portable real-HA runtime harness           |
+| Home Assistant 2026.3.0, Linux                   | Exact declared minimum: full suite and runtime/Blueprint matrix in CI  |
+| Home Assistant 2026.9.4, Linux                   | Current HA target: full suite and runtime/Blueprint matrix in CI       |
+| Node.js 22.23.1 locally / Node.js 24 in CI       | Frontend lint, types, audit, unit/coverage, bundle and Chromium checks |
 
-The exact 2026.3.0 runtime job uses a portable native Home Assistant harness. No `pytest-homeassistant-custom-component` release pins exact 2026.3.0 without advancing Home Assistant, so the minimum lock deliberately omits that plugin. The 2026.9.3 Linux job installs `pytest-homeassistant-custom-component==0.13.366`; local Windows verification uses the portable harness plus `pytest-asyncio==1.4.0` because the plugin imports the Unix-only `fcntl` module. Its CI invocation enables pytest asyncio auto mode and function-scoped fixture loops as required by that upstream harness, including its native asynchronous autouse fixtures.
+Both Linux environments install their exact hash-locked test requirements. CI regenerates both locks with uv 0.12.5, Python 3.14.2 and `x86_64-manylinux_2_28`, seeding the pinned outputs, and requires byte-for-byte equality. The exact minimum omits the upstream pytest HA plugin because it does not pin Home Assistant 2026.3.0. The current lane uses pytest-homeassistant-custom-component 0.13.367 and the documented asyncio settings.
 
-## Required gates
+## Local evidence
 
-- Python formatting with Ruff 0.16.8, lint and complete test suites on both Home Assistant targets.
-- Byte-for-byte regeneration and hash-verified dry installation of the latest and minimum Python locks.
-- Real component setup, entity registration and unload on both targets.
-- Real Blueprint Script execution, restored helper state, hysteresis and restart reconciliation on both targets.
-- Metadata/version consistency, translation parity, privacy allowlist, authentication lifecycle, retry/cooldown and diagnostics tests.
-- Frontend Prettier, ESLint, TypeScript, audit, unit tests, coverage, committed bundle check and Playwright responsive/interaction suite.
-- HACS, hassfest and CodeQL remain publication gates in GitHub. Local equivalents are run where available.
+- Ruff 0.16.9 format check and lint passed.
+- Python: 305 repository tests plus 3 real runtime tests passed. Five dependency deprecation warnings remain in the local HA/aiohttp/backoff environment.
+- Runtime checks cover component setup, later main-window discovery, stable IDs, no duplicate entities, persisted disabled settings, options reload, failed usage availability, unload, Repairs and Recorder metadata. Authentication/config-flow fixtures cover refresh and reauthentication without live credentials.
+- Regression tests reproduce the selected-account status/freshness defect, card detach/reconnect and old-response races, queued update delivery, quota-cooldown cause changes, malformed error codes, oversized numeric inputs, invalid encoding and false duplicate-window conflicts.
+- Frontend: formatting, ESLint and TypeScript passed; 151 unit tests passed. Coverage for the configured parser/config/view-model scope: 96.99% statements, 93.78% branches, 100% functions and lines.
+- npm audit reported zero vulnerabilities. Vite 8.3.1 built the committed card: 93.06 kB, 24.52 kB gzip.
+- Chromium: all 20 responsive/state/interaction tests passed, including exhausted/healthy account switching in light and dark modes at widths from 320 to 1,200 pixels.
+- Manifest, Python card/cache/User-Agent version, frontend package/lock and harness metadata agree on 0.7.4. Manual resource examples use `?v=0.7.4`.
+- All repository Markdown relative targets exist; external URL checks found no hard HTTP/network failure. Authentication/bot-protection responses do not prove page contents. Current OpenAI pages were opened and reviewed separately in the [October research record](research/2026-10-04-openai-documentation-recheck.md).
+- The existing HA installation was checked read-only via MCP and Chrome: HA 2026.9.4, valid configuration, no active Repairs, Codex entry loaded, live card visible, no Codex system-log errors. It still runs 0.7.3; this is not a deployment test of 0.7.4.
 
-## Final evidence
+## Remote publication evidence
 
-- Ruff 0.16.8 format check and lint: 59 Python files passed.
-- Python: 292 tests passed on Home Assistant 2026.3.0. On Home Assistant 2026.9.3, those 292 tests plus 3 real runtime tests passed. The runtime cases perform real config-entry setup, entity registration, options-flow reload, core-failure availability, unload, Repairs registry create/delete and Recorder metadata creation/validation. Blueprint cases execute the Script and helpers, including hysteresis and restart reconciliation.
-- Frontend on local Node.js 22.23.1 with Node.js 24 configured in CI: Prettier, ESLint and TypeScript passed; 138 Vitest tests passed.
-- Frontend coverage: 97.03% statements, 94.44% branches, 100% functions and 100% lines for the configured parser/config/view-model scope.
-- Dependency audit: zero vulnerabilities at npm's high severity threshold.
-- Vite 8.3.0 production build: passed; bundle size 91.97 kB (24.20 kB gzip), and the committed bundle reproduced without a diff.
-- Playwright Chromium: 18 responsive, semantic-state and interaction tests passed from 320 to 1,200 pixels in light and dark modes.
-- Visual review: real card harness rendered and inspected as a wide English overview, wide English details and narrow German layout. Synthetic labels contain no provider account identifiers or credentials.
-- Markdown formatting: the seven newly included research/plan documents pass Prettier 3.9.8.
-- Markdown link check: all 29 tracked/staged Markdown files were scanned; 52 repository-relative targets were found with no missing files. All 77 external URLs were reachable or returned an expected authentication/bot-protection response; none returned a hard HTTP or network failure.
-- Metadata: manifest, Python card version, frontend package/lock and visual harness all report 0.7.3.
-- Supply chain: all 15 workflow actions use full commit SHAs; npm reported zero vulnerabilities, 160 verified registry signatures and 66 verified attestations.
-- Independent staged-diff review: no remaining critical, important or minor findings.
+The final PR and merged commit must pass Validate and CodeQL: HACS, hassfest, full latest/minimum Python suites, both real runtime/Blueprint targets, lock reproduction, frontend checks and both CodeQL languages. Results are attached to [PR #23](https://github.com/LucaFSmart/codex-usage/pull/23) and [GitHub Actions](https://github.com/LucaFSmart/codex-usage/actions). The release tag must match the manifest exactly and point to the verified merged commit.
 
-Both Python lock files regenerated byte-for-byte under their documented Linux/Python 3.14 inputs, and dry hash-verified resolution succeeded for Python 3.14.6 on `x86_64-manylinux_2_28`.
+## Dependency and provider limits
 
-HACS validation, hassfest and CodeQL are configured GitHub publication gates. Their final result is recorded in GitHub Actions for the release commit. No live OpenAI credentials were used.
+GitHub reported 92 open Python dependency alerts during this audit: 76 in the minimum compatibility snapshot and 16 in the current-runtime test lock. The latter concern PyJWT/cryptography versions pinned exactly by Home Assistant 2026.9.4 (`2.13.0` / `48.0.1`), confirmed against its published package metadata. Forcing newer versions would stop testing the declared HA environment. These environments are development-only; the integration's manifest has no additional Python requirements. Alerts remain visible and are not dismissed as false positives. Keep deployed Home Assistant current; this report does not certify its dependencies free of vulnerabilities.
 
-## Known limits
-
-The integration consumes authenticated ChatGPT WHAM HTTP endpoints that are not documented as a stable third-party API. OpenAI separately documents a Codex App Server JSON-RPC surface for rate limits, earned resets and token-usage summaries, but its command and WebSocket transport remain experimental and are not part of this integration. Sanitized fixtures and graceful unknown/unsupported behavior reduce schema-change impact but cannot guarantee future compatibility. Live production credentials, purchases, reset redemption and external notification delivery are outside this verification.
+The authenticated WHAM HTTP source is not documented as a stable third-party API. Sanitized fixtures and defensive parsing cannot guarantee future provider compatibility or every plan's live behavior. App Server remains a separate interface with stable and opt-in experimental methods. No live purchase, reset redemption, new authorization or notification delivery was performed.

@@ -405,7 +405,7 @@ describe("CodexUsageCard", () => {
     expect(source).toContain("Out of date");
     expect(source).not.toContain("Current");
   });
-  it("owns one local minute timer across disconnect and reconnect without timer networking", async () => {
+  it("owns one local minute timer and restores networking only on reconnect", async () => {
     const timer = vi.spyOn(globalThis, "setInterval");
     const hass = makeFakeHass();
     const callWS = vi.spyOn(hass, "callWS");
@@ -415,14 +415,215 @@ describe("CodexUsageCard", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(timer).toHaveBeenCalledOnce();
     expect(callWS).toHaveBeenCalledOnce();
+    (timer.mock.calls[0]![0] as () => void)();
+    expect(callWS).toHaveBeenCalledOnce();
 
     card.remove();
     document.body.append(card);
     await card.updateComplete;
     expect(timer).toHaveBeenCalledTimes(2);
-    expect(callWS).toHaveBeenCalledOnce();
+    expect(callWS).toHaveBeenCalledTimes(2);
     card.remove();
     timer.mockRestore();
+  });
+  it("resubscribes after detach and reattach with the same hass", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    const hass = makeFakeHass();
+    let update!: () => void;
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(async (callback: () => void) => {
+      update = callback;
+      return unsubscribe;
+    });
+    hass.connection.subscribeEvents = subscribe;
+    let snapshot = SNAPSHOT;
+    hass.callWS = async <T>() => structuredClone(snapshot) as T;
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(subscribe).toHaveBeenCalledTimes(1);
+
+    card.remove();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(subscribe).toHaveBeenCalledTimes(2);
+    snapshot = {
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, name: "After reconnect" }],
+    };
+    update();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("After reconnect");
+  });
+
+  it("loads once when hass is supplied before mounting while subscription setup is pending", async () => {
+    const card = document.createElement("codex-usage-card") as CodexUsageCard;
+    const hass = makeFakeHass();
+    let resolveSubscription!: (unsubscribe: () => void) => void;
+    hass.connection.subscribeEvents = () =>
+      new Promise((resolve) => {
+        resolveSubscription = resolve;
+      });
+    const fetch = vi.spyOn(hass, "callWS");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = hass;
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    resolveSubscription(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("disposes a subscription resolving after detach even when the same connection is reattached", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    const hass = makeFakeHass();
+    let resolveOld!: (unsubscribe: () => void) => void;
+    let oldUpdate!: () => void;
+    const oldUnsubscribe = vi.fn();
+    const newUnsubscribe = vi.fn();
+    let subscriptions = 0;
+    hass.connection.subscribeEvents = async (callback) => {
+      if (++subscriptions === 1) {
+        oldUpdate = callback as () => void;
+        return new Promise((resolve) => {
+          resolveOld = resolve;
+        });
+      }
+      return newUnsubscribe;
+    };
+    const fetch = vi.spyOn(hass, "callWS");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    card.remove();
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    resolveOld(oldUnsubscribe);
+    oldUpdate();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+    expect(newUnsubscribe).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    card.remove();
+    expect(newUnsubscribe).toHaveBeenCalledTimes(1);
+    oldUpdate();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["resolve", "reject"] as const)(
+    "ignores an old connection fetch that later %ss after a new connection loads",
+    async (outcome) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      const oldHass = makeFakeHass();
+      let resolveOld!: (snapshot: unknown) => void;
+      let rejectOld!: (error: Error) => void;
+      oldHass.callWS = <T>() =>
+        new Promise<T>((resolve, reject) => {
+          resolveOld = resolve as (snapshot: unknown) => void;
+          rejectOld = reject;
+        });
+      const newHass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [{ ...SNAPSHOT.accounts[0]!, name: "New connection" }],
+      });
+      const fetchNew = vi.spyOn(newHass, "callWS");
+      card.setConfig({ type: "custom:codex-usage-card", compact: false });
+      card.hass = oldHass;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      card.hass = newHass;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (outcome === "resolve") resolveOld(SNAPSHOT);
+      else rejectOld(new Error("Old connection closed"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+      expect(fetchNew).toHaveBeenCalledTimes(1);
+      expect(card.shadowRoot?.textContent).toContain("New connection");
+      expect(card.shadowRoot?.textContent).not.toContain("Beta");
+      expect(card.shadowRoot?.querySelector(".freshness")).toBeNull();
+    },
+  );
+
+  it("hides cached accounts while a replacement connection snapshot is pending", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = makeFakeHass();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.textContent).toContain("Beta");
+    const nextHass = makeFakeHass();
+    let resolveNext!: (snapshot: unknown) => void;
+    nextHass.callWS = <T>() =>
+      new Promise<T>((resolve) => {
+        resolveNext = resolve as (snapshot: unknown) => void;
+      });
+    card.hass = nextHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).not.toContain("Beta");
+    expect(card.shadowRoot?.textContent).not.toContain("Alpha");
+    resolveNext({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, name: "Replacement account" }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.textContent).toContain("Replacement account");
+  });
+
+  it("keeps subscription failures visible until event delivery is restored", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    const hass = makeFakeHass();
+    let failed = true;
+    hass.connection.subscribeEvents = async () => {
+      if (failed) throw new Error("Subscription failed");
+      return () => undefined;
+    };
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card.shadowRoot?.textContent).toContain("Beta");
+    expect(card.shadowRoot?.querySelector(".freshness")).not.toBeNull();
+    failed = false;
+    card.hass = { ...hass };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".freshness")).toBeNull();
+  });
+
+  it("queues one refresh when multiple updates arrive during an inflight fetch", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    const hass = makeFakeHass();
+    let update!: () => void;
+    hass.connection.subscribeEvents = async (callback) => {
+      update = callback as () => void;
+      return () => undefined;
+    };
+    let resolveInitial!: (snapshot: unknown) => void;
+    let calls = 0;
+    hass.callWS = <T>() => {
+      calls++;
+      return calls === 1
+        ? new Promise<T>((resolve) => {
+            resolveInitial = resolve as (snapshot: unknown) => void;
+          })
+        : Promise.resolve({
+            ...SNAPSHOT,
+            accounts: [{ ...SNAPSHOT.accounts[0]!, name: "Updated snapshot" }],
+          } as T);
+    };
+    card.setConfig({ type: "custom:codex-usage-card", compact: false });
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    update();
+    update();
+    resolveInitial(SNAPSHOT);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(calls).toBe(2);
+    expect(card.shadowRoot?.textContent).toContain("Updated snapshot");
   });
   it("exposes Home Assistant card APIs and section grid defaults", async () => {
     expect(CodexUsageCard.getStubConfig()).toEqual({});

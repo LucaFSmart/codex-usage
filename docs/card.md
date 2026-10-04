@@ -31,19 +31,19 @@ sections:
 
 Card visibility affects presentation. Enabling an entity affects Home Assistant's entity registry. Disabling an optional source affects HTTP requests and its payload. These are three different controls. More Info is available only for an enabled entity the viewer may access.
 
-| Section key | Default | Contents |
-| --- | --- | --- |
-| `limits` | Show | Standard main usage windows |
-| `additional_limits` | Automatic | Named feature windows |
-| `resets` | Show | Relative and absolute window reset times |
-| `pace` | Show | Elapsed-window comparison |
-| `account` | Show | Plan, workspace and shortened entry selector |
-| `credits` | Automatic | Credit balance and saved resets |
-| `spending` | Automatic | Account/workspace spend control |
-| `profile` | Automatic | Aggregate profile statistics |
-| `budget` | Automatic | Valid observed usage budgets |
-| `sources` | Hide | Polling lifecycle and freshness |
-| `footer` | Show | Last update and integration version |
+| Section key         | Default   | Contents                                     |
+| ------------------- | --------- | -------------------------------------------- |
+| `limits`            | Show      | Standard main usage windows                  |
+| `additional_limits` | Automatic | Named feature windows                        |
+| `resets`            | Show      | Relative and absolute window reset times     |
+| `pace`              | Show      | Elapsed-window comparison                    |
+| `account`           | Show      | Plan, workspace and shortened entry selector |
+| `credits`           | Automatic | Credit balance and saved resets              |
+| `spending`          | Automatic | Account/workspace spend control              |
+| `profile`           | Automatic | Aggregate profile statistics                 |
+| `budget`            | Automatic | Valid observed usage budgets                 |
+| `sources`           | Hide      | Polling lifecycle and freshness              |
+| `footer`            | Show      | Last update and integration version          |
 
 The visual editor exposes available per-value switches. YAML uses the normalized limit IDs or metric keys written by the editor; keep those IDs opaque rather than constructing them from plan names.
 

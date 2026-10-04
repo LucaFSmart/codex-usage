@@ -79,12 +79,16 @@ export class CodexUsageCard extends LitElement {
   private config: CodexUsageCardConfig = structuredClone(DEFAULT_CONFIG);
   private unsubscribe: (() => void) | undefined;
   private subscribedConnection: HomeAssistant["connection"] | undefined;
-  private loading = false;
+  private clientGeneration = 0;
+  private subscribingGeneration: number | undefined;
+  private loadingGeneration: number | undefined;
+  private pendingRefresh = false;
   private minuteTimer: ReturnType<typeof setInterval> | undefined;
 
   public override connectedCallback(): void {
     super.connectedCallback();
     this.startMinuteTimer();
+    if (this.hass) void this.startClient();
   }
 
   public static getStubConfig(): Record<string, never> {
@@ -124,6 +128,8 @@ export class CodexUsageCard extends LitElement {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.subscribedConnection = undefined;
+    this.clientGeneration += 1;
+    this.pendingRefresh = false;
     this.stopMinuteTimer();
   }
 
@@ -140,43 +146,77 @@ export class CodexUsageCard extends LitElement {
   }
 
   private async startClient(): Promise<void> {
-    if (!this.hass) return;
-    const needsInitialLoad = this.subscribedConnection !== this.hass.connection || !this.snapshot;
+    if (!this.hass || !this.isConnected) return;
+    const needsInitialLoad =
+      this.subscribedConnection !== this.hass.connection ||
+      (!this.snapshot &&
+        this.loadingGeneration !== this.clientGeneration &&
+        this.subscribingGeneration !== this.clientGeneration);
     if (this.subscribedConnection !== this.hass.connection) {
       this.unsubscribe?.();
       this.unsubscribe = undefined;
       const connection = this.hass.connection;
       this.subscribedConnection = connection;
+      const generation = ++this.clientGeneration;
+      this.subscribingGeneration = generation;
+      this.pendingRefresh = false;
+      this.snapshot = undefined;
+      this.error = false;
       try {
-        const unsubscribe = await connection.subscribeEvents(
-          () => void this.loadSnapshot(),
-          CARD_DATA_EVENT,
-        );
-        if (this.subscribedConnection !== connection) {
+        const unsubscribe = await connection.subscribeEvents(() => {
+          if (this.clientGeneration === generation && this.isConnected) void this.loadSnapshot();
+        }, CARD_DATA_EVENT);
+        if (this.clientGeneration !== generation || !this.isConnected) {
           unsubscribe();
+          return;
         } else {
           this.unsubscribe = unsubscribe;
         }
       } catch {
-        if (this.subscribedConnection === connection) {
+        if (this.clientGeneration === generation && this.isConnected) {
           this.error = true;
           this.subscribedConnection = undefined;
         }
+        if (this.clientGeneration !== generation || !this.isConnected) return;
+      } finally {
+        if (this.subscribingGeneration === generation) this.subscribingGeneration = undefined;
       }
     }
     if (needsInitialLoad) await this.loadSnapshot();
   }
 
   private async loadSnapshot(): Promise<void> {
-    if (!this.hass || this.loading) return;
-    this.loading = true;
+    if (!this.hass || !this.isConnected) return;
+    const generation = this.clientGeneration;
+    const hass = this.hass;
+    if (this.loadingGeneration === generation) {
+      this.pendingRefresh = true;
+      return;
+    }
+    this.loadingGeneration = generation;
     try {
-      this.snapshot = await fetchCardSnapshot(this.hass);
-      this.error = false;
+      const snapshot = await fetchCardSnapshot(hass);
+      if (
+        this.clientGeneration === generation &&
+        this.hass?.connection === hass.connection &&
+        this.isConnected
+      ) {
+        this.snapshot = snapshot;
+        this.error = this.subscribedConnection !== hass.connection;
+      }
     } catch {
-      this.error = true;
+      if (
+        this.clientGeneration === generation &&
+        this.hass?.connection === hass.connection &&
+        this.isConnected
+      )
+        this.error = true;
     } finally {
-      this.loading = false;
+      if (this.loadingGeneration === generation) this.loadingGeneration = undefined;
+      if (this.clientGeneration === generation && this.pendingRefresh && this.isConnected) {
+        this.pendingRefresh = false;
+        void this.loadSnapshot();
+      }
     }
   }
 

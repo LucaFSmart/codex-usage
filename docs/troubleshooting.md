@@ -2,7 +2,7 @@
 
 ## Card missing or still showing old behavior
 
-Confirm the integration loaded successfully, then reload the browser and check dashboard resources. The 0.7 bundle URL is `/codex_usage/frontend/codex-usage-card.js?v=0.7.3`. Avoid duplicate resource entries. In YAML-managed dashboards add the module manually. A Repair appears when automatic resource registration actually fails in storage mode; it clears after successful registration or removal of the last loaded entry.
+Confirm the integration loaded successfully, then reload the browser and check dashboard resources. The 0.7 bundle URL is `/codex_usage/frontend/codex-usage-card.js?v=0.7.4`. Avoid duplicate resource entries. In YAML-managed dashboards add the module manually. A Repair appears when automatic resource registration actually fails in storage mode; it clears after successful registration or removal of the last loaded entry.
 
 ## Unknown values or missing optional sections
 
@@ -14,7 +14,11 @@ Profile/reset details can be disabled in integration options. Some accounts do n
 
 Check network access and any HA reauthentication prompt. Usage failures retain last-success timestamps and last-known card values with a connection indication. Derived budgets are suppressed. Optional failures do not make healthy main usage unavailable; retained profile data is marked historical.
 
-HTTP 429 pauses reads for that entry, including manual refresh. HTTP 503 can delay the affected endpoint. Retry-After deadlines are honored even if longer than the selected interval. Repeated refresh clicks do not bypass the provider's cooldown. Ordinary optional errors normally retry after 15 minutes; successful/unsupported optional reads are checked hourly.
+HTTP 429 pauses the affected source, including manual refresh. HTTP 503 can also delay the affected endpoint. Retry-After deadlines are honored even if longer than the selected interval. Repeated refresh clicks do not bypass the provider's cooldown. Ordinary optional errors normally retry after 15 minutes; successful/unsupported optional reads are checked hourly.
+
+A core usage failure pauses reads for that entry. An optional profile/reset-details failure only pauses that source. `quota_exceeded` means the provider identified an exhausted quota or spend/credit control; `rate_limited` means an ordinary retryable limit. Waiting for the next permitted request does not change the reported cause.
+
+Some plans have no fixed five-hour window. Missing windows are not zero usage or proof of exhausted allowance. Existing main-window entities become unavailable when their window disappears; card placeholders remain neutral.
 
 ## Reset count and expiry differ
 

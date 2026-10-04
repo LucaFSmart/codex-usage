@@ -82,7 +82,10 @@ async def _is_quota_exceeded(response: aiohttp.ClientResponse) -> bool:
     error = payload.get("error")
     if not isinstance(error, dict):
         return False
-    return error.get("code") in _QUOTA_ERROR_CODES or error.get("type") == "insufficient_quota"
+    code = error.get("code")
+    return (isinstance(code, str) and code in _QUOTA_ERROR_CODES) or error.get(
+        "type"
+    ) == "insufficient_quota"
 
 
 async def _check_retry(response: aiohttp.ClientResponse) -> None:
@@ -425,7 +428,7 @@ def _decimal(value: Any) -> Decimal | None:
 def _float(value: Any) -> float | None:
     try:
         result = float(value) if value is not None else None
-    except TypeError, ValueError:
+    except TypeError, ValueError, OverflowError:
         return None
     return result if result is None or math.isfinite(result) else None
 
@@ -479,7 +482,7 @@ def _relative_seconds(value: Any) -> float | None:
     return result if result is not None and result >= 0 else None
 
 
-def _reset_time(payload: dict[str, Any]) -> datetime | None:
+def _reset_time(payload: dict[str, Any], *, observed_at: datetime | None = None) -> datetime | None:
     """Return the reset time, preferring the absolute backend timestamp.
 
     Responses may supply `reset_at`, `reset_after_seconds`, both, or neither.
@@ -493,12 +496,14 @@ def _reset_time(payload: dict[str, Any]) -> datetime | None:
     if offset is None:
         return None
     try:
-        return datetime.now(UTC) + timedelta(seconds=offset)
+        return (observed_at if observed_at is not None else datetime.now(UTC)) + timedelta(
+            seconds=offset
+        )
     except OverflowError:
         return None
 
 
-def _window(payload: Any) -> RateLimitWindow | None:
+def _window(payload: Any, *, observed_at: datetime) -> RateLimitWindow | None:
     if not isinstance(payload, dict) or payload.get("used_percent") is None:
         return None
     seconds = payload.get("limit_window_seconds")
@@ -512,7 +517,7 @@ def _window(payload: Any) -> RateLimitWindow | None:
     return RateLimitWindow(
         used_percent=used_percent,
         window_minutes=minutes,
-        resets_at=_reset_time(payload),
+        resets_at=_reset_time(payload, observed_at=observed_at),
     )
 
 
@@ -528,6 +533,7 @@ def _rate_limit(
     name: str,
     payload: Any,
     *,
+    observed_at: datetime,
     reached_reason: str | None = None,
     normal_model_slug: str | None = None,
 ) -> RateLimit:
@@ -545,19 +551,21 @@ def _rate_limit(
         name=name,
         allowed=allowed,
         limit_reached=True if allowed is False or reached_by_type else reported_reached,
-        primary=_window(details.get("primary_window")),
-        secondary=_window(details.get("secondary_window")),
+        primary=_window(details.get("primary_window"), observed_at=observed_at),
+        secondary=_window(details.get("secondary_window"), observed_at=observed_at),
         normal_model_slug=normal_model_slug,
     )
 
 
 def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     """Normalize the Codex usage response."""
+    observed_at = datetime.now(UTC)
     main_reached_reason = _reported_reached_reason(payload.get("rate_limit_reached_type"))
     main = _rate_limit(
         "codex",
         "Codex",
         payload.get("rate_limit"),
+        observed_at=observed_at,
         reached_reason=main_reached_reason,
     )
     additional: list[RateLimit] = []
@@ -604,6 +612,7 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
                 limit_id,
                 name,
                 item.get("rate_limit"),
+                observed_at=observed_at,
                 normal_model_slug=_display_text(item.get("normal_model_slug"), max_length=80),
             )
         )
@@ -614,7 +623,9 @@ def parse_usage(payload: dict[str, Any]) -> CodexUsageData:
     code_review_payload = payload.get("code_review_rate_limit")
     if isinstance(code_review_payload, dict):
         details = code_review_payload.get("rate_limit", code_review_payload)
-        parsed_additional.append(_rate_limit("code_review", "Code review", details))
+        parsed_additional.append(
+            _rate_limit("code_review", "Code review", details, observed_at=observed_at)
+        )
 
     duplicates = 0
     conflicts = 0
@@ -1115,7 +1126,7 @@ class CodexApiClient:
                 await _check_retry(response)
                 try:
                     payload = await response.json(content_type=None)
-                except aiohttp.ContentTypeError, json.JSONDecodeError:
+                except aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError:
                     payload = None
                 return status, payload
         except (aiohttp.ClientError, TimeoutError) as err:
