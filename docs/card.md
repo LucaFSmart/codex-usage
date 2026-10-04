@@ -51,6 +51,8 @@ The visual editor exposes available per-value switches. YAML uses the normalized
 
 `account_mode` supports `auto`, `single`, and `all`. Use the editor for `selected_entry_id` and `included_entry_ids`; these are Home Assistant entry IDs. `allow_account_switching` controls switching. Existing saved values and Home Assistant `view_layout`, `layout_options`, `grid_options` and `visibility` are retained.
 
+Card color, status, Luna Reserve availability and the freshness warning always describe the currently selected account. Switching accounts updates these indicators along with the usage values. Each account button retains its own status dot. Without a saved selection, multi-account cards initially select the most constrained account.
+
 Color thresholds describe percentage **used**: the defaults are warning 75 and critical 90. Configure them with `thresholds.warning` and `thresholds.critical`. Semantic colors, `appearance.card_radius`, `appearance.spacing`, `stale_after_minutes`, and existing HA themes remain supported. The outer element is `ha-card` for card-mod. There is no free-form JavaScript configuration.
 
 ## Interpreting the values

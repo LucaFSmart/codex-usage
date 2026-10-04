@@ -27,6 +27,65 @@ afterEach(() => {
 });
 
 describe("CodexUsageCard", () => {
+  it.each(["auto", "all"] as const)(
+    "updates color, status and freshness when switching accounts in %s mode",
+    async (mode) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({
+        type: "custom:codex-usage-card",
+        account_mode: mode,
+        colors: { ok: "#126634", blocked: "#aa1122" },
+      });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        accounts: [
+          SNAPSHOT.accounts[0]!,
+          {
+            ...SNAPSHOT.accounts[1]!,
+            blocker: "usage_limit",
+            updated_at: "2026-07-15T09:00:00Z",
+            limits: [
+              {
+                ...SNAPSHOT.accounts[1]!.limits[0]!,
+                used_percent: 100,
+                remaining_percent: 0,
+                reached: true,
+              },
+            ],
+          },
+        ],
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector("ha-card")?.classList.contains("blocked")).toBe(true);
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain("Limit reached");
+      expect(card.shadowRoot?.querySelector(".freshness")).not.toBeNull();
+
+      card.shadowRoot?.querySelector<HTMLButtonElement>('button[data-entry-id="entry-a"]')?.click();
+      await card.updateComplete;
+
+      const surface = card.shadowRoot?.querySelector("ha-card");
+      expect(surface?.classList.contains("ok")).toBe(true);
+      expect(surface?.getAttribute("style")).toContain("--state-color:#126634");
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain("Healthy");
+      expect(card.shadowRoot?.querySelector(".freshness")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".callout")?.textContent).not.toContain(
+        "limit reached",
+      );
+      expect(
+        card.shadowRoot?.querySelector('[data-entry-id="entry-b"] i')?.getAttribute("style"),
+      ).toContain("#aa1122");
+
+      card.shadowRoot?.querySelector<HTMLButtonElement>('button[data-entry-id="entry-b"]')?.click();
+      await card.updateComplete;
+      expect(surface?.classList.contains("blocked")).toBe(true);
+      expect(surface?.getAttribute("style")).toContain("--state-color:#aa1122");
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain("Limit reached");
+      expect(card.shadowRoot?.querySelector(".freshness")).not.toBeNull();
+    },
+  );
+
   it("retains standard main slots as neutral rows when a snapshot omits them", async () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     card.setConfig({ type: "custom:codex-usage-card", account_mode: "single" });
@@ -749,7 +808,7 @@ describe("CodexUsageCard", () => {
     },
   );
 
-  it("keeps an overall blocked status when the selected account has Luna Reserve", async () => {
+  it("shows selected account Luna Reserve even when another account is blocked", async () => {
     const reserveAccount = {
       ...SNAPSHOT.accounts[0]!,
       blocker: "usage_limit" as const,
@@ -783,9 +842,9 @@ describe("CodexUsageCard", () => {
     await card.updateComplete;
 
     const status = card.shadowRoot?.querySelector(".status")?.textContent;
-    expect(status).toContain("Overall");
-    expect(status).toContain("Limit reached");
-    expect(status).not.toContain("Luna Reserve");
+    expect(status).toContain("Luna Reserve available");
+    expect(status).not.toContain("Limit reached");
+    expect(card.shadowRoot?.querySelector("ha-card")?.classList.contains("critical")).toBe(true);
   });
 
   it("collapses details by default and expands only when compact is explicitly false", async () => {
@@ -1027,14 +1086,14 @@ describe("CodexUsageCard", () => {
     expect(labels).toEqual(["Credits", "Spending", "Profile", "Account"]);
   });
 
-  it("labels a multi-account aggregate status unambiguously", async () => {
+  it("labels the initially selected account status without an aggregate prefix", async () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     card.setConfig({ type: "custom:codex-usage-card", stale_after_minutes: 1440 });
     card.hass = makeFakeHass();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await card.updateComplete;
 
-    expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain("Overall");
+    expect(card.shadowRoot?.querySelector(".status")?.textContent).not.toContain("Overall");
     expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain(
       "Critically low usage remaining",
     );

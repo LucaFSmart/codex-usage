@@ -52,6 +52,37 @@ test("account chip interaction updates the selected account", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+for (const theme of ["light", "dark"]) {
+  test(`account switching isolates blocked status and color in ${theme} mode`, async ({ page }) => {
+    const errors = captureErrors(page);
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.goto(`/visual/?theme=${theme}&state=blocked&accounts=2&mixed=1`);
+    const card = page.locator("codex-usage-card");
+    const surface = card.locator("ha-card");
+
+    await expect(surface).toHaveClass("blocked");
+    await expect(card.locator(".status")).toHaveText("Limit reached");
+    const blockedColor = await surface.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue("--state-color"),
+    );
+
+    await card.locator('button[data-entry-id="entry-1"]').click();
+    await expect(card.locator("header p")).toContainText("Studio");
+    await expect(surface).toHaveClass("ok");
+    await expect(card.locator(".status")).toHaveText("Healthy");
+    await expect(card.locator('[data-limit-id="codex:primary:five_hour"]')).toContainText("65%");
+    const healthyColor = await surface.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue("--state-color"),
+    );
+    expect(healthyColor).not.toBe(blockedColor);
+
+    await card.locator('button[data-entry-id="entry-0"]').click();
+    await expect(surface).toHaveClass("blocked");
+    await expect(card.locator(".status")).toHaveText("Limit reached");
+    expect(errors).toEqual([]);
+  });
+}
+
 for (const mode of ["compact", "expanded"]) {
   test(`${mode} mode exposes the intended density`, async ({ page }) => {
     const errors = captureErrors(page);

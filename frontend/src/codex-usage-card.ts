@@ -863,12 +863,7 @@ export class CodexUsageCard extends LitElement {
             <h2>${this.config.title}</h2>
             ${subtitle ? html`<p>${subtitle}</p>` : nothing}
           </div>
-          <span class="status"
-            >${multipleAccounts ? `${this.t("overall")} · ` : ""}${this.statusLabel(
-              severity,
-              multipleAccounts ? null : account,
-            )}</span
-          >
+          <span class="status">${this.statusLabel(severity, account)}</span>
         </header>
         ${
           stale

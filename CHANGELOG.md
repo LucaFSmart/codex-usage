@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- Fix multi-account cards retaining another account's limit-reached color, status or freshness warning after switching accounts. Luna Reserve availability now also follows the selected account.
+- Update the frontend development dependencies, Ruff and pinned GitHub Actions; group coupled Vitest and CodeQL updates to avoid incompatible partial upgrades.
+- Regenerate both Python test locks with the CI resolver so dependency updates retain reproducible hashes and annotations.
+
 - Mark the hash-locked Home Assistant CI environments as development-only dependencies without changing their pinned package sets.
 - Update the development-only `brace-expansion` dependency to 5.0.12 to resolve high-severity denial-of-service advisories (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p) that fail the frontend `npm audit` gate.
 - Validate the current-runtime lane against Home Assistant 2026.9.4 with pytest-homeassistant-custom-component 0.13.367.

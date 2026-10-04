@@ -3,5 +3,5 @@ homeassistant==2026.9.4
 # The Home Assistant pytest harness pins this exact pytest version.
 pytest==9.0.3
 pytest-homeassistant-custom-component==0.13.367
-ruff==0.16.8
+ruff==0.16.9
 uv==0.12.5
