@@ -8,6 +8,7 @@ All notable changes to this project are documented here.
 
 - Refresh open dashboard snapshots immediately when an account finishes setup or is removed, including removal of the last account.
 - Honor device-login confirmation, the provider polling interval and the documented 15-minute code lifetime. Reject malformed device/authorization fields and token expiry values safely, with complete English/German abort messages.
+- Reject overflowing reset-credit timestamp conversions safely and retain HTTP 429 retry deadlines when best-effort quota-body decoding is truncated or times out.
 - Improve card text contrast, accessible quota/spending meter names, account selection and detail disclosure states, keyboard operation and touch targets. Adapt to the card's own width in desktop Sections layouts and use full-section defaults for newly added cards.
 - Distinguish five-hour and weekly controls in the editor, show every account affected by a shared window switch, expose per-window budget switches and preserve customized thresholds at slider boundaries.
 - Add the warning Blueprint's canonical source URL so Home Assistant can re-import updates.

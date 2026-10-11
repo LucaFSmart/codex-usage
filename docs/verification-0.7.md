@@ -30,6 +30,8 @@ Both Python locks reproduce byte-for-byte with uv 0.12.23 and the documented Lin
 
 Publication requires Validate and both CodeQL languages on the final immutable commit: HACS, hassfest, current/minimum Python suites, both real runtime/Blueprint targets, Python lock reproduction, current Python audit, frontend format/lint/types/audit/unit/coverage/bundle and all Chromium checks. Remote results are recorded after the run completes.
 
+The implementation commit `8596e87215d0a8f83b9cb3430534f8e023376173` passed the complete [Validate run](https://github.com/LucaFSmart/codex-usage/actions/runs/38184910639) and both languages in [CodeQL](https://github.com/LucaFSmart/codex-usage/actions/runs/38184910769). This includes real Linux runtime/Blueprint execution on Home Assistant 2026.3.0 and 2026.10.1, byte-for-byte lock reproduction, the strict current Python audit and all frontend gates. The corresponding push runs also passed. [PR #29](https://github.com/LucaFSmart/codex-usage/pull/29) contains the reviewed update; any subsequent commit still requires its own green required checks before merge/publication.
+
 ## Retained constraints
 
 The maintainer explicitly retains HA 2026.3.0 support. Its exact old dependency snapshot retains 76 known GitHub alerts and newer audit findings; none are dismissed or hidden. It is a test target, not a deployment recommendation. Forcing newer exact HA dependencies would invalidate that runtime target.
