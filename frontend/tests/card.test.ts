@@ -628,8 +628,8 @@ describe("CodexUsageCard", () => {
   it("exposes Home Assistant card APIs and section grid defaults", async () => {
     expect(CodexUsageCard.getStubConfig()).toEqual({});
     expect(new CodexUsageCard().getGridOptions()).toEqual({
-      columns: 6,
-      min_columns: 3,
+      columns: 12,
+      min_columns: 6,
       max_columns: 12,
     });
     await expect(CodexUsageCard.getConfigElement()).resolves.toBeInstanceOf(CodexUsageCardEditor);

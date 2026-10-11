@@ -10,6 +10,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from aiohttp import ClientPayloadError
 
 from custom_components.codex_usage.api import (
     AvailableAccount,
@@ -883,6 +884,18 @@ def test_parse_reset_credits_discards_private_fields() -> None:
     }
 
 
+@pytest.mark.parametrize("timestamp", ["0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"])
+def test_reset_credit_out_of_range_timestamp_does_not_break_optional_data(timestamp):
+    details = parse_reset_credits(
+        {
+            "available_count": 1,
+            "credits": [{"reset_type": "weekly", "status": "available", "expires_at": timestamp}],
+        }
+    )
+    assert details.available_count == 1
+    assert details.credits[0].expires_at is None
+
+
 def test_credentials_extract_workspace_and_user() -> None:
     expires_at = int(time.time()) + 3600
     credentials = credentials_from_token_response(
@@ -923,6 +936,44 @@ def test_credentials_reject_missing_workspace() -> None:
 def test_credentials_reject_non_dict_token_response(payload: object) -> None:
     with pytest.raises(CodexAuthenticationError):
         credentials_from_token_response(payload)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("expiry", [None, True, "invalid", [], float("nan"), float("inf")])
+def test_credentials_reject_malformed_expiry_as_authentication_error(expiry: object) -> None:
+    with pytest.raises(CodexAuthenticationError):
+        credentials_from_token_response(
+            {
+                "access_token": _jwt({"chatgpt_account_id": "workspace", "exp": expiry}),
+                "refresh_token": "refresh",
+                "id_token": _jwt({}),
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        [],
+        {"device_auth_id": None, "user_code": "code"},
+        {"device_auth_id": "id", "user_code": 123},
+        {"device_auth_id": "", "user_code": "code"},
+        {"device_auth_id": "id", "user_code": "code", "interval": float("inf")},
+    ],
+)
+def test_device_code_rejects_malformed_response_as_safe_api_error(payload: object) -> None:
+    client = CodexApiClient(_FakeSession(_FakeResponse(200, payload)))
+    with pytest.raises(CodexApiError, match="invalid device code response"):
+        asyncio.run(client.async_request_device_code())
+
+
+@pytest.mark.parametrize("invalid", [True, 123, ["value"], {"private": "value"}])
+def test_device_poll_rejects_non_string_authorization_values(invalid: object) -> None:
+    client = CodexApiClient(
+        _FakeSession(_FakeResponse(200, {"authorization_code": invalid, "code_verifier": "v"}))
+    )
+    with pytest.raises(CodexApiError, match="invalid authorization response"):
+        asyncio.run(client.async_poll_device_code(DeviceCode("id", "code", 5)))
 
 
 def test_device_code_request_disables_redirects() -> None:
@@ -1101,6 +1152,24 @@ def test_usage_429_with_undecodable_body_is_an_ordinary_rate_limit() -> None:
     assert caught.value.quota_exceeded is False
 
 
+@pytest.mark.parametrize("error", [ClientPayloadError("truncated response"), TimeoutError()])
+def test_usage_429_preserves_retry_deadline_when_error_body_cannot_be_read(error):
+    class BrokenBodyResponse(_FakeResponse):
+        async def json(self, *, content_type=None):
+            raise error
+
+    response = BrokenBodyResponse(429, None)
+    response.headers = {"Retry-After": "86400"}
+    client = CodexApiClient(_FakeSession(response))
+    credentials = CodexCredentials("access", "refresh", "id", 9e9, "workspace")
+    before = datetime.now(UTC)
+    with pytest.raises(CodexHttpError) as caught:
+        asyncio.run(client.async_get_usage(credentials))
+    assert caught.value.status == 429
+    assert caught.value.retry_at >= before + timedelta(days=1)
+    assert caught.value.quota_exceeded is False
+
+
 def test_usage_with_invalid_body_encoding_is_a_safe_api_error() -> None:
     class _InvalidEncodingResponse(_FakeResponse):
         async def json(self, *, content_type: str | None = None) -> object:
@@ -1205,7 +1274,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.5",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1304,7 +1373,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.5",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1329,7 +1398,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.4",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.5",
         "Cache-Control": "no-store",
     }
 

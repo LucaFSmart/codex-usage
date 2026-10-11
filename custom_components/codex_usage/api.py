@@ -75,7 +75,7 @@ async def _is_quota_exceeded(response: aiohttp.ClientResponse) -> bool:
     """
     try:
         payload = await response.json(content_type=None)
-    except aiohttp.ContentTypeError, json.JSONDecodeError, UnicodeDecodeError:
+    except aiohttp.ClientError, json.JSONDecodeError, UnicodeDecodeError, TimeoutError:
         return False
     if not isinstance(payload, dict):
         return False
@@ -359,13 +359,17 @@ def _claims_from_tokens(id_token: str, access_token: str) -> dict[str, Any]:
     )
     if not account_id:
         raise CodexAuthenticationError("No ChatGPT workspace was present in the token")
+    raw_expiry = access_claims.get("exp", time.time() + 3600)
+    expires_at = _float(raw_expiry)
+    if isinstance(raw_expiry, bool) or expires_at is None:
+        raise CodexAuthenticationError("OpenAI returned an invalid token expiry")
     return {
         "account_id": str(account_id),
         "user_id": auth.get("chatgpt_user_id") or auth.get("user_id"),
         "email": id_claims.get("email") or profile.get("email"),
         "plan_type": auth.get("chatgpt_plan_type"),
         "fedramp": bool(auth.get("chatgpt_account_is_fedramp", False)),
-        "expires_at": float(access_claims.get("exp", time.time() + 3600)),
+        "expires_at": expires_at,
     }
 
 
@@ -412,7 +416,7 @@ def _date_time(value: Any) -> datetime | None:
     if isinstance(value, str):
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
-        except ValueError:
+        except ValueError, OverflowError, OSError:
             return None
     return _timestamp(value)
 
@@ -919,14 +923,22 @@ class CodexApiClient:
             raise
         except (aiohttp.ClientError, TimeoutError) as err:
             raise CodexConnectionError from err
-        try:
-            return DeviceCode(
-                device_auth_id=str(payload["device_auth_id"]),
-                user_code=str(payload.get("user_code") or payload["usercode"]),
-                interval=max(1, int(payload.get("interval", 5))),
-            )
-        except (KeyError, TypeError, ValueError) as err:
-            raise CodexApiError("OpenAI returned an invalid device code response") from err
+        if not isinstance(payload, dict):
+            raise CodexApiError("OpenAI returned an invalid device code response")
+        device_auth_id = payload.get("device_auth_id")
+        user_code = payload.get("user_code") or payload.get("usercode")
+        interval = _relative_seconds(payload.get("interval", 5))
+        if (
+            not all(isinstance(value, str) and value for value in (device_auth_id, user_code))
+            or interval is None
+            or not interval.is_integer()
+        ):
+            raise CodexApiError("OpenAI returned an invalid device code response")
+        return DeviceCode(
+            device_auth_id=device_auth_id,
+            user_code=user_code,
+            interval=max(1, int(interval)),
+        )
 
     async def async_poll_device_code(self, code: DeviceCode) -> dict[str, str]:
         """Poll once for completion of a device authorization."""
@@ -950,7 +962,9 @@ class CodexApiClient:
         except (aiohttp.ClientError, TimeoutError) as err:
             raise CodexConnectionError from err
         required = ("authorization_code", "code_verifier")
-        if not isinstance(payload, dict) or not all(payload.get(key) for key in required):
+        if not isinstance(payload, dict) or not all(
+            isinstance(payload.get(key), str) and payload[key] for key in required
+        ):
             raise CodexApiError("OpenAI returned an invalid authorization response")
         return payload
 

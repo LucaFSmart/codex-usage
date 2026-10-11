@@ -5,6 +5,7 @@ import { fetchCardSnapshot } from "./card-data";
 import { DEFAULT_CONFIG, normalizeConfig } from "./config";
 import {
   formatAbsoluteReset,
+  formatLimitLabel,
   formatMetricLabel,
   formatNumber,
   formatPlanLabel,
@@ -108,7 +109,7 @@ export class CodexUsageCard extends LitElement {
   }
 
   public getGridOptions(): Record<string, number> {
-    return { columns: 6, min_columns: 3, max_columns: 12 };
+    return { columns: 12, min_columns: 6, max_columns: 12 };
   }
 
   public getCardSize(): number {
@@ -239,21 +240,7 @@ export class CodexUsageCard extends LitElement {
   }
 
   private limitLabel(limit: LimitViewModel): string {
-    const closeTo = (expected: number): boolean =>
-      limit.duration_seconds !== null &&
-      limit.duration_seconds >= expected * 0.95 &&
-      limit.duration_seconds <= expected * 1.05;
-    const duration = closeTo(18_000)
-      ? this.t("fiveHours")
-      : closeTo(604_800)
-        ? this.t("week")
-        : limit.duration_seconds && limit.duration_seconds % 86_400 === 0
-          ? `${limit.duration_seconds / 86_400} ${this.t("days")}`
-          : null;
-    if (limit.source === "additional" && limit.name) {
-      return duration ? `${limit.name} · ${duration}` : limit.name;
-    }
-    return duration ?? limit.name ?? this.t("unknownWindow");
+    return formatLimitLabel(limit, this.locale);
   }
 
   private absoluteResetLabel(value: string | null): string {
@@ -432,9 +419,10 @@ export class CodexUsageCard extends LitElement {
           <div
             class="bar"
             role="progressbar"
+            aria-label=${`${this.limitLabel(limit)}: ${this.t("remaining")}`}
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuetext=${formatPercent(remaining, this.locale)}
+            aria-valuetext=${`${formatPercent(remaining, this.locale)} ${this.t("remaining")}`}
             aria-valuenow=${remaining === null ? nothing : remaining}
           >
             ${remaining === null ? nothing : html`<span style=${`width:${remaining}%`}></span>`}
@@ -466,6 +454,7 @@ export class CodexUsageCard extends LitElement {
       }`;
     return limit.entity_id
       ? html`<button
+          type="button"
           class="limit-row"
           data-limit-id=${limit.id}
           @click=${() => this.openMoreInfo(limit.entity_id)}
@@ -725,6 +714,7 @@ export class CodexUsageCard extends LitElement {
         html`<div
           class="bar bar--mini"
           role="progressbar"
+          aria-label=${`${this.t("spending")}: ${this.t("usage")}`}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow=${spend.used_percent}
@@ -922,7 +912,9 @@ export class CodexUsageCard extends LitElement {
                 ${view.accounts.map(
                   (item) =>
                     html`<button
+                      type="button"
                       class="account-chip ${item.id === account?.id ? "selected" : ""}"
+                      aria-pressed=${item.id === account?.id ? "true" : "false"}
                       data-entry-id=${item.id}
                       @click=${() => (this.sessionEntryId = item.id)}
                     >
@@ -951,7 +943,10 @@ export class CodexUsageCard extends LitElement {
         ${
           hasDetails
             ? html`<button
+                type="button"
                 class="details-toggle"
+                aria-expanded=${this.detailsExpanded ? "true" : "false"}
+                aria-controls="codex-details"
                 @click=${() => (this.detailsExpanded = !this.detailsExpanded)}
               >
                 <span>${this.t(this.detailsExpanded ? "hideDetails" : "showDetails")}</span>
@@ -959,7 +954,13 @@ export class CodexUsageCard extends LitElement {
               </button>`
             : nothing
         }
-        ${hasDetails && this.detailsExpanded ? detailsContent : nothing}
+        ${
+          hasDetails
+            ? html`<div id="codex-details" ?hidden=${!this.detailsExpanded}>
+                ${this.detailsExpanded ? detailsContent : nothing}
+              </div>`
+            : nothing
+        }
         ${
           account && this.config.sections.footer.visible
             ? html`<footer>
@@ -985,6 +986,8 @@ export class CodexUsageCard extends LitElement {
   static override styles = css`
     :host {
       display: block;
+      container-type: inline-size;
+      container-name: codex-usage;
       color: var(--primary-text-color);
       --codex-space-1: 4px;
       --codex-space-2: 8px;
@@ -992,10 +995,10 @@ export class CodexUsageCard extends LitElement {
       --codex-space-4: 16px;
       --codex-space-5: 24px;
       --codex-progress-height: 6px;
-      --codex-chip-height: 22px;
+      --codex-chip-height: 28px;
       --codex-icon-size: 16px;
       --codex-radius: 8px;
-      --codex-secondary-opacity: 0.62;
+      --codex-secondary-opacity: 1;
     }
     ha-card {
       display: block;
@@ -1032,6 +1035,10 @@ export class CodexUsageCard extends LitElement {
       font-size: 1.2rem;
       font-weight: 650;
       letter-spacing: -0.01em;
+      overflow-wrap: anywhere;
+    }
+    header > div {
+      min-width: 0;
     }
     p {
       margin: var(--codex-space-1) 0 0;
@@ -1042,14 +1049,18 @@ export class CodexUsageCard extends LitElement {
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      height: var(--codex-chip-height);
-      padding: 0 var(--codex-space-2);
+      min-height: var(--codex-chip-height);
+      box-sizing: border-box;
+      max-width: 45%;
+      padding: var(--codex-space-1) var(--codex-space-2);
       border-radius: 999px;
       background: color-mix(in srgb, var(--state-color) 15%, transparent);
-      color: var(--state-color);
+      color: var(--primary-text-color);
       font-size: 0.74rem;
       font-weight: 700;
-      white-space: nowrap;
+      text-align: center;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
     }
     .freshness {
       margin: calc(-1 * var(--codex-space-2)) 0 0;
@@ -1060,7 +1071,7 @@ export class CodexUsageCard extends LitElement {
       margin: 0;
       font-size: 0.82rem;
       font-weight: 600;
-      color: var(--state-color);
+      color: var(--primary-text-color);
     }
     nav {
       display: flex;
@@ -1083,6 +1094,10 @@ export class CodexUsageCard extends LitElement {
       gap: var(--codex-space-1);
       align-items: center;
       cursor: pointer;
+      min-height: 44px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      font-size: 0.85rem;
     }
     .account-chip i {
       width: 7px;
@@ -1092,7 +1107,7 @@ export class CodexUsageCard extends LitElement {
     }
     .account-chip.selected {
       border-color: var(--state-color);
-      color: var(--state-color);
+      background: color-mix(in srgb, var(--state-color) 12%, transparent);
     }
     .limits {
       display: grid;
@@ -1116,6 +1131,7 @@ export class CodexUsageCard extends LitElement {
     .limit-name {
       font-weight: 650;
       font-size: 0.95rem;
+      overflow-wrap: anywhere;
     }
     .limit-relative {
       font-size: 0.76rem;
@@ -1226,6 +1242,7 @@ export class CodexUsageCard extends LitElement {
       align-items: baseline;
       gap: var(--codex-space-2);
       font-size: 0.85rem;
+      overflow-wrap: anywhere;
     }
     .info-label {
       color: var(--secondary-text-color);
@@ -1247,6 +1264,7 @@ export class CodexUsageCard extends LitElement {
       color: var(--primary-color);
       font-size: 0.8rem;
       font-weight: 600;
+      min-height: 44px;
     }
     .chevron {
       width: var(--codex-icon-size);
@@ -1284,7 +1302,7 @@ export class CodexUsageCard extends LitElement {
         opacity: 1;
       }
     }
-    @media (max-width: 479px) {
+    @container codex-usage (max-width: 479px) {
       .surface {
         padding: var(--codex-space-3);
       }

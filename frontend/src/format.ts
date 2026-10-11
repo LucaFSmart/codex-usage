@@ -1,3 +1,27 @@
+import { localize } from "./localize";
+import type { CardLimit } from "./types";
+
+export function formatLimitLabel(
+  limit: Pick<CardLimit, "duration_seconds" | "source" | "name">,
+  locale: string | undefined,
+): string {
+  const t = (key: "fiveHours" | "week" | "days" | "unknownWindow") => localize(locale, key);
+  const seconds = limit.duration_seconds;
+  const closeTo = (expected: number): boolean =>
+    seconds !== null && seconds >= expected * 0.95 && seconds <= expected * 1.05;
+  const duration = closeTo(18_000)
+    ? t("fiveHours")
+    : closeTo(604_800)
+      ? t("week")
+      : seconds && seconds % 86_400 === 0
+        ? `${seconds / 86_400} ${t("days")}`
+        : null;
+  if (limit.source === "additional" && limit.name) {
+    return duration ? `${limit.name} · ${duration}` : limit.name;
+  }
+  return duration ?? limit.name ?? t("unknownWindow");
+}
+
 const PLAN_LABELS: Record<string, string> = {
   guest: "Guest",
   free: "Free",

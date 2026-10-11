@@ -64,6 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: hass.bus.async_fire(EVENT_CARD_DATA_UPDATED))
     )
+    hass.bus.async_fire(EVENT_CARD_DATA_UPDATED)
 
     domain_data = hass.data.setdefault(DOMAIN, {})
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
@@ -89,6 +90,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
 
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
     domain_data.setdefault("entries", {}).pop(entry.entry_id, None)
+    hass.bus.async_fire(EVENT_CARD_DATA_UPDATED)
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
     async with lifecycle_lock:
         loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
+from time import monotonic
 from typing import Any
 
 import voluptuous as vol
@@ -67,6 +68,8 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._device_code: DeviceCode | None = None
+        self._device_code_expires_at: float | None = None
+        self._device_poll_next_attempt = 0.0
         self._reauth_entry: ConfigEntry | None = None
         self._workspace_credentials: CodexCredentials | None = None
         self._workspace_accounts: tuple[AvailableAccount, ...] = ()
@@ -87,6 +90,8 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         try:
             self._device_code = await self._client.async_request_device_code()
+            self._device_code_expires_at = monotonic() + 15 * 60
+            self._device_poll_next_attempt = 0.0
         except DeviceAuthorizationUnavailable:
             errors["base"] = "device_auth_disabled"
         except CodexConnectionError:
@@ -109,8 +114,15 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult | CodexCredentials:
         if self._device_code is None:
             return self.async_abort(reason="device_flow_expired")
+        now = monotonic()
+        if self._device_code_expires_at is not None and now >= self._device_code_expires_at:
+            return self.async_abort(reason="device_flow_expired")
         errors: dict[str, str] = {}
-        if user_input is not None:
+        confirmed = user_input is not None and user_input.get("confirm") is True
+        if confirmed and now < self._device_poll_next_attempt:
+            errors["base"] = "authorization_pending"
+        elif confirmed:
+            self._device_poll_next_attempt = now + self._device_code.interval
             try:
                 authorization = await self._client.async_poll_device_code(self._device_code)
                 credentials = await self._client.async_exchange_device_code(authorization)
@@ -138,6 +150,8 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
         self._reauth_entry = self._get_reauth_entry()
         try:
             self._device_code = await self._client.async_request_device_code()
+            self._device_code_expires_at = monotonic() + 15 * 60
+            self._device_poll_next_attempt = 0.0
         except DeviceAuthorizationUnavailable:
             return self.async_abort(reason="device_auth_disabled")
         except CodexConnectionError, CodexApiError:

@@ -40,6 +40,8 @@
       "cannot_connect": "Unable to connect to OpenAI.",
       "device_auth_disabled": "Device-code login is disabled for this account or workspace.",
       "device_flow_expired": "The device authorization expired. Start again.",
+      "invalid_auth": "OpenAI rejected the authorization.",
+      "unknown": "Unexpected error while communicating with OpenAI.",
       "reauth_successful": "Reauthentication was successful.",
       "wrong_account": "Authorize the same user as this entry. Add another entry for a different user."
     }

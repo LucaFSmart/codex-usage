@@ -9,6 +9,9 @@ const compact = query.get("mode") === "compact";
 const language = query.get("lang") === "de" ? "de" : "en";
 const showSources = query.get("sources") === "1";
 const mixedAccounts = query.get("mixed") === "1";
+const longLabels = query.get("long") === "1";
+const cardWidth = Number(query.get("width"));
+document.documentElement.lang = language;
 document.body.className = query.get("theme") === "light" ? "light" : "dark";
 
 const usage =
@@ -22,7 +25,7 @@ const usage =
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.7.4",
+  integration_version: "0.7.5",
   generated_at: new Date().toISOString(),
   accounts: Array.from({ length: accountCount }, (_, index) => {
     const state = mixedAccounts && index > 0 ? "normal" : requestedState;
@@ -30,7 +33,13 @@ const snapshot: CardSnapshot = {
     const accountUpdated = state === "normal" ? new Date().toISOString() : updated;
     return {
       id: `entry-${index}`,
-      name: index ? "Studio" : "Workspace Alpha",
+      name: longLabels
+        ? index
+          ? "Studio mit einem langen Kontonamen"
+          : "Arbeitsbereich mit einem langen Kontonamen"
+        : index
+          ? "Studio"
+          : "Workspace Alpha",
       plan: index ? "business" : "plus",
       available: true,
       updated_at: accountUpdated,
@@ -186,8 +195,12 @@ const card = document.createElement("codex-usage-card") as HTMLElement & {
 };
 card.setConfig({
   type: "custom:codex-usage-card",
+  ...(longLabels ? { title: "Codex Usage – Übersicht der verfügbaren Kontingente" } : {}),
   compact,
   ...(showSources ? { sections: { sources: { visible: true, values: {} } } } : {}),
 });
 card.hass = hass;
+if (Number.isFinite(cardWidth) && cardWidth >= 160 && cardWidth <= 1100) {
+  card.style.maxWidth = `${cardWidth}px`;
+}
 document.body.append(card);

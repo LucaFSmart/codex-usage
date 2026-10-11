@@ -107,13 +107,14 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
-The current maintenance release is **0.7.4**. It keeps Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.9.4. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended.
+The **0.7.5** maintenance update improves card readability, keyboard and screen-reader controls, narrow dashboard layouts and account lifecycle updates. It retains Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.10.1. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended. The old minimum is a compatibility target; its exact dependency snapshot inherits known advisories and is not a recommended installation.
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [0.7 verification record](docs/verification-0.7.md)
 - [OpenAI documentation review, October 2026](docs/research/2026-10-04-openai-documentation-recheck.md)
+- [Complete maintenance and card review, October 12](docs/research/2026-10-12-maintenance-and-card-review.md)
 - [Changelog](CHANGELOG.md)
 
 Diagnostics are available from **Settings → Devices & services → Codex Usage** and omit credentials and backend identities. Report defects through the [issue tracker](https://github.com/LucaFSmart/codex-usage/issues).
