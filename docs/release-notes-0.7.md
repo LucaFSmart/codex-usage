@@ -2,6 +2,14 @@
 
 0.7 is a broad consistency, resilience and dashboard release line. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
 
+## 0.7.5 maintenance update
+
+Version 0.7.5 keeps the existing card and configuration format while making text readable in both standard themes, naming progress meters for assistive technology and exposing account selection and detail expansion states. Keyboard interaction and 240/320/480-pixel card widths inside a desktop dashboard are tested. New Sections cards use a full section by default; existing `grid_options` remain effective.
+
+The editor identifies each time window, lists every account affected by a shared switch, exposes per-window budgets and prevents one threshold slider from silently resetting customized values. Accounts added or removed from the integration trigger an immediate card refresh. Login respects confirmation, provider poll spacing and the documented 15-minute expiry, and malformed authorization data fails safely.
+
+The current test lane moves to Home Assistant 2026.10.1 with a strict Python dependency audit; frontend dependencies and the source-map-js security patch are updated. The old 2026.3.0 lane remains a compatibility snapshot with known inherited advisories. See the [verification record](verification-0.7.md) and [maintenance/card review](research/2026-10-12-maintenance-and-card-review.md). Refresh the browser and update manual resource URLs to `?v=0.7.5` after installing the update.
+
 ## 0.7.4 maintenance update
 
 Version 0.7.4 fixes multi-account card selection: color, status, Luna Reserve availability and freshness follow the displayed account. Other accounts retain their independent chip statuses, and the initial automatic choice remains the most constrained account. Card subscriptions recover after detach/reattach, obsolete connection responses are discarded, and updates during a pending fetch trigger one follow-up read.

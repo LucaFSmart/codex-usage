@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { fetchCardSnapshot } from "./card-data";
 import { DEFAULT_COLORS, DEFAULT_CONFIG, normalizeConfig, SECTION_KEYS } from "./config";
 import { localize, type TranslationKey } from "./localize";
+import { formatLimitLabel } from "./format";
 import type {
   CardProfile,
   CardSnapshot,
@@ -137,7 +138,13 @@ export class CodexUsageCardEditor extends LitElement {
 
   private updateThresholds(event: CustomEvent<{ value: Record<string, unknown> }>): void {
     event.stopPropagation();
-    this.emitConfig(normalizeConfig({ ...this.config, thresholds: event.detail.value }));
+    const thresholds = { ...event.detail.value };
+    const { warning, critical } = thresholds;
+    if (typeof warning === "number" && typeof critical === "number" && warning >= critical) {
+      this.emitConfig({ ...this.config, thresholds: { ...this.config.thresholds } });
+      return;
+    }
+    this.emitConfig(normalizeConfig({ ...this.config, thresholds }));
   }
 
   private updateAppearance(event: CustomEvent<{ value: Record<string, unknown> }>): void {
@@ -192,15 +199,25 @@ export class CodexUsageCardEditor extends LitElement {
   };
 
   private valueOptions(section: SectionKey): Array<{ key: string; label: string }> {
-    if (["limits", "additional_limits", "resets", "pace"].includes(section)) {
-      const seen = new Set<string>();
-      return this.accounts.flatMap((account) =>
-        account.limits.flatMap((limit) => {
-          if (seen.has(limit.id)) return [];
-          seen.add(limit.id);
-          return [{ key: limit.id, label: `${account.name}: ${limit.name}` }];
-        }),
-      );
+    if (["limits", "additional_limits", "resets", "pace", "budget"].includes(section)) {
+      const options = new Map<string, { label: string; accounts: Set<string> }>();
+      for (const account of this.accounts) {
+        for (const limit of account.limits) {
+          if (section === "limits" && limit.source !== "main") continue;
+          if (section === "additional_limits" && limit.source !== "additional") continue;
+          const existing = options.get(limit.id);
+          if (existing) existing.accounts.add(account.name);
+          else
+            options.set(limit.id, {
+              label: formatLimitLabel(limit, this.hass?.locale?.language ?? this.hass?.language),
+              accounts: new Set([account.name]),
+            });
+        }
+      }
+      return [...options].map(([key, option]) => ({
+        key,
+        label: `${option.label} · ${[...option.accounts].join(", ")}`,
+      }));
     }
     if (section === "credits") {
       return [
@@ -359,8 +376,18 @@ export class CodexUsageCardEditor extends LitElement {
           .hass=${this.hass}
           .data=${this.config.thresholds}
           .schema=${[
-            { name: "warning", selector: { number: { min: 0, max: 99, mode: "slider" } } },
-            { name: "critical", selector: { number: { min: 1, max: 100, mode: "slider" } } },
+            {
+              name: "warning",
+              selector: {
+                number: { min: 0, max: this.config.thresholds.critical, mode: "slider" },
+              },
+            },
+            {
+              name: "critical",
+              selector: {
+                number: { min: this.config.thresholds.warning, max: 100, mode: "slider" },
+              },
+            },
           ]}
           .computeLabel=${this.computeThresholdLabel}
           @value-changed=${this.updateThresholds}
@@ -373,11 +400,13 @@ export class CodexUsageCardEditor extends LitElement {
                 <span>${this.t(COLOR_LABELS[key])}</span>
                 <input
                   type="color"
+                  aria-label=${this.t(COLOR_LABELS[key])}
                   .value=${this.colorSwatchValue(key)}
                   @input=${(event: Event) => this.updateColorSwatch(key, event)}
                 />
                 <input
                   type="text"
+                  aria-label=${`${this.t(COLOR_LABELS[key])} (CSS)`}
                   .value=${this.config.colors[key]}
                   @change=${(event: Event) => this.updateColorText(key, event)}
                 />
@@ -395,7 +424,7 @@ export class CodexUsageCardEditor extends LitElement {
           .computeLabel=${this.computeLabel}
           @value-changed=${this.updateAppearance}
         ></ha-form>
-        <button class="reset-button" @click=${this.resetAdvanced}>
+        <button type="button" class="reset-button" @click=${this.resetAdvanced}>
           ${this.t("resetDefaults")}
         </button>
         <p><a href=${HELP_URL} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>

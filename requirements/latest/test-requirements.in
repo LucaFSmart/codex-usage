@@ -1,7 +1,8 @@
 # Linux/Python 3.14 CI inputs. Regenerate with the command in the lock header.
-homeassistant==2026.9.4
+homeassistant==2026.10.1
 # The Home Assistant pytest harness pins this exact pytest version.
 pytest==9.0.3
-pytest-homeassistant-custom-component==0.13.367
-ruff==0.16.10
-uv==0.12.5
+pytest-homeassistant-custom-component==0.13.372
+ruff==0.17.0
+# Keep the lock compiler compatible with Home Assistant's exact uv dependency.
+uv==0.12.23

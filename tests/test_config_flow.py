@@ -4,13 +4,18 @@ import asyncio
 import base64
 import json
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+
+import pytest
 
 from custom_components.codex_usage import async_migrate_entry
 from custom_components.codex_usage.api import (
     AvailableAccount,
     CodexCredentials,
+    DeviceAuthorizationPending,
+    DeviceCode,
     credentials_from_token_response,
 )
 from custom_components.codex_usage.config_flow import (
@@ -19,6 +24,90 @@ from custom_components.codex_usage.config_flow import (
     workspace_choices,
 )
 from custom_components.codex_usage.coordinator import credentials_to_entry_data
+
+
+@pytest.mark.parametrize("step_id", ["device", "reauth_confirm"])
+def test_unchecked_device_confirmation_does_not_complete_authorization(step_id):
+    flow = CodexUsageConfigFlow()
+    flow._device_code = DeviceCode("device", "code", 5)
+    flow.async_show_form = MagicMock(side_effect=lambda **kwargs: {"type": "form", **kwargs})
+    credentials = CodexCredentials("access", "refresh", "id", 9e9, "workspace")
+    client = SimpleNamespace(
+        async_poll_device_code=AsyncMock(return_value={"authorization_code": "a"}),
+        async_exchange_device_code=AsyncMock(return_value=credentials),
+    )
+    with patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api:
+        api.return_value = client
+        result = asyncio.run(flow._async_device_form(step_id, {"confirm": False}))
+    assert result["type"] == "form"
+    assert result["step_id"] == step_id
+
+
+def test_expired_device_authorization_aborts_before_polling():
+    flow = CodexUsageConfigFlow()
+    flow._device_code = DeviceCode("device", "code", 5)
+    flow._device_code_expires_at = 100
+    flow.async_abort = MagicMock(side_effect=lambda **kwargs: {"type": "abort", **kwargs})
+    credentials = CodexCredentials("access", "refresh", "id", 9e9, "workspace")
+    client = SimpleNamespace(
+        async_poll_device_code=AsyncMock(return_value={"authorization_code": "a"}),
+        async_exchange_device_code=AsyncMock(return_value=credentials),
+    )
+    with (
+        patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api,
+        patch("custom_components.codex_usage.config_flow.monotonic", return_value=100, create=True),
+    ):
+        api.return_value = client
+        result = asyncio.run(flow._async_device_form("device", {"confirm": True}))
+    assert result == {"type": "abort", "reason": "device_flow_expired"}
+
+
+def test_device_confirmation_respects_provider_poll_interval():
+    flow = CodexUsageConfigFlow()
+    flow._device_code = DeviceCode("device", "code", 5)
+    flow.async_show_form = MagicMock(side_effect=lambda **kwargs: {"type": "form", **kwargs})
+    credentials = CodexCredentials("access", "refresh", "id", 9e9, "workspace")
+    client = SimpleNamespace(
+        async_poll_device_code=AsyncMock(
+            side_effect=[DeviceAuthorizationPending, {"authorization_code": "a"}]
+        ),
+        async_exchange_device_code=AsyncMock(return_value=credentials),
+    )
+    with (
+        patch.object(CodexUsageConfigFlow, "_client", new_callable=PropertyMock) as api,
+        patch(
+            "custom_components.codex_usage.config_flow.monotonic",
+            side_effect=[100, 101, 105],
+            create=True,
+        ),
+    ):
+        api.return_value = client
+        first = asyncio.run(flow._async_device_form("device", {"confirm": True}))
+        early = asyncio.run(flow._async_device_form("device", {"confirm": True}))
+        assert first["errors"] == {"base": "authorization_pending"}
+        assert early["errors"] == {"base": "authorization_pending"}
+        assert asyncio.run(flow._async_device_form("device", {"confirm": True})) == credentials
+
+
+def test_device_and_reauth_forms_resolve_privacy_link_before_authorization():
+    for step in ("device", "reauth_confirm"):
+        flow = CodexUsageConfigFlow()
+        flow._device_code = DeviceCode("device", "code", 5)
+        flow.async_show_form = MagicMock(side_effect=lambda **kwargs: kwargs)
+        result = asyncio.run(flow._async_device_form(step, None))
+        placeholders = result["description_placeholders"]
+        assert placeholders["privacy_url"] == (
+            "https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md"
+        )
+        for name in ("strings.json", "translations/en.json", "translations/de.json"):
+            path = Path(__file__).parents[1] / "custom_components" / "codex_usage" / name
+            description = json.loads(path.read_text(encoding="utf-8"))["config"]["step"][step][
+                "description"
+            ]
+            assert "https://" not in description
+            assert "{privacy_url}" in description
+            rendered = description.format(**placeholders)
+            assert placeholders["privacy_url"] in rendered
 
 
 def test_options_offer_enabled_optional_sources_for_existing_entries():

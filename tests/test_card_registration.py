@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from custom_components.codex_usage import async_setup_entry, async_unload_entry
+from custom_components.codex_usage.card_data import EVENT_CARD_DATA_UPDATED
 from custom_components.codex_usage.card_registration import CodexUsageCardRegistration
 from custom_components.codex_usage.const import CARD_URL, CARD_VERSION, DOMAIN
 
@@ -48,6 +49,7 @@ def _hass(
     return SimpleNamespace(
         data={"lovelace": lovelace},
         http=SimpleNamespace(async_register_static_paths=AsyncMock()),
+        bus=SimpleNamespace(async_fire=MagicMock()),
     )
 
 
@@ -257,8 +259,16 @@ def test_unregister_deletes_only_resources_matching_card_path() -> None:
 
 
 def test_two_entries_share_registration_until_final_unload() -> None:
+    snapshot_account_counts = []
     hass = SimpleNamespace(
         data={},
+        bus=SimpleNamespace(
+            async_fire=lambda event: (
+                snapshot_account_counts.append(len(hass.data[DOMAIN]["entries"]))
+                if event == EVENT_CARD_DATA_UPDATED
+                else None
+            ),
+        ),
         config_entries=SimpleNamespace(
             async_forward_entry_setups=AsyncMock(),
             async_unload_platforms=AsyncMock(return_value=True),
@@ -303,6 +313,7 @@ def test_two_entries_share_registration_until_final_unload() -> None:
     registration.async_register.assert_awaited_once()
     registration.async_unregister.assert_awaited_once()
     assert hass.data[DOMAIN]["loaded_entry_ids"] == set()
+    assert snapshot_account_counts == [1, 2, 1, 0]
     for entry in entries:
         entry.add_update_listener.assert_not_called()
 
@@ -310,6 +321,7 @@ def test_two_entries_share_registration_until_final_unload() -> None:
 def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> None:
     hass = SimpleNamespace(
         data={},
+        bus=SimpleNamespace(async_fire=MagicMock()),
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     entries = [
@@ -359,6 +371,7 @@ def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> Non
 def test_registration_error_does_not_block_setup_and_next_entry_retries() -> None:
     hass = SimpleNamespace(
         data={},
+        bus=SimpleNamespace(async_fire=MagicMock()),
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     entries = [

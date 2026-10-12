@@ -8,6 +8,10 @@ When OpenAI explicitly reports an allowed Luna Reserve bucket alongside exhauste
 
 ## Visibility
 
+The editor labels each quota by its reported time window and lists all accounts affected by a shared per-value control. Budget rows have the same per-window switches; these change only presentation, without enabling entities or additional polling.
+
+The account buttons expose their selected state, progress meters identify remaining quota or spending, and the Details button exposes its expanded state. New cards use 12 columns in Sections, with a minimum of 6; existing `grid_options` remain effective. The layout responds to the card's width rather than the whole browser viewport. Status accents retain their colors while meaningful text uses the Home Assistant theme's readable text colors.
+
 Each section has three modes: **Automatic** (`"auto"`), **Always show** (`true`), and **Hide** (`false`). In Automatic, missing optional values are omitted. Always show keeps one neutral placeholder if the whole section has no data. Hide removes the section; individual `values` settings can also hide specific metrics.
 
 Standard five-hour and weekly rows retain their positions during temporary data loss and display an em dash. An unreported row is a placeholder, not a claim that the plan includes that allowance. Explicit section/value hides take precedence. Reported nonstandard windows are supported too.

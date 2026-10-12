@@ -254,34 +254,34 @@ var g = class extends HTMLElement {
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[p("elementProperties")] = /* @__PURE__ */ new Map(), g[p("finalized")] = /* @__PURE__ */ new Map(), ae?.({ ReactiveElement: g }), (f.reactiveElementVersions ??= []).push("2.1.2");
 //#endregion
 //#region node_modules/lit-html/lit-html.js
-var se = globalThis, ce = (e) => e, _ = se.trustedTypes, le = _ ? _.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ue = "$lit$", v = `lit$${Math.random().toFixed(9).slice(2)}$`, de = "?" + v, fe = `<${de}>`, y = document, b = () => y.createComment(""), x = (e) => e === null || typeof e != "object" && typeof e != "function", pe = Array.isArray, me = (e) => pe(e) || typeof e?.[Symbol.iterator] == "function", he = "[ 	\n\f\r]", S = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, ge = /-->/g, _e = />/g, C = RegExp(`>|${he}(?:([^\\s"'>=/]+)(${he}*=${he}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), ve = /'/g, ye = /"/g, be = /^(?:script|style|textarea|title)$/i, w = ((e) => (t, ...n) => ({
+var se = globalThis, ce = (e) => e, _ = se.trustedTypes, le = _ ? _.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ue = "$lit$", v = `lit$${Math.random().toFixed(9).slice(2)}$`, de = "?" + v, fe = `<${de}>`, y = document, b = () => y.createComment(""), x = (e) => e === null || typeof e != "object" && typeof e != "function", S = Array.isArray, pe = (e) => S(e) || typeof e?.[Symbol.iterator] == "function", me = "[ 	\n\f\r]", C = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, ge = />/g, w = RegExp(`>|${me}(?:([^\\s"'>=/]+)(${me}*=${me}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), _e = /'/g, ve = /"/g, ye = /^(?:script|style|textarea|title)$/i, T = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
 	values: n
-}))(1), T = Symbol.for("lit-noChange"), E = Symbol.for("lit-nothing"), xe = /* @__PURE__ */ new WeakMap(), D = y.createTreeWalker(y, 129);
-function Se(e, t) {
-	if (!pe(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+}))(1), E = Symbol.for("lit-noChange"), D = Symbol.for("lit-nothing"), be = /* @__PURE__ */ new WeakMap(), O = y.createTreeWalker(y, 129);
+function xe(e, t) {
+	if (!S(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
 	return le === void 0 ? t : le.createHTML(t);
 }
-var Ce = (e, t) => {
-	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = S;
+var Se = (e, t) => {
+	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = C;
 	for (let t = 0; t < n; t++) {
 		let n = e[t], s, c, l = -1, u = 0;
-		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === S ? c[1] === "!--" ? o = ge : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = C) : (be.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = C) : o = _e : o === C ? c[0] === ">" ? (o = i ?? S, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? C : c[3] === "\"" ? ye : ve) : o === ye || o === ve ? o = C : o === ge || o === _e ? o = S : (o = C, i = void 0);
-		let d = o === C && e[t + 1].startsWith("/>") ? " " : "";
-		a += o === S ? n + fe : l >= 0 ? (r.push(s), n.slice(0, l) + ue + n.slice(l) + v + d) : n + v + (l === -2 ? t : d);
+		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === C ? c[1] === "!--" ? o = he : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = w) : (ye.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = w) : o = ge : o === w ? c[0] === ">" ? (o = i ?? C, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? w : c[3] === "\"" ? ve : _e) : o === ve || o === _e ? o = w : o === he || o === ge ? o = C : (o = w, i = void 0);
+		let d = o === w && e[t + 1].startsWith("/>") ? " " : "";
+		a += o === C ? n + fe : l >= 0 ? (r.push(s), n.slice(0, l) + ue + n.slice(l) + v + d) : n + v + (l === -2 ? t : d);
 	}
-	return [Se(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
-}, we = class e {
+	return [xe(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
+}, Ce = class e {
 	constructor({ strings: t, _$litType$: n }, r) {
 		let i;
 		this.parts = [];
-		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Ce(t, n);
-		if (this.el = e.createElement(l, r), D.currentNode = this.el.content, n === 2 || n === 3) {
+		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Se(t, n);
+		if (this.el = e.createElement(l, r), O.currentNode = this.el.content, n === 2 || n === 3) {
 			let e = this.el.content.firstChild;
 			e.replaceWith(...e.childNodes);
 		}
-		for (; (i = D.nextNode()) !== null && c.length < s;) {
+		for (; (i = O.nextNode()) !== null && c.length < s;) {
 			if (i.nodeType === 1) {
 				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(ue)) {
 					let t = u[o++], n = i.getAttribute(e).split(v), r = /([.?@])?(.*)/.exec(t);
@@ -290,17 +290,17 @@ var Ce = (e, t) => {
 						index: a,
 						name: r[2],
 						strings: n,
-						ctor: r[1] === "." ? De : r[1] === "?" ? Oe : r[1] === "@" ? ke : k
+						ctor: r[1] === "." ? Ee : r[1] === "?" ? De : r[1] === "@" ? Oe : A
 					}), i.removeAttribute(e);
 				} else e.startsWith(v) && (c.push({
 					type: 6,
 					index: a
 				}), i.removeAttribute(e));
-				if (be.test(i.tagName)) {
+				if (ye.test(i.tagName)) {
 					let e = i.textContent.split(v), t = e.length - 1;
 					if (t > 0) {
 						i.textContent = _ ? _.emptyScript : "";
-						for (let n = 0; n < t; n++) i.append(e[n], b()), D.nextNode(), c.push({
+						for (let n = 0; n < t; n++) i.append(e[n], b()), O.nextNode(), c.push({
 							type: 2,
 							index: ++a
 						});
@@ -328,12 +328,12 @@ var Ce = (e, t) => {
 		return n.innerHTML = e, n;
 	}
 };
-function O(e, t, n = e, r) {
-	if (t === T) return t;
+function k(e, t, n = e, r) {
+	if (t === E) return t;
 	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = x(t) ? void 0 : t._$litDirective$;
-	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = O(e, i._$AS(e, t.values), i, r)), t;
+	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ??= [])[r] = i), i !== void 0 && (t = k(e, i._$AS(e, t.values), i, r)), t;
 }
-var Te = class {
+var we = class {
 	constructor(e, t) {
 		this._$AV = [], this._$AN = void 0, this._$AD = e, this._$AM = t;
 	}
@@ -345,27 +345,27 @@ var Te = class {
 	}
 	u(e) {
 		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? y).importNode(t, !0);
-		D.currentNode = r;
-		let i = D.nextNode(), a = 0, o = 0, s = n[0];
+		O.currentNode = r;
+		let i = O.nextNode(), a = 0, o = 0, s = n[0];
 		for (; s !== void 0;) {
 			if (a === s.index) {
 				let t;
-				s.type === 2 ? t = new Ee(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new Ae(i, this, e)), this._$AV.push(t), s = n[++o];
+				s.type === 2 ? t = new Te(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new ke(i, this, e)), this._$AV.push(t), s = n[++o];
 			}
-			a !== s?.index && (i = D.nextNode(), a++);
+			a !== s?.index && (i = O.nextNode(), a++);
 		}
-		return D.currentNode = y, r;
+		return O.currentNode = y, r;
 	}
 	p(e) {
 		let t = 0;
 		for (let n of this._$AV) n !== void 0 && (n.strings === void 0 ? n._$AI(e[t]) : (n._$AI(e, n, t), t += n.strings.length - 2)), t++;
 	}
-}, Ee = class e {
+}, Te = class e {
 	get _$AU() {
 		return this._$AM?._$AU ?? this._$Cv;
 	}
 	constructor(e, t, n, r) {
-		this.type = 2, this._$AH = E, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
+		this.type = 2, this._$AH = D, this._$AN = void 0, this._$AA = e, this._$AB = t, this._$AM = n, this.options = r, this._$Cv = r?.isConnected ?? !0;
 	}
 	get parentNode() {
 		let e = this._$AA.parentNode, t = this._$AM;
@@ -378,7 +378,7 @@ var Te = class {
 		return this._$AB;
 	}
 	_$AI(e, t = this) {
-		e = O(this, e, t), x(e) ? e === E || e == null || e === "" ? (this._$AH !== E && this._$AR(), this._$AH = E) : e !== this._$AH && e !== T && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? me(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
+		e = k(this, e, t), x(e) ? e === D || e == null || e === "" ? (this._$AH !== D && this._$AR(), this._$AH = D) : e !== this._$AH && e !== E && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? pe(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
 	}
 	O(e) {
 		return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -387,22 +387,22 @@ var Te = class {
 		this._$AH !== e && (this._$AR(), this._$AH = this.O(e));
 	}
 	_(e) {
-		this._$AH !== E && x(this._$AH) ? this._$AA.nextSibling.data = e : this.T(y.createTextNode(e)), this._$AH = e;
+		this._$AH !== D && x(this._$AH) ? this._$AA.nextSibling.data = e : this.T(y.createTextNode(e)), this._$AH = e;
 	}
 	$(e) {
-		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = we.createElement(Se(n.h, n.h[0]), this.options)), n);
+		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = Ce.createElement(xe(n.h, n.h[0]), this.options)), n);
 		if (this._$AH?._$AD === r) this._$AH.p(t);
 		else {
-			let e = new Te(r, this), n = e.u(this.options);
+			let e = new we(r, this), n = e.u(this.options);
 			e.p(t), this.T(n), this._$AH = e;
 		}
 	}
 	_$AC(e) {
-		let t = xe.get(e.strings);
-		return t === void 0 && xe.set(e.strings, t = new we(e)), t;
+		let t = be.get(e.strings);
+		return t === void 0 && be.set(e.strings, t = new Ce(e)), t;
 	}
 	k(t) {
-		pe(this._$AH) || (this._$AH = [], this._$AR());
+		S(this._$AH) || (this._$AH = [], this._$AR());
 		let n = this._$AH, r, i = 0;
 		for (let a of t) i === n.length ? n.push(r = new e(this.O(b()), this.O(b()), this, this.options)) : r = n[i], r._$AI(a), i++;
 		i < n.length && (this._$AR(r && r._$AB.nextSibling, i), n.length = i);
@@ -416,7 +416,7 @@ var Te = class {
 	setConnected(e) {
 		this._$AM === void 0 && (this._$Cv = e, this._$AP?.(e));
 	}
-}, k = class {
+}, A = class {
 	get tagName() {
 		return this.element.tagName;
 	}
@@ -424,47 +424,47 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	constructor(e, t, n, r, i) {
-		this.type = 1, this._$AH = E, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = E;
+		this.type = 1, this._$AH = D, this._$AN = void 0, this.element = e, this.name = t, this._$AM = r, this.options = i, n.length > 2 || n[0] !== "" || n[1] !== "" ? (this._$AH = Array(n.length - 1).fill(/* @__PURE__ */ new String()), this.strings = n) : this._$AH = D;
 	}
 	_$AI(e, t = this, n, r) {
 		let i = this.strings, a = !1;
-		if (i === void 0) e = O(this, e, t, 0), a = !x(e) || e !== this._$AH && e !== T, a && (this._$AH = e);
+		if (i === void 0) e = k(this, e, t, 0), a = !x(e) || e !== this._$AH && e !== E, a && (this._$AH = e);
 		else {
 			let r = e, o, s;
-			for (e = i[0], o = 0; o < i.length - 1; o++) s = O(this, r[n + o], t, o), s === T && (s = this._$AH[o]), a ||= !x(s) || s !== this._$AH[o], s === E ? e = E : e !== E && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
+			for (e = i[0], o = 0; o < i.length - 1; o++) s = k(this, r[n + o], t, o), s === E && (s = this._$AH[o]), a ||= !x(s) || s !== this._$AH[o], s === D ? e = D : e !== D && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
 		}
 		a && !r && this.j(e);
 	}
 	j(e) {
-		e === E ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
+		e === D ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
 	}
-}, De = class extends k {
+}, Ee = class extends A {
 	constructor() {
 		super(...arguments), this.type = 3;
 	}
 	j(e) {
-		this.element[this.name] = e === E ? void 0 : e;
+		this.element[this.name] = e === D ? void 0 : e;
 	}
-}, Oe = class extends k {
+}, De = class extends A {
 	constructor() {
 		super(...arguments), this.type = 4;
 	}
 	j(e) {
-		this.element.toggleAttribute(this.name, !!e && e !== E);
+		this.element.toggleAttribute(this.name, !!e && e !== D);
 	}
-}, ke = class extends k {
+}, Oe = class extends A {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r, i), this.type = 5;
 	}
 	_$AI(e, t = this) {
-		if ((e = O(this, e, t, 0) ?? E) === T) return;
-		let n = this._$AH, r = e === E && n !== E || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== E && (n === E || r);
+		if ((e = k(this, e, t, 0) ?? D) === E) return;
+		let n = this._$AH, r = e === D && n !== D || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== D && (n === D || r);
 		r && this.element.removeEventListener(this.name, this, n), i && this.element.addEventListener(this.name, this, e), this._$AH = e;
 	}
 	handleEvent(e) {
 		typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, e) : this._$AH.handleEvent(e);
 	}
-}, Ae = class {
+}, ke = class {
 	constructor(e, t, n) {
 		this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = n;
 	}
@@ -472,18 +472,18 @@ var Te = class {
 		return this._$AM._$AU;
 	}
 	_$AI(e) {
-		O(this, e);
+		k(this, e);
 	}
-}, je = se.litHtmlPolyfillSupport;
-je?.(we, Ee), (se.litHtmlVersions ??= []).push("3.3.3");
-var Me = (e, t, n) => {
+}, Ae = se.litHtmlPolyfillSupport;
+Ae?.(Ce, Te), (se.litHtmlVersions ??= []).push("3.3.3");
+var je = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
-		r._$litPart$ = i = new Ee(t.insertBefore(b(), e), e, void 0, n ?? {});
+		r._$litPart$ = i = new Te(t.insertBefore(b(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
-}, A = globalThis, j = class extends g {
+}, Me = globalThis, j = class extends g {
 	constructor() {
 		super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
 	}
@@ -493,7 +493,7 @@ var Me = (e, t, n) => {
 	}
 	update(e) {
 		let t = this.render();
-		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Me(t, this.renderRoot, this.renderOptions);
+		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = je(t, this.renderRoot, this.renderOptions);
 	}
 	connectedCallback() {
 		super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -502,12 +502,12 @@ var Me = (e, t, n) => {
 		super.disconnectedCallback(), this._$Do?.setConnected(!1);
 	}
 	render() {
-		return T;
+		return E;
 	}
 };
-j._$litElement$ = !0, j.finalized = !0, A.litElementHydrateSupport?.({ LitElement: j });
-var Ne = A.litElementPolyfillSupport;
-Ne?.({ LitElement: j }), (A.litElementVersions ??= []).push("4.2.2");
+j._$litElement$ = !0, j.finalized = !0, Me.litElementHydrateSupport?.({ LitElement: j });
+var Ne = Me.litElementPolyfillSupport;
+Ne?.({ LitElement: j }), (Me.litElementVersions ??= []).push("4.2.2");
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/custom-element.js
 var Pe = (e) => (t, n) => {
@@ -929,76 +929,8 @@ function G(e) {
 	return Array.isArray(t.visibility) && (n.visibility = structuredClone(t.visibility)), n;
 }
 //#endregion
-//#region src/format.ts
-var mt = {
-	guest: "Guest",
-	free: "Free",
-	go: "Go",
-	plus: "Plus",
-	pro: "Pro",
-	prolite: "Pro Lite",
-	free_workspace: "Free Workspace",
-	team: "Team",
-	self_serve_business_prolite: "Business Pro Lite",
-	self_serve_business_usage_based: "Usage-based Business",
-	business: "Business",
-	ent26: "Enterprise 26",
-	enterprise_cbp_automation: "Automation Enterprise",
-	enterprise_cbp_usage_based: "Usage-based Enterprise",
-	education: "Education",
-	quorum: "Quorum",
-	k12: "K–12",
-	enterprise: "Enterprise",
-	edu: "Edu",
-	edu_plus: "Edu Plus",
-	edu_pro: "Edu Pro",
-	unknown: "Unknown plan"
-};
-function ht(e) {
-	if (!e) return "";
-	let t = e.trim().toLowerCase();
-	return mt[t] ? mt[t] : gt(t);
-}
-function gt(e) {
-	return e.trim().toLowerCase().split(/[_-]+/u).filter(Boolean).map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(" ");
-}
-function K(e, t, n = !1) {
-	return e === null || !Number.isFinite(e) ? "—" : new Intl.NumberFormat(t, {
-		notation: n ? "compact" : "standard",
-		maximumFractionDigits: n ? 2 : 1
-	}).format(e);
-}
-function q(e, t) {
-	if (e === null) return "—";
-	let n = Number(e);
-	return Number.isFinite(n) ? new Intl.NumberFormat(t, { maximumFractionDigits: 2 }).format(n) : e;
-}
-function _t(e, t) {
-	if (!e) return null;
-	let n = new Date(e);
-	if (!Number.isFinite(n.getTime())) return null;
-	let r = Math.max(0, Math.round((n.getTime() - t.getTime()) / 6e4));
-	return {
-		totalMinutes: r,
-		days: Math.floor(r / 1440),
-		hours: Math.floor(r % 1440 / 60),
-		minutes: r % 60
-	};
-}
-function vt(e, t) {
-	if (!e) return "—";
-	let n = new Date(e);
-	return Number.isFinite(n.getTime()) ? new Intl.DateTimeFormat(t, {
-		weekday: "short",
-		day: "2-digit",
-		month: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit"
-	}).format(n) : "—";
-}
-//#endregion
 //#region src/localize.ts
-var yt = {
+var mt = {
 	en: {
 		available: "Available",
 		blocked: "Blocked",
@@ -1264,9 +1196,81 @@ var yt = {
 		restrictionSomeLimit: "Mindestens ein Inklusivlimit ist erreicht."
 	}
 };
-function bt(e, t, n) {
-	let r = yt[e?.toLowerCase().startsWith("de") ? "de" : "en"][t];
+function ht(e, t, n) {
+	let r = mt[e?.toLowerCase().startsWith("de") ? "de" : "en"][t];
 	return n ? r.replace(/\{(\w+)\}/g, (e, t) => t in n ? String(n[t]) : e) : r;
+}
+//#endregion
+//#region src/format.ts
+function gt(e, t) {
+	let n = (e) => ht(t, e), r = e.duration_seconds, i = (e) => r !== null && r >= e * .95 && r <= e * 1.05, a = i(18e3) ? n("fiveHours") : i(604800) ? n("week") : r && r % 86400 == 0 ? `${r / 86400} ${n("days")}` : null;
+	return e.source === "additional" && e.name ? a ? `${e.name} · ${a}` : e.name : a ?? e.name ?? n("unknownWindow");
+}
+var _t = {
+	guest: "Guest",
+	free: "Free",
+	go: "Go",
+	plus: "Plus",
+	pro: "Pro",
+	prolite: "Pro Lite",
+	free_workspace: "Free Workspace",
+	team: "Team",
+	self_serve_business_prolite: "Business Pro Lite",
+	self_serve_business_usage_based: "Usage-based Business",
+	business: "Business",
+	ent26: "Enterprise 26",
+	enterprise_cbp_automation: "Automation Enterprise",
+	enterprise_cbp_usage_based: "Usage-based Enterprise",
+	education: "Education",
+	quorum: "Quorum",
+	k12: "K–12",
+	enterprise: "Enterprise",
+	edu: "Edu",
+	edu_plus: "Edu Plus",
+	edu_pro: "Edu Pro",
+	unknown: "Unknown plan"
+};
+function vt(e) {
+	if (!e) return "";
+	let t = e.trim().toLowerCase();
+	return _t[t] ? _t[t] : yt(t);
+}
+function yt(e) {
+	return e.trim().toLowerCase().split(/[_-]+/u).filter(Boolean).map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(" ");
+}
+function K(e, t, n = !1) {
+	return e === null || !Number.isFinite(e) ? "—" : new Intl.NumberFormat(t, {
+		notation: n ? "compact" : "standard",
+		maximumFractionDigits: n ? 2 : 1
+	}).format(e);
+}
+function q(e, t) {
+	if (e === null) return "—";
+	let n = Number(e);
+	return Number.isFinite(n) ? new Intl.NumberFormat(t, { maximumFractionDigits: 2 }).format(n) : e;
+}
+function bt(e, t) {
+	if (!e) return null;
+	let n = new Date(e);
+	if (!Number.isFinite(n.getTime())) return null;
+	let r = Math.max(0, Math.round((n.getTime() - t.getTime()) / 6e4));
+	return {
+		totalMinutes: r,
+		days: Math.floor(r / 1440),
+		hours: Math.floor(r % 1440 / 60),
+		minutes: r % 60
+	};
+}
+function xt(e, t) {
+	if (!e) return "—";
+	let n = new Date(e);
+	return Number.isFinite(n.getTime()) ? new Intl.DateTimeFormat(t, {
+		weekday: "short",
+		day: "2-digit",
+		month: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit"
+	}).format(n) : "—";
 }
 //#endregion
 //#region src/status.ts
@@ -1277,40 +1281,40 @@ var J = {
 	critical: 3,
 	blocked: 4
 };
-function xt(e, t, n) {
+function St(e, t, n) {
 	return t ? "blocked" : typeof e != "number" || !Number.isFinite(e) ? "unknown" : e >= n.critical ? "critical" : e >= n.warning ? "warning" : "ok";
 }
-function St(e) {
+function Ct(e) {
 	return e.reduce((e, t) => J[t] > J[e] ? t : e, "unknown");
 }
 //#endregion
 //#region src/view-model.ts
-function Ct(e) {
+function wt(e) {
 	if (!e) return null;
 	let t = new Date(e);
 	return Number.isFinite(t.getTime()) ? t : null;
 }
-function wt(e, t, n) {
-	let r = Ct(e);
+function Tt(e, t, n) {
+	let r = wt(e);
 	return r === null || n.getTime() - r.getTime() > t * 6e4;
 }
-function Tt(e, t) {
+function Et(e, t) {
 	return !e || e.refresh_mode !== "poll" || e.state === "disabled" || e.state === "unsupported" ? !1 : e.state === "error" || e.state === "never" ? !0 : !e.last_success || !e.expected_interval_seconds ? !1 : t.getTime() - new Date(e.last_success).getTime() > e.expected_interval_seconds * 2e3;
 }
-function Et(e, t) {
+function Dt(e, t) {
 	if (!e.duration_seconds || !e.resets_at || e.used_percent === null) return null;
-	let n = Ct(e.resets_at);
+	let n = wt(e.resets_at);
 	if (!n) return null;
 	let r = n.getTime() - e.duration_seconds * 1e3, i = (t.getTime() - r) / (e.duration_seconds * 1e3) * 100;
 	return !Number.isFinite(i) || i < 0 || i > 100 ? null : e.used_percent - i;
 }
-function Dt(e, t) {
+function Ot(e, t) {
 	if (e.reached !== t.reached) return e.reached;
 	let n = e.remaining_percent ?? Infinity, r = t.remaining_percent ?? Infinity;
 	return n === r ? e.source !== t.source && e.source === "main" : n < r;
 }
-function Ot(e) {
-	return e.length === 0 ? null : e.reduce((e, t) => Dt(t, e) ? t : e);
+function kt(e) {
+	return e.length === 0 ? null : e.reduce((e, t) => Ot(t, e) ? t : e);
 }
 function Y(e, t, n, r) {
 	if (t !== "auto") return t;
@@ -1320,34 +1324,34 @@ function Y(e, t, n, r) {
 		case "profile": return n.profile !== null;
 		case "additional_limits": return n.limits.some((e) => e.source === "additional");
 		case "budget": return n.limits.some((e) => e.budget_pph !== null && e.budget_pph !== void 0);
-		case "sources": return Object.values(n.sources ?? {}).some((e) => Tt(e, r));
+		case "sources": return Object.values(n.sources ?? {}).some((e) => Et(e, r));
 		default: return !0;
 	}
 }
-function kt(e, t, n) {
-	let r = !e.available || wt(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((e) => ({
+function At(e, t, n) {
+	let r = !e.available || Tt(e.updated_at, t.stale_after_minutes, n), i = e.limits.map((e) => ({
 		...e,
-		severity: xt(e.used_percent, e.reached, t.thresholds),
-		pace: Et(e, n)
-	})), a = e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0, o = e.blocker !== null || e.limit_summary?.reached === !0 ? a ? "critical" : "blocked" : St(i.map((e) => e.severity));
+		severity: St(e.used_percent, e.reached, t.thresholds),
+		pace: Dt(e, n)
+	})), a = e.limit_summary?.reason === "usage_limit" && e.limit_summary.fallback_available === !0, o = e.blocker !== null || e.limit_summary?.reached === !0 ? a ? "critical" : "blocked" : Ct(i.map((e) => e.severity));
 	return {
 		...e,
 		limits: i,
 		severity: o,
 		stale: r,
-		mostConstrainedLimit: Ot(i)
+		mostConstrainedLimit: kt(i)
 	};
 }
-function At(e, t, n, r = /* @__PURE__ */ new Date()) {
+function jt(e, t, n, r = /* @__PURE__ */ new Date()) {
 	let i = e.accounts;
 	t.included_entry_ids.length > 0 && (i = i.filter((e) => t.included_entry_ids.includes(e.id)));
-	let a = i.map((e) => kt(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
+	let a = i.map((e) => At(e, t, r)), o = n ?? t.selected_entry_id, s = o ? a.find((e) => e.id === o) ?? null : null;
 	return s ||= t.account_mode === "single" ? a[0] ?? null : [...a].sort((e, t) => J[t.severity] - J[e.severity])[0] ?? null, {
 		accounts: a,
 		selectedAccount: s,
 		severity: s?.severity ?? "unknown",
 		stale: s?.stale ?? !1,
-		generatedAt: Ct(e.generated_at),
+		generatedAt: wt(e.generated_at),
 		integrationVersion: e.integration_version
 	};
 }
@@ -1361,7 +1365,7 @@ function X(e, t, n, r) {
 }
 //#endregion
 //#region src/codex-usage-card.ts
-var jt = "codex_usage_card_data_updated", Mt = [
+var Mt = "codex_usage_card_data_updated", Nt = [
 	{
 		key: "lifetime_tokens",
 		label: "lifetimeTokens",
@@ -1414,7 +1418,7 @@ var jt = "codex_usage_card_data_updated", Mt = [
 		key: "most_used_reasoning_effort_percentage",
 		label: "reasoningShare"
 	}
-], Nt = {
+], Pt = {
 	unknown: "severityUnknown",
 	ok: "severityOk",
 	warning: "severityWarning",
@@ -1424,7 +1428,7 @@ var jt = "codex_usage_card_data_updated", Mt = [
 function Z(e, t) {
 	return e === null ? "—" : `${new Intl.NumberFormat(t, { maximumFractionDigits: 1 }).format(e)}%`;
 }
-function Pt(e) {
+function Ft(e) {
 	return e.length > 4 ? `…${e.slice(-4)}` : e;
 }
 var Q = class extends j {
@@ -1493,8 +1497,8 @@ var Q = class extends j {
 	}
 	getGridOptions() {
 		return {
-			columns: 6,
-			min_columns: 3,
+			columns: 12,
+			min_columns: 6,
 			max_columns: 12
 		};
 	}
@@ -1529,7 +1533,7 @@ var Q = class extends j {
 			try {
 				let n = await e.subscribeEvents(() => {
 					this.clientGeneration === t && this.isConnected && this.loadSnapshot();
-				}, jt);
+				}, Mt);
 				if (this.clientGeneration !== t || !this.isConnected) {
 					n();
 					return;
@@ -1561,23 +1565,22 @@ var Q = class extends j {
 		}
 	}
 	t(e, t) {
-		return bt(this.hass?.locale?.language ?? this.hass?.language, e, t);
+		return ht(this.hass?.locale?.language ?? this.hass?.language, e, t);
 	}
 	get locale() {
 		return this.hass?.locale?.language ?? this.hass?.language;
 	}
 	statusLabel(e, t) {
-		return t?.limit_summary?.reason === "usage_limit" && t.limit_summary.fallback_available === !0 ? this.t("severityReserveFallback") : this.t(Nt[e]);
+		return t?.limit_summary?.reason === "usage_limit" && t.limit_summary.fallback_available === !0 ? this.t("severityReserveFallback") : this.t(Pt[e]);
 	}
 	limitLabel(e) {
-		let t = (t) => e.duration_seconds !== null && e.duration_seconds >= t * .95 && e.duration_seconds <= t * 1.05, n = t(18e3) ? this.t("fiveHours") : t(604800) ? this.t("week") : e.duration_seconds && e.duration_seconds % 86400 == 0 ? `${e.duration_seconds / 86400} ${this.t("days")}` : null;
-		return e.source === "additional" && e.name ? n ? `${e.name} · ${n}` : e.name : n ?? e.name ?? this.t("unknownWindow");
+		return gt(e, this.locale);
 	}
 	absoluteResetLabel(e) {
-		return vt(e, this.locale);
+		return xt(e, this.locale);
 	}
 	relativeResetLabel(e) {
-		let t = _t(e, this.now);
+		let t = bt(e, this.now);
 		if (!t) return "—";
 		let { totalMinutes: n, days: r, hours: i, minutes: a } = t;
 		return n === 0 ? this.t("resetsImminently") : n < 60 ? this.t("resetsInMinutes", { minutes: n }) : r === 0 ? a === 0 ? this.t("resetsInHours", { hours: i }) : this.t("resetsInHoursMinutes", {
@@ -1649,77 +1652,79 @@ var Q = class extends j {
 		}), ...n.filter((e) => !r.has(e.id) && this.config.sections.limits.values[e.id] !== !1)];
 	}
 	renderLimitRow(e, t) {
-		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = w` <div class="limit-head">
+		let n = e.used_percent ?? (e.remaining_percent === null ? null : 100 - e.remaining_percent), r = e.remaining_percent ?? (n === null ? null : 100 - n), i = T` <div class="limit-head">
         <span class="limit-name">${this.limitLabel(e)}</span>
-        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? w`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : E}
+        ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<span class="limit-relative">${this.relativeResetLabel(e.resets_at)}</span>` : D}
       </div>
       <div class="limit-body">
         <div class="limit-metric">
-          ${t ? w`<div
+          ${t ? T`<div
                   class="ring ${r === null ? "unknown" : ""}"
-                  style=${r === null ? E : `--progress:${r}`}
+                  style=${r === null ? D : `--progress:${r}`}
                   aria-hidden="true"
                 >
                   <strong>${Z(r, this.locale)}</strong>
-                </div>` : w`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
+                </div>` : T`<strong class="limit-value">${Z(r, this.locale)}</strong>`}
           <span class="limit-remaining-label">${this.t("remaining")}</span>
         </div>
         <div class="limit-copy">
           <div
             class="bar"
             role="progressbar"
+            aria-label=${`${this.limitLabel(e)}: ${this.t("remaining")}`}
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuetext=${Z(r, this.locale)}
-            aria-valuenow=${r === null ? E : r}
+            aria-valuetext=${`${Z(r, this.locale)} ${this.t("remaining")}`}
+            aria-valuenow=${r === null ? D : r}
           >
-            ${r === null ? E : w`<span style=${`width:${r}%`}></span>`}
+            ${r === null ? D : T`<span style=${`width:${r}%`}></span>`}
           </div>
           <span class="limit-used"
             >${Z(n, this.locale)} ${this.t("usedInline")}</span
           >
-          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? w`<small
+          ${this.config.sections.pace.visible && this.valueVisible("pace", e.id) && e.pace !== null ? T`<small
                   >${this.t("pace")}: ${K(Math.abs(e.pace), this.locale)}
                   ${this.t("percentagePoints")}
                   ${e.pace >= 0 ? this.t("ahead") : this.t("behind")}</small
-                >` : E}
+                >` : D}
         </div>
       </div>
-      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? w`<small class="limit-absolute"
+      ${this.config.sections.resets.visible && this.valueVisible("resets", e.id) && e.resets_at ? T`<small class="limit-absolute"
               >${this.t("resets")}: ${this.absoluteResetLabel(e.resets_at)}</small
-            >` : E}`;
-		return e.entity_id ? w`<button
+            >` : D}`;
+		return e.entity_id ? T`<button
+          type="button"
           class="limit-row"
           data-limit-id=${e.id}
           @click=${() => this.openMoreInfo(e.entity_id)}
         >
           ${i}
-        </button>` : w`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
+        </button>` : T`<div class="limit-row" data-limit-id=${e.id}>${i}</div>`;
 	}
 	renderBudgetRows(e) {
-		if (!Y("budget", this.config.sections.budget.visible, e, this.now)) return E;
+		if (!Y("budget", this.config.sections.budget.visible, e, this.now)) return D;
 		let t = e.stale || !e.available ? [] : e.limits.flatMap((e) => {
 			if (!this.valueVisible("budget", e.id) || e.budget_pph === null || e.budget_pph === void 0) return [];
 			let t = e.budget_calculated_at ? new Date(e.budget_calculated_at) : null;
 			if (!t || !Number.isFinite(t.getTime()) || this.now.getTime() - t.getTime() > this.config.stale_after_minutes * 6e4) return [];
-			let n = _t(e.resets_at, this.now);
+			let n = bt(e.resets_at, this.now);
 			if (!n || n.totalMinutes < 1) return [];
 			let r = (e.duration_seconds ?? 0) >= 86400, i = r ? e.budget_pph * 24 : e.budget_pph;
-			return [w`<div class="info-row" data-budget-id=${e.id}>
+			return [T`<div class="info-row" data-budget-id=${e.id}>
                 <span class="info-label">${this.limitLabel(e)}</span
                 ><span class="info-value"
                   >${K(i, this.locale)} ${r ? "pp/day" : "pp/h"}</span
                 >
               </div>`];
 		});
-		if (t.length) return w`<div class="section-label">${this.t("budget")}</div>
+		if (t.length) return T`<div class="section-label">${this.t("budget")}</div>
         ${t}`;
 		let n = this.emptyOptional("budget");
-		return n === E ? E : w`<div class="section-label">${this.t("budget")}</div>
+		return n === D ? D : T`<div class="section-label">${this.t("budget")}</div>
           ${n}`;
 	}
 	renderSources(e) {
-		if (!Y("sources", this.config.sections.sources.visible, e, this.now)) return E;
+		if (!Y("sources", this.config.sections.sources.visible, e, this.now)) return D;
 		let t = {
 			usage: "sourceUsage",
 			profile: "sourceProfile",
@@ -1732,8 +1737,8 @@ var Q = class extends j {
 			disabled: "sourceDisabled",
 			never: "sourceNever"
 		}, r = Object.entries(e.sources ?? {}).map(([e, r]) => {
-			let i = r.state === "ok" && Tt(r, this.now) ? "sourceStale" : n[r.state] ?? "sourceNever";
-			return w`<div class="info-row" data-source=${e}>
+			let i = r.state === "ok" && Et(r, this.now) ? "sourceStale" : n[r.state] ?? "sourceNever";
+			return T`<div class="info-row" data-source=${e}>
         <span class="info-label">${this.t(t[e] ?? "sources")}</span
         ><span class="info-value"
           >${this.t(i)} ·
@@ -1741,73 +1746,73 @@ var Q = class extends j {
         >
       </div>`;
 		});
-		if (r.length) return w`<div class="section-label">${this.t("sources")}</div>
+		if (r.length) return T`<div class="section-label">${this.t("sources")}</div>
         ${r}`;
 		let i = this.emptyOptional("sources");
-		return i === E ? E : w`<div class="section-label">${this.t("sources")}</div>
+		return i === D ? D : T`<div class="section-label">${this.t("sources")}</div>
           ${i}`;
 	}
 	renderAdditionalLimits(e) {
-		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e, this.now)) return E;
+		if (!Y("additional_limits", this.config.sections.additional_limits.visible, e, this.now)) return D;
 		let t = this.eligibleLimits(e, "additional");
 		if (!t.length) {
 			let e = this.emptyOptional("additional_limits");
-			return e === E ? E : w`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+			return e === D ? D : T`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
             ${e}`;
 		}
-		return w`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
+		return T`<div class="section-label">${this.t("sectionAdditionalLimits")}</div>
       ${t.map((e) => this.renderLimitRow(e, !1))}`;
 	}
 	emptyOptional(e) {
 		let t = this.config.sections[e], n = Object.values(t.values);
-		return t.visible !== !0 || n.length > 0 && n.every((e) => e === !1) ? E : w`<div class="info-row" data-empty-section=${e}>
+		return t.visible !== !0 || n.length > 0 && n.every((e) => e === !1) ? D : T`<div class="info-row" data-empty-section=${e}>
       <span class="info-value">—</span>
     </div>`;
 	}
 	renderResetSummary(e) {
-		if (!e.reset_credits || !this.valueVisible("credits", "reset_credits") || !Y("credits", this.config.sections.credits.visible, e, this.now)) return E;
+		if (!e.reset_credits || !this.valueVisible("credits", "reset_credits") || !Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
 		let t = e.reset_credits.available_count, n = t === null ? "—" : this.t(t === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: t });
-		return w`<div class="info-row" data-core="resets">
+		return T`<div class="info-row" data-core="resets">
       <span class="info-label">${this.t("availableResets")}</span
       ><span class="info-value">${n}</span>
     </div>`;
 	}
 	renderCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e, this.now)) return E;
-		if (!e.credits) return e.reset_credits && this.valueVisible("credits", "reset_credits") ? E : this.emptyOptional("credits");
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now)) return D;
+		if (!e.credits) return e.reset_credits && this.valueVisible("credits", "reset_credits") ? D : this.emptyOptional("credits");
 		let t = e.credits, n = [];
 		if (this.valueVisible("credits", "balance")) {
 			let e = t.balance === null ? t.has_credits === !1 ? this.t("unavailable") : this.t("creditsAvailableAmount", { amount: "—" }) : t.has_credits === !1 ? `${this.t("balance")}: ${q(t.balance, this.locale)}` : this.t("creditsAvailableAmount", { amount: q(t.balance, this.locale) });
-			n.push(w`<div class="info-row" data-detail="credits">
+			n.push(T`<div class="info-row" data-detail="credits">
           <span class="info-label">${this.t("credits")}</span>
           <span class="info-value">${e}</span>
         </div>`);
 		}
-		return this.valueVisible("credits", "unlimited") && t.unlimited === !0 && n.push(w`<div class="info-row" data-credit-key="unlimited">
+		return this.valueVisible("credits", "unlimited") && t.unlimited === !0 && n.push(T`<div class="info-row" data-credit-key="unlimited">
           <span class="info-label">${this.t("creditState")}</span>
           <span class="info-value">${this.t("unlimitedCredits")}</span>
-        </div>`), n.length ? w`${n}` : E;
+        </div>`), n.length ? T`${n}` : D;
 	}
 	renderResetCreditsRows(e) {
-		if (!Y("credits", this.config.sections.credits.visible, e, this.now) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return E;
-		let t = e.reset_credits, n = t.available_count, r = [w`<div class="info-row" data-detail="reset-credits">
+		if (!Y("credits", this.config.sections.credits.visible, e, this.now) || !e.reset_credits || !this.valueVisible("credits", "reset_credits")) return D;
+		let t = e.reset_credits, n = t.available_count, r = [T`<div class="info-row" data-detail="reset-credits">
         <span class="info-label">${this.t("resetCredits")}</span>
         <span class="info-value"
           >${n === null ? "—" : this.t(n === 1 ? "resetCreditAvailable" : "resetCreditsAvailable", { count: n })}</span
         >
       </div>`];
-		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && r.push(w`<div class="info-row" data-credit-key="total_earned">
+		return this.valueVisible("credits", "total_earned") && t.total_earned !== null && r.push(T`<div class="info-row" data-credit-key="total_earned">
           <span class="info-label">${this.t("totalEarned")}</span>
           <span class="info-value">${K(t.total_earned, this.locale)}</span>
-        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && r.push(w`<div class="info-row" data-credit-key="next_expiry">
+        </div>`), this.valueVisible("credits", "next_expiry") && t.next_expiry && r.push(T`<div class="info-row" data-credit-key="next_expiry">
           <span class="info-label">${this.t("nextExpiry")}</span>
           <span class="info-value"
             >${this.t("expiresOn", { date: this.absoluteResetLabel(t.next_expiry) })}</span
           >
-        </div>`), w`${r}`;
+        </div>`), T`${r}`;
 	}
 	renderSpendingRows(e) {
-		if (!Y("spending", this.config.sections.spending.visible, e, this.now)) return E;
+		if (!Y("spending", this.config.sections.spending.visible, e, this.now)) return D;
 		if (!e.spend) return this.emptyOptional("spending");
 		let t = e.spend, n = [
 			["remaining", t.remaining],
@@ -1816,135 +1821,145 @@ var Q = class extends j {
 			["used_percent", t.used_percent]
 		].find(([e, t]) => this.valueVisible("spending", e) && t !== null);
 		if (!n) return this.emptyOptional("spending");
-		let [r, i] = n, a = [w`<div class="info-row" data-detail="spending">
+		let [r, i] = n, a = [T`<div class="info-row" data-detail="spending">
         <span class="info-label">${this.t("spending")}</span>
         <span class="info-value"
           >${r === "used_percent" ? Z(i, this.locale) : q(i, this.locale)}</span
         >
       </div>`];
-		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(w`<div
+		return this.valueVisible("spending", "used_percent") && t.used_percent !== null && (a.push(T`<div
           class="bar bar--mini"
           role="progressbar"
+          aria-label=${`${this.t("spending")}: ${this.t("usage")}`}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow=${t.used_percent}
         >
           <span style=${`width:${t.used_percent}%`}></span>
-        </div>`), a.push(w`<div class="info-row" data-spend-key="used_percent">
+        </div>`), a.push(T`<div class="info-row" data-spend-key="used_percent">
           <span class="info-label">${this.t("usage")}</span>
           <span class="info-value">${Z(t.used_percent, this.locale)}</span>
-        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(w`<div class="info-row" data-spend-key="used">
+        </div>`)), this.valueVisible("spending", "used") && t.used !== null && a.push(T`<div class="info-row" data-spend-key="used">
           <span class="info-label">${this.t("used")}</span>
           <span class="info-value">${q(t.used, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(w`<div class="info-row" data-spend-key="limit">
+        </div>`), this.valueVisible("spending", "limit") && t.limit !== null && a.push(T`<div class="info-row" data-spend-key="limit">
           <span class="info-label">${this.t("limit")}</span>
           <span class="info-value">${q(t.limit, this.locale)}</span>
-        </div>`), this.valueVisible("spending", "source") && t.source && a.push(w`<div class="info-row" data-spend-key="source">
+        </div>`), this.valueVisible("spending", "source") && t.source && a.push(T`<div class="info-row" data-spend-key="source">
           <span class="info-label">${this.t("source")}</span>
           <span class="info-value">${t.source}</span>
-        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(w`<div class="info-row" data-spend-key="reset">
+        </div>`), this.valueVisible("spending", "reset") && t.resets_at && a.push(T`<div class="info-row" data-spend-key="reset">
           <span class="info-label">${this.t("resets")}</span>
           <span class="info-value">${this.absoluteResetLabel(t.resets_at)}</span>
-        </div>`), w`${a}`;
+        </div>`), T`${a}`;
 	}
 	renderProfileRows(e) {
-		if (!Y("profile", this.config.sections.profile.visible, e, this.now)) return E;
+		if (!Y("profile", this.config.sections.profile.visible, e, this.now)) return D;
 		if (!e.profile) return this.emptyOptional("profile");
-		let t = Mt.flatMap((t) => {
+		let t = Nt.flatMap((t) => {
 			if (!this.valueVisible("profile", t.key)) return [];
 			let n = e.profile?.[t.key];
 			if (n == null) return [];
-			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : K(n, this.locale, t.compact) : gt(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
-			return [w`<div class="info-row" data-profile-key=${t.key}>
+			let r = `${typeof n == "number" ? t.key === "fast_mode_usage_percentage" || t.key === "most_used_reasoning_effort_percentage" ? Z(n, this.locale) : K(n, this.locale, t.compact) : yt(n)}${t.suffix ? ` ${this.t(t.suffix)}` : ""}`;
+			return [T`<div class="info-row" data-profile-key=${t.key}>
           <span class="info-label">${this.t(t.label)}</span>
           <span class="info-value">${r}</span>
         </div>`];
 		});
 		if (!t.length) return this.emptyOptional("profile");
 		let n = e.sources?.profile;
-		return w`${n && (n.state !== "ok" || n.last_success && new Date(n.last_success).getTime() < this.now.getTime() - (n.expected_interval_seconds ?? 3600) * 2e3) ? w`<small data-profile-historical>${this.t("historical")}</small>` : E}${t}`;
+		return T`${n && (n.state !== "ok" || n.last_success && new Date(n.last_success).getTime() < this.now.getTime() - (n.expected_interval_seconds ?? 3600) * 2e3) ? T`<small data-profile-historical>${this.t("historical")}</small>` : D}${t}`;
 	}
 	renderAccountRows(e) {
-		if (!Y("account", this.config.sections.account.visible, e, this.now)) return E;
+		if (!Y("account", this.config.sections.account.visible, e, this.now)) return D;
 		let t = [];
-		return this.valueVisible("account", "plan") && e.plan && t.push(w`<div class="info-row">
+		return this.valueVisible("account", "plan") && e.plan && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("planLabel")}</span>
-          <span class="info-value">${ht(e.plan)}</span>
-        </div>`), this.valueVisible("account", "workspace") && t.push(w`<div class="info-row">
+          <span class="info-value">${vt(e.plan)}</span>
+        </div>`), this.valueVisible("account", "workspace") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("workspace")}</span>
           <span class="info-value">${e.name}</span>
-        </div>`), this.valueVisible("account", "account_id") && t.push(w`<div class="info-row">
+        </div>`), this.valueVisible("account", "account_id") && t.push(T`<div class="info-row">
           <span class="info-label">${this.t("accountId")}</span>
-          <span class="info-value">${Pt(e.id)}</span>
-        </div>`), t.length ? w`<div class="account-details" data-detail="account">${t}</div>` : this.emptyOptional("account");
+          <span class="info-value">${Ft(e.id)}</span>
+        </div>`), t.length ? T`<div class="account-details" data-detail="account">${t}</div>` : this.emptyOptional("account");
 	}
 	renderDetails(e) {
 		let t = this.renderCreditsRows(e), n = this.renderResetCreditsRows(e), r = this.renderSpendingRows(e), i = this.renderProfileRows(e), a = this.renderAccountRows(e), o = this.renderBudgetRows(e), s = this.renderSources(e), c = [
 			this.renderAdditionalLimits(e),
-			t !== E || n !== E ? w`<div class="section-label">${this.t("sectionCredits")}</div>
-            ${t}${n}` : E,
-			r === E ? E : w`<div class="section-label">${this.t("sectionSpending")}</div>
+			t !== D || n !== D ? T`<div class="section-label">${this.t("sectionCredits")}</div>
+            ${t}${n}` : D,
+			r === D ? D : T`<div class="section-label">${this.t("sectionSpending")}</div>
             ${r}`,
-			i === E ? E : w`<div class="section-label">${this.t("sectionProfile")}</div>
+			i === D ? D : T`<div class="section-label">${this.t("sectionProfile")}</div>
             ${i}`,
-			a === E ? E : w`<div class="section-label">${this.t("sectionAccount")}</div>
+			a === D ? D : T`<div class="section-label">${this.t("sectionAccount")}</div>
             ${a}`,
 			o,
 			s
-		].filter((e) => e !== E);
-		return c.length ? w`<div class="details">${c}</div>` : E;
+		].filter((e) => e !== D);
+		return c.length ? T`<div class="details">${c}</div>` : D;
 	}
 	render() {
-		let e = this.snapshot ? At(this.snapshot, this.config, this.sessionEntryId, this.now) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = ht(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.mainLimits(t) : [], c = t ? this.renderDetails(t) : E, l = c !== E, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
-		return w`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
+		let e = this.snapshot ? jt(this.snapshot, this.config, this.sessionEntryId, this.now) : null, t = e?.selectedAccount ?? null, n = e?.severity ?? "unknown", r = this.error ? !0 : e?.stale ?? !1, i = !!(e && e.accounts.length > 1) && this.config.account_mode !== "single", a = vt(t?.plan ?? null), o = t ? i ? `${t.name}${a ? ` · ${a}` : ""}` : a : "", s = t ? this.mainLimits(t) : [], c = t ? this.renderDetails(t) : D, l = c !== D, u = t ? this.calloutLabel(t) : null, d = `--state-color:${this.config.colors[n]};--card-radius:${this.config.appearance.card_radius}px;--card-spacing:${this.config.appearance.spacing}px`;
+		return T`<ha-card class="${n}${r ? " stale" : ""}" style=${d}>
       <div class="surface">
         <header>
           <div>
             <h2>${this.config.title}</h2>
-            ${o ? w`<p>${o}</p>` : E}
+            ${o ? T`<p>${o}</p>` : D}
           </div>
           <span class="status">${this.statusLabel(n, t)}</span>
         </header>
-        ${r ? w`<p class="freshness">
-                ${this.t("dataMayBeOutdated")}${t ? w` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : E}
-              </p>` : E}
-        ${i && e && this.config.allow_account_switching ? w`<nav aria-label=${this.t("account")}>
-                ${e.accounts.map((e) => w`<button
+        ${r ? T`<p class="freshness">
+                ${this.t("dataMayBeOutdated")}${t ? T` · ${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}` : D}
+              </p>` : D}
+        ${i && e && this.config.allow_account_switching ? T`<nav aria-label=${this.t("account")}>
+                ${e.accounts.map((e) => T`<button
+                      type="button"
                       class="account-chip ${e.id === t?.id ? "selected" : ""}"
+                      aria-pressed=${e.id === t?.id ? "true" : "false"}
                       data-entry-id=${e.id}
                       @click=${() => this.sessionEntryId = e.id}
                     >
                       <i style=${`--chip-color:${this.config.colors[e.severity]}`}></i
                       >${e.name}
                     </button>`)}
-              </nav>` : E}
-        ${t && u ? w`<p class="callout">${u}</p>` : E}
-        ${t ? this.renderResetSummary(t) : E}
-        ${t ? this.config.sections.limits.visible ? s.length ? w`<main class="limits">
+              </nav>` : D}
+        ${t && u ? T`<p class="callout">${u}</p>` : D}
+        ${t ? this.renderResetSummary(t) : D}
+        ${t ? this.config.sections.limits.visible ? s.length ? T`<main class="limits">
                     ${s.map((e) => this.renderLimitRow(e, !0))}
-                  </main>` : w`<div class="empty">
+                  </main>` : T`<div class="empty">
                     ${this.error ? this.t("unavailable") : this.t("noData")}
-                  </div>` : E : w`<div class="empty">${this.t("unavailable")}</div>`}
-        ${l ? w`<button
+                  </div>` : D : T`<div class="empty">${this.t("unavailable")}</div>`}
+        ${l ? T`<button
+                type="button"
                 class="details-toggle"
+                aria-expanded=${this.detailsExpanded ? "true" : "false"}
+                aria-controls="codex-details"
                 @click=${() => this.detailsExpanded = !this.detailsExpanded}
               >
                 <span>${this.t(this.detailsExpanded ? "hideDetails" : "showDetails")}</span>
                 <i class="chevron ${this.detailsExpanded ? "open" : ""}"></i>
-              </button>` : E}
-        ${l && this.detailsExpanded ? c : E}
-        ${t && this.config.sections.footer.visible ? w`<footer>
-                ${this.valueVisible("footer", "updated") ? w`<span
+              </button>` : D}
+        ${l ? T`<div id="codex-details" ?hidden=${!this.detailsExpanded}>
+                ${this.detailsExpanded ? c : D}
+              </div>` : D}
+        ${t && this.config.sections.footer.visible ? T`<footer>
+                ${this.valueVisible("footer", "updated") ? T`<span
                         >${this.t("updated")}: ${this.absoluteResetLabel(t.updated_at)}</span
-                      >` : E}
-                ${this.valueVisible("footer", "version") ? w`<span>v${e?.integrationVersion}</span>` : E}
-              </footer>` : E}
+                      >` : D}
+                ${this.valueVisible("footer", "version") ? T`<span>v${e?.integrationVersion}</span>` : D}
+              </footer>` : D}
       </div>
     </ha-card>`;
 	}
 	static styles = o`
     :host {
       display: block;
+      container-type: inline-size;
+      container-name: codex-usage;
       color: var(--primary-text-color);
       --codex-space-1: 4px;
       --codex-space-2: 8px;
@@ -1952,10 +1967,10 @@ var Q = class extends j {
       --codex-space-4: 16px;
       --codex-space-5: 24px;
       --codex-progress-height: 6px;
-      --codex-chip-height: 22px;
+      --codex-chip-height: 28px;
       --codex-icon-size: 16px;
       --codex-radius: 8px;
-      --codex-secondary-opacity: 0.62;
+      --codex-secondary-opacity: 1;
     }
     ha-card {
       display: block;
@@ -1992,6 +2007,10 @@ var Q = class extends j {
       font-size: 1.2rem;
       font-weight: 650;
       letter-spacing: -0.01em;
+      overflow-wrap: anywhere;
+    }
+    header > div {
+      min-width: 0;
     }
     p {
       margin: var(--codex-space-1) 0 0;
@@ -2002,14 +2021,18 @@ var Q = class extends j {
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      height: var(--codex-chip-height);
-      padding: 0 var(--codex-space-2);
+      min-height: var(--codex-chip-height);
+      box-sizing: border-box;
+      max-width: 45%;
+      padding: var(--codex-space-1) var(--codex-space-2);
       border-radius: 999px;
       background: color-mix(in srgb, var(--state-color) 15%, transparent);
-      color: var(--state-color);
+      color: var(--primary-text-color);
       font-size: 0.74rem;
       font-weight: 700;
-      white-space: nowrap;
+      text-align: center;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
     }
     .freshness {
       margin: calc(-1 * var(--codex-space-2)) 0 0;
@@ -2020,7 +2043,7 @@ var Q = class extends j {
       margin: 0;
       font-size: 0.82rem;
       font-weight: 600;
-      color: var(--state-color);
+      color: var(--primary-text-color);
     }
     nav {
       display: flex;
@@ -2043,6 +2066,10 @@ var Q = class extends j {
       gap: var(--codex-space-1);
       align-items: center;
       cursor: pointer;
+      min-height: 44px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      font-size: 0.85rem;
     }
     .account-chip i {
       width: 7px;
@@ -2052,7 +2079,7 @@ var Q = class extends j {
     }
     .account-chip.selected {
       border-color: var(--state-color);
-      color: var(--state-color);
+      background: color-mix(in srgb, var(--state-color) 12%, transparent);
     }
     .limits {
       display: grid;
@@ -2076,6 +2103,7 @@ var Q = class extends j {
     .limit-name {
       font-weight: 650;
       font-size: 0.95rem;
+      overflow-wrap: anywhere;
     }
     .limit-relative {
       font-size: 0.76rem;
@@ -2186,6 +2214,7 @@ var Q = class extends j {
       align-items: baseline;
       gap: var(--codex-space-2);
       font-size: 0.85rem;
+      overflow-wrap: anywhere;
     }
     .info-label {
       color: var(--secondary-text-color);
@@ -2207,6 +2236,7 @@ var Q = class extends j {
       color: var(--primary-color);
       font-size: 0.8rem;
       font-weight: 600;
+      min-height: 44px;
     }
     .chevron {
       width: var(--codex-icon-size);
@@ -2244,7 +2274,7 @@ var Q = class extends j {
         opacity: 1;
       }
     }
-    @media (max-width: 479px) {
+    @container codex-usage (max-width: 479px) {
       .surface {
         padding: var(--codex-space-3);
       }
@@ -2273,7 +2303,7 @@ var Q = class extends j {
 X([M({ attribute: !1 })], Q.prototype, "hass", null), X([N()], Q.prototype, "snapshot", null), X([N()], Q.prototype, "error", null), X([N()], Q.prototype, "sessionEntryId", null), X([N()], Q.prototype, "detailsExpanded", null), X([N()], Q.prototype, "now", null), Q = X([Pe("codex-usage-card")], Q);
 //#endregion
 //#region src/codex-usage-card-editor.ts
-var Ft = "https://github.com/LucaFSmart/codex-usage#dashboard-card", It = [
+var It = "https://github.com/LucaFSmart/codex-usage#dashboard-card", Lt = [
 	{
 		key: "lifetime_tokens",
 		label: "lifetimeTokens"
@@ -2318,25 +2348,25 @@ var Ft = "https://github.com/LucaFSmart/codex-usage#dashboard-card", It = [
 		key: "most_used_reasoning_effort_percentage",
 		label: "reasoningShare"
 	}
-], Lt = [
+], Rt = [
 	"ok",
 	"warning",
 	"critical",
 	"blocked",
 	"unknown"
-], Rt = {
+], zt = {
 	ok: "colorOk",
 	warning: "colorWarning",
 	critical: "colorCritical",
 	blocked: "colorBlocked",
 	unknown: "colorUnknown"
-}, zt = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
-function Bt(e, t) {
-	let n = e.match(zt);
+}, Bt = /^var\((--[\w-]+)\s*,\s*(#[0-9a-fA-F]{6})\)$/i;
+function Vt(e, t) {
+	let n = e.match(Bt);
 	return n ? n[2] : /^#[0-9a-fA-F]{6}$/i.test(e) ? e : t;
 }
-function Vt(e, t) {
-	let n = e.match(zt);
+function Ht(e, t) {
+	let n = e.match(Bt);
 	return n ? `var(${n[1]}, ${t})` : t;
 }
 var $ = class extends j {
@@ -2397,7 +2427,7 @@ var $ = class extends j {
 		});
 	}
 	t(e) {
-		return bt(this.hass?.locale?.language ?? this.hass?.language, e);
+		return ht(this.hass?.locale?.language ?? this.hass?.language, e);
 	}
 	setSectionVisibility(e, t) {
 		let n = structuredClone(this.config), r = t.target.value;
@@ -2423,9 +2453,18 @@ var $ = class extends j {
 		}[e]);
 	}
 	updateThresholds(e) {
-		e.stopPropagation(), this.emitConfig(G({
+		e.stopPropagation();
+		let t = { ...e.detail.value }, { warning: n, critical: r } = t;
+		if (typeof n == "number" && typeof r == "number" && n >= r) {
+			this.emitConfig({
+				...this.config,
+				thresholds: { ...this.config.thresholds }
+			});
+			return;
+		}
+		this.emitConfig(G({
 			...this.config,
-			thresholds: e.detail.value
+			thresholds: t
 		}));
 	}
 	updateAppearance(e) {
@@ -2435,11 +2474,11 @@ var $ = class extends j {
 		}));
 	}
 	colorSwatchValue(e) {
-		let t = Bt(V[e], "#000000");
-		return Bt(this.config.colors[e], t);
+		let t = Vt(V[e], "#000000");
+		return Vt(this.config.colors[e], t);
 	}
 	updateColorSwatch(e, t) {
-		let n = t.target.value, r = Vt(this.config.colors[e], n);
+		let n = t.target.value, r = Ht(this.config.colors[e], n);
 		this.emitConfig(G({
 			...this.config,
 			colors: {
@@ -2485,13 +2524,22 @@ var $ = class extends j {
 			"limits",
 			"additional_limits",
 			"resets",
-			"pace"
+			"pace",
+			"budget"
 		].includes(e)) {
-			let e = /* @__PURE__ */ new Set();
-			return this.accounts.flatMap((t) => t.limits.flatMap((n) => e.has(n.id) ? [] : (e.add(n.id), [{
-				key: n.id,
-				label: `${t.name}: ${n.name}`
-			}])));
+			let t = /* @__PURE__ */ new Map();
+			for (let n of this.accounts) for (let r of n.limits) {
+				if (e === "limits" && r.source !== "main" || e === "additional_limits" && r.source !== "additional") continue;
+				let i = t.get(r.id);
+				i ? i.accounts.add(n.name) : t.set(r.id, {
+					label: gt(r, this.hass?.locale?.language ?? this.hass?.language),
+					accounts: /* @__PURE__ */ new Set([n.name])
+				});
+			}
+			return [...t].map(([e, t]) => ({
+				key: e,
+				label: `${t.label} · ${[...t.accounts].join(", ")}`
+			}));
 		}
 		return e === "credits" ? [
 			{
@@ -2539,7 +2587,7 @@ var $ = class extends j {
 				key: "reset",
 				label: this.t("resets")
 			}
-		] : e === "profile" ? It.map((e) => ({
+		] : e === "profile" ? Lt.map((e) => ({
 			key: e.key,
 			label: this.t(e.label)
 		})) : e === "account" ? [
@@ -2640,7 +2688,7 @@ var $ = class extends j {
 				} }
 			}
 		];
-		return w`<div class="editor">
+		return T`<div class="editor">
       <ha-form
         .hass=${this.hass}
         .data=${this.config}
@@ -2650,7 +2698,7 @@ var $ = class extends j {
       <details open>
         <summary>${this.t("sections")}</summary>
         <div class="section-list">
-          ${nt.map((e) => w`<div class="section-row">
+          ${nt.map((e) => T`<div class="section-row">
                 <label class="section-toggle"
                   >${this.sectionLabel(e)}
                   <select
@@ -2663,15 +2711,15 @@ var $ = class extends j {
                     <option value="false">${this.t("hide")}</option>
                   </select>
                 </label>
-                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? w`<div class="value-toggles">
-                        ${this.valueOptions(e).map((t) => w`<label data-value-key=${t.key}
+                ${this.config.sections[e].visible !== !1 && this.valueOptions(e).length > 0 ? T`<div class="value-toggles">
+                        ${this.valueOptions(e).map((t) => T`<label data-value-key=${t.key}
                               ><input
                                 type="checkbox"
                                 .checked=${this.config.sections[e].values[t.key] !== !1}
                                 @change=${() => this.toggleValue(e, t.key)}
                               />${t.label}</label
                             >`)}
-                      </div>` : E}
+                      </div>` : D}
               </div>`)}
         </div>
       </details>
@@ -2685,13 +2733,13 @@ var $ = class extends j {
 			name: "warning",
 			selector: { number: {
 				min: 0,
-				max: 99,
+				max: this.config.thresholds.critical,
 				mode: "slider"
 			} }
 		}, {
 			name: "critical",
 			selector: { number: {
-				min: 1,
+				min: this.config.thresholds.warning,
 				max: 100,
 				mode: "slider"
 			} }
@@ -2701,15 +2749,17 @@ var $ = class extends j {
         ></ha-form>
         <h4>${this.t("semanticColors")}</h4>
         <div class="color-list">
-          ${Lt.map((e) => w`<label class="color-row" data-color-key=${e}>
-                <span>${this.t(Rt[e])}</span>
+          ${Rt.map((e) => T`<label class="color-row" data-color-key=${e}>
+                <span>${this.t(zt[e])}</span>
                 <input
                   type="color"
+                  aria-label=${this.t(zt[e])}
                   .value=${this.colorSwatchValue(e)}
                   @input=${(t) => this.updateColorSwatch(e, t)}
                 />
                 <input
                   type="text"
+                  aria-label=${`${this.t(zt[e])} (CSS)`}
                   .value=${this.config.colors[e]}
                   @change=${(t) => this.updateColorText(e, t)}
                 />
@@ -2737,10 +2787,10 @@ var $ = class extends j {
           .computeLabel=${this.computeLabel}
           @value-changed=${this.updateAppearance}
         ></ha-form>
-        <button class="reset-button" @click=${this.resetAdvanced}>
+        <button type="button" class="reset-button" @click=${this.resetAdvanced}>
           ${this.t("resetDefaults")}
         </button>
-        <p><a href=${Ft} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
+        <p><a href=${It} target="_blank" rel="noreferrer">${this.t("documentation")}</a></p>
       </details>
     </div>`;
 	}
@@ -2829,12 +2879,12 @@ var $ = class extends j {
 X([M({ attribute: !1 })], $.prototype, "hass", null), X([N()], $.prototype, "config", null), X([N()], $.prototype, "accounts", null), $ = X([Pe("codex-usage-card-editor")], $);
 //#endregion
 //#region src/index.ts
-var Ht = {
+var Ut = {
 	type: "codex-usage-card",
 	name: "Codex Usage Card",
 	description: "Adaptive multi-account Codex usage overview.",
 	preview: !0,
 	documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card"
 };
-window.customCards ??= [], window.customCards.some((e) => e.type === Ht.type) || window.customCards.push(Ht);
+window.customCards ??= [], window.customCards.some((e) => e.type === Ut.type) || window.customCards.push(Ut);
 //#endregion

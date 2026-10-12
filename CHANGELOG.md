@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.7.5 - 2026-10-12
+
+- Ship the bundled Lit runtime's BSD license notices, explain local token storage and background polling before device authorization, and document the unresolved provider-support/terms status of the existing login and usage endpoints.
+- Refresh open dashboard snapshots immediately when an account finishes setup or is removed, including removal of the last account.
+- Honor device-login confirmation, the provider polling interval and the documented 15-minute code lifetime. Reject malformed device/authorization fields and token expiry values safely, with complete English/German abort messages.
+- Reject overflowing reset-credit timestamp conversions safely and retain HTTP 429 retry deadlines when best-effort quota-body decoding is truncated or times out.
+- Improve card text contrast, accessible quota/spending meter names, account selection and detail disclosure states, keyboard operation and touch targets. Adapt to the card's own width in desktop Sections layouts and use full-section defaults for newly added cards.
+- Distinguish five-hour and weekly controls in the editor, show every account affected by a shared window switch, expose per-window budget switches and preserve customized thresholds at slider boundaries.
+- Add the warning Blueprint's canonical source URL so Home Assistant can re-import updates.
+- Validate the current-runtime lane against Home Assistant 2026.10.1 and refresh its reproducible Python lock. Add a strict current-environment Python vulnerability audit and patch multidict in both test environments.
+- Update compatible frontend tooling and source-map-js to 1.2.2, resolving its high-severity advisory. Refresh CI action pins and retain TypeScript 6 until the parser supports its next major.
+- Extend browser coverage for contrast, keyboard state and narrow desktop cards; refresh card screenshots and record current peer/OpenAI review evidence. Retain the explicitly documented, old Home Assistant compatibility lane without hiding its dependency advisories.
+
 ## 0.7.4 - 2026-10-05
 
 - Fix multi-account cards retaining another account's limit-reached color, status or freshness warning after switching accounts. Luna Reserve availability now also follows the selected account.
