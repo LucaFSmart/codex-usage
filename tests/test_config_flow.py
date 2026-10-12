@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -86,6 +87,27 @@ def test_device_confirmation_respects_provider_poll_interval():
         assert first["errors"] == {"base": "authorization_pending"}
         assert early["errors"] == {"base": "authorization_pending"}
         assert asyncio.run(flow._async_device_form("device", {"confirm": True})) == credentials
+
+
+def test_device_and_reauth_forms_resolve_privacy_link_before_authorization():
+    for step in ("device", "reauth_confirm"):
+        flow = CodexUsageConfigFlow()
+        flow._device_code = DeviceCode("device", "code", 5)
+        flow.async_show_form = MagicMock(side_effect=lambda **kwargs: kwargs)
+        result = asyncio.run(flow._async_device_form(step, None))
+        placeholders = result["description_placeholders"]
+        assert placeholders["privacy_url"] == (
+            "https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md"
+        )
+        for name in ("strings.json", "translations/en.json", "translations/de.json"):
+            path = Path(__file__).parents[1] / "custom_components" / "codex_usage" / name
+            description = json.loads(path.read_text(encoding="utf-8"))["config"]["step"][step][
+                "description"
+            ]
+            assert "https://" not in description
+            assert "{privacy_url}" in description
+            rendered = description.format(**placeholders)
+            assert placeholders["privacy_url"] in rendered
 
 
 def test_options_offer_enabled_optional_sources_for_existing_entries():

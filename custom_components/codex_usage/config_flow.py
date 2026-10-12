@@ -139,6 +139,7 @@ class CodexUsageConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id=step_id,
             data_schema=vol.Schema({vol.Required("confirm", default=False): bool}),
             description_placeholders={
+                "privacy_url": "https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md",
                 "verification_url": self._device_code.verification_url,
                 "user_code": self._device_code.user_code,
             },

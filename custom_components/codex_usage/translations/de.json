@@ -8,14 +8,14 @@
       },
       "device": {
         "title": "Codex-Nutzung autorisieren",
-        "description": "Codex Usage ist eine unabhängige Community-Integration. Mit der Autorisierung werden Zugangs- und Erneuerungstokens in deinem Home Assistant gespeichert und dein gemeldeter Verbrauch automatisch im Hintergrund abgefragt. Die Verbrauchsschnittstellen sind inoffiziell. Lies vor der Autorisierung [Datenschutz und Datenverarbeitung](https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md).\n\n1. Öffne [{verification_url}]({verification_url}).\n2. Gib den Code **{user_code}** ein.\n3. Kehre hierher zurück, aktiviere das Kontrollkästchen und bestätige. Gerätecodes laufen nach ungefähr 15 Minuten ab.",
+        "description": "Codex Usage ist eine unabhängige Community-Integration. Mit der Autorisierung werden Zugangs- und Erneuerungstokens in deinem Home Assistant gespeichert und dein gemeldeter Verbrauch automatisch im Hintergrund abgefragt. Die Verbrauchsschnittstellen sind inoffiziell. Lies vor der Autorisierung [Datenschutz und Datenverarbeitung]({privacy_url}).\n\n1. Öffne [{verification_url}]({verification_url}).\n2. Gib den Code **{user_code}** ein.\n3. Kehre hierher zurück, aktiviere das Kontrollkästchen und bestätige. Gerätecodes laufen nach ungefähr 15 Minuten ab.",
         "data": {
           "confirm": "Ich habe die Autorisierung abgeschlossen"
         }
       },
       "reauth_confirm": {
         "title": "OpenAI Codex erneut verbinden",
-        "description": "Codex Usage ist eine unabhängige Community-Integration. Mit der Autorisierung werden Zugangs- und Erneuerungstokens in deinem Home Assistant gespeichert und dein gemeldeter Verbrauch automatisch im Hintergrund abgefragt. Die Verbrauchsschnittstellen sind inoffiziell. Lies vor der Autorisierung [Datenschutz und Datenverarbeitung](https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md).\n\n1. Öffne [{verification_url}]({verification_url}).\n2. Gib den Code **{user_code}** ein.\n3. Kehre hierher zurück, aktiviere das Kontrollkästchen und bestätige.",
+        "description": "Codex Usage ist eine unabhängige Community-Integration. Mit der Autorisierung werden Zugangs- und Erneuerungstokens in deinem Home Assistant gespeichert und dein gemeldeter Verbrauch automatisch im Hintergrund abgefragt. Die Verbrauchsschnittstellen sind inoffiziell. Lies vor der Autorisierung [Datenschutz und Datenverarbeitung]({privacy_url}).\n\n1. Öffne [{verification_url}]({verification_url}).\n2. Gib den Code **{user_code}** ein.\n3. Kehre hierher zurück, aktiviere das Kontrollkästchen und bestätige.",
         "data": {
           "confirm": "Ich habe die Autorisierung abgeschlossen"
         }
