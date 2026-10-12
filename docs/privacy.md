@@ -2,6 +2,14 @@
 
 Codex Usage is an independent community integration using backend endpoints that are not a stable public third-party API. It is not affiliated with or supported by OpenAI.
 
+## Provider support and terms
+
+The current device-login implementation uses the public OAuth client identifier used by the official Codex client. That identifier is public application metadata, not an API key or client secret. The integration then polls undocumented ChatGPT usage endpoints. Neither the availability of those endpoints nor the open-source Codex client establishes permission for every third-party use.
+
+OpenAI now documents a separate [open-source client registration flow](https://developers.openai.com/siwc/token-sharing-open-source/sign-in) and [Sign in with ChatGPT terms](https://openai.com/policies/sign-in-with-chatgpt-terms/). This integration has not implemented that registration flow. Its applicability to the existing Codex device-login and usage endpoints is unresolved; this project does not claim OpenAI approval or legal compliance. Review the terms applicable to your account before authorizing. Undocumented access can change or stop working, and a disclaimer does not grant provider permission.
+
+## Local credentials and data
+
 Authorization stores access/refresh tokens and account identity in the Home Assistant config entry. Home Assistant needs these credentials to poll and refresh authorization. Protect the HA configuration and backups as you would other integration credentials. Device login does not require copying browser cookies or entering a password into this integration.
 
 The integration reads account-level usage, optional profile aggregates, optional saved-reset details and workspace discovery during setup/reauthentication. Reported allowance changes cannot be assigned to a particular eligible agent surface, model, task or conversation. It does not send prompts, conversations or code; purchase credits; redeem resets; change account limits; or select notification recipients.

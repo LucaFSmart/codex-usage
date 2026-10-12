@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ## 0.7.5 - 2026-10-12
 
+- Ship the bundled Lit runtime's BSD license notices, explain local token storage and background polling before device authorization, and document the unresolved provider-support/terms status of the existing login and usage endpoints.
 - Refresh open dashboard snapshots immediately when an account finishes setup or is removed, including removal of the last account.
 - Honor device-login confirmation, the provider polling interval and the documented 15-minute code lifetime. Reject malformed device/authorization fields and token expiry values safely, with complete English/German abort messages.
 - Reject overflowing reset-credit timestamp conversions safely and retain HTTP 429 retry deadlines when best-effort quota-body decoding is truncated or times out.

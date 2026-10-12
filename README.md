@@ -144,4 +144,4 @@ npm run test:visual
 
 CI installs the development-only, hash-locked Linux environments in `requirements/latest/test-requirements.txt` and `requirements/minimum/test-requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Their `test` filenames let GitHub classify them as development dependencies rather than shipped runtime packages. Dependabot checks both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-MIT License. See [LICENSE](LICENSE) and [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
+MIT License. See [LICENSE](LICENSE), [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) and the bundled card's [third-party notices](custom_components/codex_usage/THIRD_PARTY_NOTICES.md).

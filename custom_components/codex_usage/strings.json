@@ -8,14 +8,14 @@
       },
       "device": {
         "title": "Authorize Codex Usage",
-        "description": "1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit. Device codes expire after approximately 15 minutes.",
+        "description": "Codex Usage is an independent community integration. Authorizing it stores access and refresh tokens in your Home Assistant and enables automatic background polling of your reported usage. It uses unofficial usage endpoints. Read [privacy and data handling](https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md) before authorizing.\n\n1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit. Device codes expire after approximately 15 minutes.",
         "data": {
           "confirm": "I completed authorization"
         }
       },
       "reauth_confirm": {
         "title": "Reconnect OpenAI Codex",
-        "description": "1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit.",
+        "description": "Codex Usage is an independent community integration. Authorizing it stores access and refresh tokens in your Home Assistant and enables automatic background polling of your reported usage. It uses unofficial usage endpoints. Read [privacy and data handling](https://github.com/LucaFSmart/codex-usage/blob/main/docs/privacy.md) before authorizing.\n\n1. Open [{verification_url}]({verification_url}).\n2. Enter code **{user_code}**.\n3. Return here, check the box, and submit.",
         "data": {
           "confirm": "I completed authorization"
         }
