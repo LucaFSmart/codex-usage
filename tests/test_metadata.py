@@ -55,7 +55,7 @@ def test_hacs_and_manifest_metadata() -> None:
     frontend_package = _load_json(ROOT / "frontend" / "package.json")
     frontend_lock = _load_json(ROOT / "frontend" / "package-lock.json")
 
-    assert manifest["version"] == "0.7.5"
+    assert manifest["version"] == "0.7.6"
     assert CARD_VERSION == manifest["version"]
     assert frontend_package["version"] == manifest["version"]
     assert frontend_lock["version"] == manifest["version"]
@@ -75,6 +75,29 @@ def test_python_ci_locks_are_development_scoped() -> None:
         assert len(lock_files) == 1
         assert any(marker in input_files[0].name for marker in ("dev", "test"))
         assert any(marker in lock_files[0].name for marker in ("dev", "test"))
+
+
+def test_latest_lock_applies_the_documented_dependency_overrides() -> None:
+    overrides = [
+        line.strip()
+        for line in (ROOT / "requirements" / "latest-test-overrides.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    lock = (ROOT / "requirements" / "latest" / "test-requirements.txt").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+
+    assert overrides
+    assert "--override requirements/latest-test-overrides.txt" in lock
+    assert "--override requirements/latest-test-overrides.txt" in workflow
+    for pin in overrides:
+        assert any(line.startswith(f"{pin.lower()} ") for line in lock.splitlines())
+    # The overridden lock contradicts Home Assistant's own metadata, so it must
+    # be installed exactly as locked rather than re-resolved.
+    for line in workflow.splitlines():
+        if "pip install" in line and "requirements/minimum/" not in line:
+            assert "--require-hashes --no-deps" in line
 
 
 def test_lock_reproduction_seeds_the_pinned_outputs() -> None:

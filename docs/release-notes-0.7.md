@@ -2,6 +2,10 @@
 
 0.7 is a broad consistency, resilience and dashboard release line. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
 
+## 0.7.6 maintenance update
+
+Version 0.7.6 changes no entity, option or card behavior. It declares the `computers_network.cloud_developer_tools` integration category, rebuilds the bundled card with current tooling and moves the current test environment to Home Assistant 2026.10.3 with advisory-free Python and frontend dependencies. The old 2026.3.0 lane remains a compatibility snapshot with known inherited advisories. See the [verification record](verification-0.7.md). Refresh the browser and update manual resource URLs to `?v=0.7.6` after installing the update.
+
 ## 0.7.5 maintenance update
 
 Version 0.7.5 keeps the existing card and configuration format while making text readable in both standard themes, naming progress meters for assistive technology and exposing account selection and detail expansion states. Keyboard interaction and 240/320/480-pixel card widths inside a desktop dashboard are tested. New Sections cards use a full section by default; existing `grid_options` remain effective.
