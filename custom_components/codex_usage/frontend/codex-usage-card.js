@@ -1,4 +1,4 @@
-//#region node_modules/@lit/reactive-element/css-tag.js
+// node_modules/@lit/reactive-element/css-tag.js
 var e = globalThis, t = e.ShadowRoot && (e.ShadyCSS === void 0 || e.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, n = Symbol(), r = /* @__PURE__ */ new WeakMap(), i = class {
 	constructor(e, t, r) {
 		if (this._$cssResult$ = !0, r !== n) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
@@ -252,8 +252,7 @@ var g = class extends HTMLElement {
 	firstUpdated(e) {}
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[p("elementProperties")] = /* @__PURE__ */ new Map(), g[p("finalized")] = /* @__PURE__ */ new Map(), ae?.({ ReactiveElement: g }), (f.reactiveElementVersions ??= []).push("2.1.2");
-//#endregion
-//#region node_modules/lit-html/lit-html.js
+// node_modules/lit-html/lit-html.js
 var se = globalThis, ce = (e) => e, _ = se.trustedTypes, le = _ ? _.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ue = "$lit$", v = `lit$${Math.random().toFixed(9).slice(2)}$`, de = "?" + v, fe = `<${de}>`, y = document, b = () => y.createComment(""), x = (e) => e === null || typeof e != "object" && typeof e != "function", S = Array.isArray, pe = (e) => S(e) || typeof e?.[Symbol.iterator] == "function", me = "[ 	\n\f\r]", C = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, he = /-->/g, ge = />/g, w = RegExp(`>|${me}(?:([^\\s"'>=/]+)(${me}*=${me}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), _e = /'/g, ve = /"/g, ye = /^(?:script|style|textarea|title)$/i, T = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
@@ -508,8 +507,7 @@ var je = (e, t, n) => {
 j._$litElement$ = !0, j.finalized = !0, Me.litElementHydrateSupport?.({ LitElement: j });
 var Ne = Me.litElementPolyfillSupport;
 Ne?.({ LitElement: j }), (Me.litElementVersions ??= []).push("4.2.2");
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/custom-element.js
+// node_modules/@lit/reactive-element/decorators/custom-element.js
 var Pe = (e) => (t, n) => {
 	n === void 0 ? customElements.define(e, t) : n.addInitializer(() => {
 		customElements.define(e, t);
@@ -549,8 +547,7 @@ function M(e) {
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
 }
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/state.js
+// node_modules/@lit/reactive-element/decorators/state.js
 function N(e) {
 	return M({
 		...e,
@@ -558,8 +555,7 @@ function N(e) {
 		attribute: !1
 	});
 }
-//#endregion
-//#region src/card-data.ts
+// src/card-data.ts
 var Le = [
 	"usage",
 	"profile",
@@ -779,8 +775,7 @@ function $e(e) {
 async function et(e) {
 	return $e(await e.callWS({ type: "codex_usage/card_data" }));
 }
-//#endregion
-//#region src/config.ts
+// src/config.ts
 var tt = [
 	"auto",
 	"single",
@@ -928,8 +923,7 @@ function G(e) {
 	]) W(t[e]) && (n[e] = t[e]);
 	return Array.isArray(t.visibility) && (n.visibility = structuredClone(t.visibility)), n;
 }
-//#endregion
-//#region src/localize.ts
+// src/localize.ts
 var mt = {
 	en: {
 		available: "Available",
@@ -1200,8 +1194,7 @@ function ht(e, t, n) {
 	let r = mt[e?.toLowerCase().startsWith("de") ? "de" : "en"][t];
 	return n ? r.replace(/\{(\w+)\}/g, (e, t) => t in n ? String(n[t]) : e) : r;
 }
-//#endregion
-//#region src/format.ts
+// src/format.ts
 function gt(e, t) {
 	let n = (e) => ht(t, e), r = e.duration_seconds, i = (e) => r !== null && r >= e * .95 && r <= e * 1.05, a = i(18e3) ? n("fiveHours") : i(604800) ? n("week") : r && r % 86400 == 0 ? `${r / 86400} ${n("days")}` : null;
 	return e.source === "additional" && e.name ? a ? `${e.name} · ${a}` : e.name : a ?? e.name ?? n("unknownWindow");
@@ -1272,8 +1265,7 @@ function xt(e, t) {
 		minute: "2-digit"
 	}).format(n) : "—";
 }
-//#endregion
-//#region src/status.ts
+// src/status.ts
 var J = {
 	unknown: 0,
 	ok: 1,
@@ -1287,8 +1279,7 @@ function St(e, t, n) {
 function Ct(e) {
 	return e.reduce((e, t) => J[t] > J[e] ? t : e, "unknown");
 }
-//#endregion
-//#region src/view-model.ts
+// src/view-model.ts
 function wt(e) {
 	if (!e) return null;
 	let t = new Date(e);
@@ -1355,16 +1346,14 @@ function jt(e, t, n, r = /* @__PURE__ */ new Date()) {
 		integrationVersion: e.integration_version
 	};
 }
-//#endregion
-//#region \0@oxc-project+runtime@0.152.0/helpers/esm/decorate.js
+// \0@oxc-project+runtime@0.155.0/helpers/esm/decorate.js
 function X(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
 	else for (var s = e.length - 1; s >= 0; s--) (o = e[s]) && (a = (i < 3 ? o(a) : i > 3 ? o(t, n, a) : o(t, n)) || a);
 	return i > 3 && a && Object.defineProperty(t, n, a), a;
 }
-//#endregion
-//#region src/codex-usage-card.ts
+// src/codex-usage-card.ts
 var Mt = "codex_usage_card_data_updated", Nt = [
 	{
 		key: "lifetime_tokens",
@@ -1550,18 +1539,17 @@ var Q = class extends j {
 	async loadSnapshot() {
 		if (!this.hass || !this.isConnected) return;
 		let e = this.clientGeneration, t = this.hass;
-		if (this.loadingGeneration === e) {
-			this.pendingRefresh = !0;
-			return;
-		}
-		this.loadingGeneration = e;
-		try {
-			let n = await et(t);
-			this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.snapshot = n, this.error = this.subscribedConnection !== t.connection);
-		} catch {
-			this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.error = !0);
-		} finally {
-			this.loadingGeneration === e && (this.loadingGeneration = void 0), this.clientGeneration === e && this.pendingRefresh && this.isConnected && (this.pendingRefresh = !1, this.loadSnapshot());
+		if (this.loadingGeneration === e) this.pendingRefresh = !0;
+		else {
+			this.loadingGeneration = e;
+			try {
+				let n = await et(t);
+				this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.snapshot = n, this.error = this.subscribedConnection !== t.connection);
+			} catch {
+				this.clientGeneration === e && this.hass?.connection === t.connection && this.isConnected && (this.error = !0);
+			} finally {
+				this.loadingGeneration === e && (this.loadingGeneration = void 0), this.clientGeneration === e && this.pendingRefresh && this.isConnected && (this.pendingRefresh = !1, this.loadSnapshot());
+			}
 		}
 	}
 	t(e, t) {
@@ -2301,8 +2289,7 @@ var Q = class extends j {
   `;
 };
 X([M({ attribute: !1 })], Q.prototype, "hass", null), X([N()], Q.prototype, "snapshot", null), X([N()], Q.prototype, "error", null), X([N()], Q.prototype, "sessionEntryId", null), X([N()], Q.prototype, "detailsExpanded", null), X([N()], Q.prototype, "now", null), Q = X([Pe("codex-usage-card")], Q);
-//#endregion
-//#region src/codex-usage-card-editor.ts
+// src/codex-usage-card-editor.ts
 var It = "https://github.com/LucaFSmart/codex-usage#dashboard-card", Lt = [
 	{
 		key: "lifetime_tokens",
@@ -2455,14 +2442,10 @@ var $ = class extends j {
 	updateThresholds(e) {
 		e.stopPropagation();
 		let t = { ...e.detail.value }, { warning: n, critical: r } = t;
-		if (typeof n == "number" && typeof r == "number" && n >= r) {
-			this.emitConfig({
-				...this.config,
-				thresholds: { ...this.config.thresholds }
-			});
-			return;
-		}
-		this.emitConfig(G({
+		typeof n == "number" && typeof r == "number" && n >= r ? this.emitConfig({
+			...this.config,
+			thresholds: { ...this.config.thresholds }
+		}) : this.emitConfig(G({
 			...this.config,
 			thresholds: t
 		}));
@@ -2877,8 +2860,7 @@ var $ = class extends j {
   `;
 };
 X([M({ attribute: !1 })], $.prototype, "hass", null), X([N()], $.prototype, "config", null), X([N()], $.prototype, "accounts", null), $ = X([Pe("codex-usage-card-editor")], $);
-//#endregion
-//#region src/index.ts
+// src/index.ts
 var Ut = {
 	type: "codex-usage-card",
 	name: "Codex Usage Card",
@@ -2887,4 +2869,3 @@ var Ut = {
 	documentationURL: "https://github.com/LucaFSmart/codex-usage#dashboard-card"
 };
 window.customCards ??= [], window.customCards.some((e) => e.type === Ut.type) || window.customCards.push(Ut);
-//#endregion

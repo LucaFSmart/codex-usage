@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.7.6 - 2026-10-25
+
+- Rebuild the bundled card with Vite 8.3.5 and refreshed frontend tooling (vitest and coverage 5.0.5, ESLint 10.13.0, typescript-eslint 8.72.0, Playwright 1.64.1). happy-dom 21.0.4 resolves its high-severity advisory; the card's source and behavior are unchanged. TypeScript remains 6.0.3 until the parser supports 7.
+- Move the current-runtime test lane to Home Assistant 2026.10.3 with harness 0.13.374 and uv 0.13.5, and refresh certifi, resolving the advisories reported by the strict Python audit.
+- Override Home Assistant's exact Pillow 12.3.0 pin in the current test lock with Pillow 13.0.0, the first release without open advisories. The lock is installed with `--no-deps`, the override is documented in `requirements/README.md`, and the strict audit reports no known vulnerabilities. The minimum lane keeps its documented old dependency snapshot.
+- Refresh the bug-report template placeholders and development setup instructions.
+
 ## 0.7.5 - 2026-10-12
 
 - Ship the bundled Lit runtime's BSD license notices, explain local token storage and background polling before device authorization, and document the unresolved provider-support/terms status of the existing login and usage endpoints.
