@@ -20,7 +20,7 @@ Reviewed on 2026-10-25. The [0.7.5 record](verification-0.7.5.md) preserves earl
 
 ## Remote checks
 
-Pending: results of the Validate and CodeQL runs on the final commit are recorded here after they complete.
+Publication requires Validate and both CodeQL languages to pass on the final commit. The code-identical commit `d6fe859e899beefc8a942222191a0b41b5760d9a` passed the complete [Validate run](https://github.com/LucaFSmart/codex-usage/actions/runs/40147302946) and both languages in [CodeQL](https://github.com/LucaFSmart/codex-usage/actions/runs/40147302961); the corresponding push runs passed too. This includes HACS, hassfest, the current (Home Assistant 2026.10.3, Pillow 13) and minimum (2026.3.0) Python suites and real runtime/Blueprint checks on Linux, lock reproduction, the strict current Python audit and all frontend gates including the Chromium tests. The first run of this PR (`61e69ec`) failed hassfest because of the manifest category described above; that is why the key was removed. [PR #31](https://github.com/LucaFSmart/codex-usage/pull/31) contains the reviewed update. This record was added in a documentation-only commit that needs its own green checks before merge.
 
 ## Retained constraints
 
