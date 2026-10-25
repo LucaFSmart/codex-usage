@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- Move the current-runtime test lane to Home Assistant 2026.10.3 with harness 0.13.374 and refresh its Python lock, resolving the certifi and uv advisories reported by the strict audit. Override Home Assistant's exact Pillow 12.3.0 pin in the test lock with Pillow 13.0.0 (the first release without open advisories), installed with `--no-deps`.
+- Declare the `computers_network.cloud_developer_tools` integration category in the manifest.
+
 ## 0.7.5 - 2026-10-12
 
 - Ship the bundled Lit runtime's BSD license notices, explain local token storage and background polling before device authorization, and document the unresolved provider-support/terms status of the existing login and usage endpoints.
