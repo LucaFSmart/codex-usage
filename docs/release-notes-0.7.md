@@ -4,7 +4,7 @@
 
 ## 0.7.6 maintenance update
 
-Version 0.7.6 changes no entity, option or card behavior. It declares the `computers_network.cloud_developer_tools` integration category, rebuilds the bundled card with current tooling and moves the current test environment to Home Assistant 2026.10.3 with advisory-free Python and frontend dependencies. The old 2026.3.0 lane remains a compatibility snapshot with known inherited advisories. See the [verification record](verification-0.7.md). Refresh the browser and update manual resource URLs to `?v=0.7.6` after installing the update.
+Version 0.7.6 changes no entity, option or card behavior. It rebuilds the bundled card with current tooling and moves the current test environment to Home Assistant 2026.10.3 with advisory-free Python and frontend dependencies. The old 2026.3.0 lane remains a compatibility snapshot with known inherited advisories. See the [verification record](verification-0.7.md). Refresh the browser and update manual resource URLs to `?v=0.7.6` after installing the update.
 
 ## 0.7.5 maintenance update
 

@@ -1,7 +1,6 @@
 {
   "domain": "codex_usage",
   "name": "Codex Usage",
-  "categories": ["computers_network.cloud_developer_tools"],
   "codeowners": ["@LucaFSmart"],
   "config_flow": true,
   "dependencies": ["http", "lovelace", "websocket_api"],
