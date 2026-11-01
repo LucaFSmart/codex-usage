@@ -3,6 +3,6 @@ homeassistant==2026.10.3
 # The Home Assistant pytest harness pins this exact pytest version.
 pytest==9.0.3
 pytest-homeassistant-custom-component==0.13.374
-ruff==0.17.0
+ruff==0.17.3
 # Keep the lock compiler compatible with Home Assistant's exact uv dependency.
 uv==0.13.5
