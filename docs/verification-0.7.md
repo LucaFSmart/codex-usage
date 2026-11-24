@@ -41,8 +41,21 @@ This is a test-environment correction; the production entrypoint contract
 remains compatible with the retained minimum. See
 [HA's contract guidance](https://contributors.home-assistant.io/blog/2026/10/23/config-entry-methods-return-none/).
 
-Final release-candidate PR and merged-commit checks are pending. Do not treat
-local results as proof that the HA 2026.11.2 or 2026.3.0 matrix passed.
+Release candidate `c70eb5a95a1295e4e44810b0a66bf4f393f39bde` passed the complete
+[Validate push run](https://github.com/LucaFSmart/codex-usage/actions/runs/45388955853)
+and both languages in [CodeQL](https://github.com/LucaFSmart/codex-usage/actions/runs/45388965446).
+This includes both Linux runtime/Blueprint targets (HA 2026.11.2 and 2026.3.0),
+both Python suites, lock reproduction, the strict current Python audit, HACS,
+hassfest and all frontend gates including Chromium tests. The PR runtime jobs
+also passed for both targets in
+[PR validation](https://github.com/LucaFSmart/codex-usage/actions/runs/45388965368).
+An independent source review found no code regressions; two stale documentation
+references were corrected. [PR #40](https://github.com/LucaFSmart/codex-usage/pull/40)
+contains the release patch.
+
+This verification-record update is documentation-only and must pass the same
+checks before merge. The merged commit is checked again before publishing tag
+and GitHub release `0.7.7`; the tag must match the manifest version.
 
 ## Production observations and limits
 
