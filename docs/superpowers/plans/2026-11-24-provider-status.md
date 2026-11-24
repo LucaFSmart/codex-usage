@@ -16,9 +16,10 @@ Spec: ../specs/2026-11-24-provider-status-design.md
 - [x] Integrate/review: root checks shared contract, no unknown-to-healthy fallback,
   no provider request per account, no quota availability coupling, no credentials,
   status lifecycle independent of optional account-source failures.
-- [ ] Release: root bumps synchronized 0.8.0 versions/docs, builds card, runs full
-  suites and CI, merges when green, closes superseded PRs, verifies merged commit
-  and publishes matching GitHub release.
+- [x] Release preparation: synchronized 0.8.0 versions/docs, generated bundle,
+  full local suites and candidate Linux CI pass. Publication remains gated on
+  final PR and merged-commit checks; close superseded PRs after merge, then
+  publish the matching GitHub release.
 
 No implementation task may alter the other's owned source files. Root coordinates
 version bumps after agents finish. Critical/important review findings get tests and

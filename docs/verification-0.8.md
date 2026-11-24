@@ -80,7 +80,18 @@ foreground work completes. Independent review confirmed the original defects
 and their corrections; the final sleep deadline correction received a focused
 follow-up check.
 
-Final Linux CI and merged-commit evidence is recorded before publication. Both Python environments must
+Release candidate `f9c346caf4e3c65dfa44483935f2a8788f86c3b0` passed complete
+[Validate](https://github.com/LucaFSmart/codex-usage/actions/runs/45513297776)
+and both languages in [CodeQL](https://github.com/LucaFSmart/codex-usage/actions/runs/45513297668).
+The corresponding push runs passed as well. Linux CI includes both current
+and minimum HA 2026.11.2 runtime/Blueprint jobs, both Python suites, exact lock
+reproduction, strict audits of both locks, HACS/hassfest and all frontend gates.
+[PR #41](https://github.com/LucaFSmart/codex-usage/pull/41) contains this release.
+
+This verification-only follow-up must pass the same final checks before merge.
+The merged commit is checked again before creating tag and GitHub release
+`0.8.0`. Superseded dependency PRs are closed after equivalent changes merge;
+GitHub's dependency graph is then checked separately for remaining alerts. Both Python environments must
 remain reproducible and audit clean. No production account login, purchase,
 reset redemption or live outage injection is required or performed.
 
