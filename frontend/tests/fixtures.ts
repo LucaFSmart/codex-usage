@@ -1,5 +1,21 @@
 import type { CardSnapshot, HomeAssistant } from "../src/types";
 
+export const PROVIDER_STATUS = {
+  state: "operational",
+  available: true,
+  last_success: "2026-07-15T09:57:00Z",
+  last_attempt: "2026-07-15T09:57:00Z",
+  stale: false,
+  components: [
+    { id: "01JVCV8YSWZFRSM1G5CVP253SK", name: "Codex Web", state: "operational" },
+    { id: "01KMP3KP5MGE23B80K1EK4S8PV", name: "Codex API", state: "operational" },
+    { id: "01KMKFAMWKNQ84Z1766MV08ZDE", name: "Codex CLI", state: "operational" },
+    { id: "01KMP3KP5M8X0EBTVW6KN327EE", name: "Codex VS Code Extension", state: "operational" },
+    { id: "01KMKFAMWKQ81YWSE1Z18R6VHR", name: "Codex in ChatGPT Desktop", state: "operational" },
+  ],
+  url: "https://status.openai.com/",
+} as const;
+
 export const SNAPSHOT: CardSnapshot = {
   schema_version: 1,
   integration_version: "0.6.5",
@@ -68,6 +84,9 @@ export function makeFakeHass(snapshot: unknown = SNAPSHOT): HomeAssistant {
       throw new Error(`Unexpected WebSocket request: ${String(message.type)}`);
     },
     connection: {
+      async subscribeMessage(): Promise<() => void> {
+        return () => undefined;
+      },
       async subscribeEvents(): Promise<() => void> {
         return () => undefined;
       },

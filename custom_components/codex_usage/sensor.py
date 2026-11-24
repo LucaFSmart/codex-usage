@@ -22,10 +22,48 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import CodexUsageConfigEntry
 from .api import CodexProfileStats, CodexUsageData, RateLimit, RateLimitWindow
 from .budget import budget_key, current_budget
-from .const import CONF_ACCOUNT_ID
+from .const import CONF_ACCOUNT_ID, DOMAIN
 from .coordinator import CodexUsageCoordinator
 from .diagnostic_sensor import source_timestamp_entities
-from .entity import CodexUsageEntity
+from .entity import CodexUsageEntity, codex_device_info
+from .provider_status import ProviderState, ProviderStatusCoordinator
+
+PROVIDER_STATUS_SENSOR = SensorEntityDescription(
+    key="provider_status",
+    translation_key="provider_status",
+    device_class=SensorDeviceClass.ENUM,
+    options=[state.value for state in ProviderState if state is not ProviderState.UNKNOWN],
+)
+
+
+class CodexProviderStatusSensor(SensorEntity):
+    """Expose the shared public status on this account's device."""
+
+    entity_description = PROVIDER_STATUS_SENSOR
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(
+        self, coordinator: ProviderStatusCoordinator, entry: CodexUsageConfigEntry
+    ) -> None:
+        self._provider_status = coordinator
+        identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
+        self._attr_unique_id = f"{identity}_provider_status"
+        self._attr_device_info = codex_device_info(entry)
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the provider poller for as long as this entity is loaded."""
+        await super().async_added_to_hass()
+        self.async_on_remove(self._provider_status.async_add_listener(self.async_write_ha_state))
+
+    @property
+    def available(self) -> bool:
+        return self._provider_status.available
+
+    @property
+    def native_value(self) -> str | None:
+        state = self._provider_status.state
+        return state.value if state is not ProviderState.UNKNOWN else None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -321,6 +359,7 @@ async def async_setup_entry(
     async_add_entities(CodexUsageSensor(coordinator, entry, item) for item in descriptions)
     async_add_entities(CodexProfileSensor(coordinator, entry, item) for item in PROFILE_SENSORS)
     async_add_entities(source_timestamp_entities(coordinator, entry))
+    async_add_entities([CodexProviderStatusSensor(hass.data[DOMAIN]["provider_status"], entry)])
 
     known = _existing_additional_keys(existing_unique_ids, identity)
     if known:

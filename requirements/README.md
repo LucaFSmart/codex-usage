@@ -1,8 +1,8 @@
 # Python test environments
 
 The checked-in locks target Linux x86_64 and Python 3.14.2. The latest lane
-uses Home Assistant 2026.11.2. The minimum lane keeps Home Assistant 2026.3.0
-to test the supported compatibility floor against that release's dependencies.
+uses Home Assistant 2026.11.2. The minimum lane pins Home Assistant 2026.11.2, the explicitly selected supported
+compatibility floor for 0.8. Older HA users should stay on Codex Usage 0.7.7.
 These are development environments, not deployment requirements.
 
 Use uv 0.13.6, the version pinned by the current HA target, to regenerate the
@@ -29,10 +29,10 @@ Normal compilation retains compatible versions already present in each lock.
 For a deliberate transitive update, append `--upgrade-package PACKAGE`, then
 run the normal command again so the header matches CI's command.
 
-The minimum environment retains advisories inherited from HA 2026.3.0.
-Replacing that release's exact pins would invalidate the compatibility target;
-advancing the supported minimum requires a separate compatibility decision.
-No advisory IDs are ignored.
+Both current and minimum environments must pass the strict vulnerability audit.
+The former HA 2026.3.0 snapshot was retired with the user's explicit minimum-
+version decision; vulnerabilities are fixed by dependency changes, not dismissed
+or excluded from scanning. No advisory IDs are ignored.
 
 Audit either lock without installing Linux dependencies on the host:
 

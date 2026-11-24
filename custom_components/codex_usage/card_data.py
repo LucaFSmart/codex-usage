@@ -11,7 +11,7 @@ import voluptuous as vol
 from homeassistant.auth.models import User
 from homeassistant.auth.permissions.const import POLICY_READ
 from homeassistant.components import websocket_api
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .api import RateLimit, RateLimitWindow
@@ -21,6 +21,7 @@ from .entry_title import safe_entry_title
 from .monitoring import limit_statuses, reset_summary, restriction_summary
 
 CARD_DATA_COMMAND = f"{DOMAIN}/card_data"
+CARD_UPDATES_COMMAND = f"{DOMAIN}/subscribe_updates"
 EVENT_CARD_DATA_UPDATED = f"{DOMAIN}_card_data_updated"
 
 
@@ -148,14 +149,16 @@ def _active_entity_ids(hass: HomeAssistant) -> dict[str, str]:
 
 
 def _user_can_read_entry(user: User, registry: Any, entry_id: str) -> bool:
-    """Require access to every entity before returning an all-or-nothing account payload."""
+    """Require read access to every account-specific entity before returning account data."""
     if user.is_admin or user.permissions.access_all_entities(POLICY_READ):
         return True
     try:
         entries = [
             item
             for item in registry.entities.values()
-            if item.platform == DOMAIN and item.config_entry_id == entry_id
+            if item.platform == DOMAIN
+            and item.config_entry_id == entry_id
+            and getattr(item, "translation_key", None) != "provider_status"
         ]
     except AttributeError, TypeError:
         return False
@@ -268,7 +271,9 @@ def _account_payload(
 
 def build_card_snapshot(hass: HomeAssistant, user: User) -> dict[str, Any]:
     """Build a normalized snapshot without credentials or backend identities."""
-    entries = hass.data.get(DOMAIN, {}).get("entries", {})
+    domain_data = hass.data.get(DOMAIN, {})
+    entries = domain_data.get("entries", {})
+    provider_status = domain_data.get("provider_status")
     entity_ids = _active_entity_ids(hass)
     try:
         registry = er.async_get(hass)
@@ -284,6 +289,7 @@ def build_card_snapshot(hass: HomeAssistant, user: User) -> dict[str, Any]:
             for entry, coordinator in entries.values()
             if coordinator.data is not None and _user_can_read_entry(user, registry, entry.entry_id)
         ],
+        **({"provider_status": provider_status.card_payload()} if provider_status else {}),
     }
 
 
@@ -298,7 +304,28 @@ def websocket_card_data(
     connection.send_result(msg["id"], build_card_snapshot(hass, connection.user))
 
 
+@websocket_api.websocket_command({vol.Required("type"): CARD_UPDATES_COMMAND})
+@callback
+def websocket_subscribe_updates(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Signal authenticated clients to refresh their permission-filtered snapshot."""
+    message_id = msg["id"]
+
+    @callback
+    def forward_update(_event: Event) -> None:
+        connection.send_event(message_id, {})
+
+    connection.subscriptions[message_id] = hass.bus.async_listen(
+        EVENT_CARD_DATA_UPDATED, forward_update
+    )
+    connection.send_result(message_id)
+
+
 @callback
 def async_register_card_data(hass: HomeAssistant) -> None:
-    """Register the internal read-only card command once."""
+    """Register the internal read-only card commands once."""
     websocket_api.async_register_command(hass, websocket_card_data)
+    websocket_api.async_register_command(hass, websocket_subscribe_updates)

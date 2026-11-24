@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from functools import partial
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
@@ -23,6 +24,7 @@ from .const import (
 )
 from .coordinator import CodexUsageCoordinator
 from .entry_title import has_legacy_generated_title
+from .provider_status import ProviderStatusCoordinator
 
 type CodexUsageConfigEntry = ConfigEntry[CodexUsageCoordinator]
 
@@ -32,7 +34,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the bundled card's internal read-only data command."""
+    """Register the bundled card's internal read-only commands."""
     hass.data.setdefault(DOMAIN, {}).setdefault("entries", {})
     async_register_card_data(hass)
     return True
@@ -58,15 +60,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     coordinator = CodexUsageCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
+    provider_status = domain_data.get("provider_status")
+    if provider_status is None:
+        provider_status = domain_data["provider_status"] = ProviderStatusCoordinator(
+            hass, partial(hass.bus.async_fire, EVENT_CARD_DATA_UPDATED)
+        )
+    domain_data.setdefault("provider_status_entry_ids", set()).add(entry.entry_id)
+    entry.async_on_unload(partial(_async_release_provider_status, domain_data, entry.entry_id))
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     domain_data.setdefault("entries", {})[entry.entry_id] = (entry, coordinator)
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: hass.bus.async_fire(EVENT_CARD_DATA_UPDATED))
     )
     hass.bus.async_fire(EVENT_CARD_DATA_UPDATED)
+    provider_status.async_start()
 
-    domain_data = hass.data.setdefault(DOMAIN, {})
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
     async with lifecycle_lock:
         loaded_entry_ids: set[str] = domain_data.setdefault("loaded_entry_ids", set())
@@ -82,6 +93,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -
     return True
 
 
+@callback
+def _async_release_provider_status(domain_data: dict[str, Any], entry_id: str) -> None:
+    """Stop the poller after the final loaded or setting-up entry is removed."""
+    entry_ids = domain_data.get("provider_status_entry_ids")
+    if entry_ids is None:
+        return
+    entry_ids.discard(entry_id)
+    if not entry_ids:
+        domain_data.pop("provider_status_entry_ids")
+        domain_data.pop("provider_status").async_stop()
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) -> bool:
     """Unload a Codex Usage config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -90,6 +113,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: CodexUsageConfigEntry) 
 
     domain_data: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
     domain_data.setdefault("entries", {}).pop(entry.entry_id, None)
+    _async_release_provider_status(domain_data, entry.entry_id)
     hass.bus.async_fire(EVENT_CARD_DATA_UPDATED)
     lifecycle_lock = domain_data.setdefault("lifecycle_lock", asyncio.Lock())
     async with lifecycle_lock:

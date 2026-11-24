@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
+from aiohttp import ClientConnectionError
 
 from custom_components.codex_usage import async_setup_entry, async_unload_entry
 from custom_components.codex_usage.card_data import EVENT_CARD_DATA_UPDATED
@@ -23,6 +24,22 @@ def issue_registry_boundary():
         patch("custom_components.codex_usage.repairs.ir.async_delete_issue"),
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def offline_public_status():
+    """Keep entry setup tests offline while allowing the real status poller to run."""
+    with patch("homeassistant.helpers.aiohttp_client.async_create_clientsession") as client:
+        get = client.return_value.get
+        get.side_effect = ClientConnectionError
+        yield get
+
+
+def _bus(*, async_fire=None) -> SimpleNamespace:
+    return SimpleNamespace(
+        async_fire=async_fire or MagicMock(),
+        async_listen_once=MagicMock(return_value=MagicMock()),
+    )
 
 
 def _resources(*items: dict[str, str]) -> MagicMock:
@@ -49,7 +66,8 @@ def _hass(
     return SimpleNamespace(
         data={"lovelace": lovelace},
         http=SimpleNamespace(async_register_static_paths=AsyncMock()),
-        bus=SimpleNamespace(async_fire=MagicMock()),
+        bus=_bus(),
+        async_create_background_task=asyncio.create_task,
     )
 
 
@@ -258,17 +276,22 @@ def test_unregister_deletes_only_resources_matching_card_path() -> None:
     resources.async_delete_item.assert_any_await("stale")
 
 
-def test_two_entries_share_registration_until_final_unload() -> None:
+def test_two_entries_share_registration_and_provider_poll_until_final_unload(
+    offline_public_status,
+) -> None:
     snapshot_account_counts = []
+
+    def record_event(event: str) -> None:
+        if event != EVENT_CARD_DATA_UPDATED:
+            return
+        account_count = len(hass.data[DOMAIN]["entries"])
+        if not snapshot_account_counts or snapshot_account_counts[-1] != account_count:
+            snapshot_account_counts.append(account_count)
+
     hass = SimpleNamespace(
         data={},
-        bus=SimpleNamespace(
-            async_fire=lambda event: (
-                snapshot_account_counts.append(len(hass.data[DOMAIN]["entries"]))
-                if event == EVENT_CARD_DATA_UPDATED
-                else None
-            ),
-        ),
+        bus=_bus(async_fire=record_event),
+        async_create_background_task=asyncio.create_task,
         config_entries=SimpleNamespace(
             async_forward_entry_setups=AsyncMock(),
             async_unload_platforms=AsyncMock(return_value=True),
@@ -294,6 +317,17 @@ def test_two_entries_share_registration_until_final_unload() -> None:
 
     registration.async_register.side_effect = _async_register
 
+    async def _async_lifecycle() -> None:
+        assert await async_setup_entry(hass, entries[0])
+        provider_status = hass.data[DOMAIN]["provider_status"]
+        await asyncio.sleep(0)
+        assert await async_setup_entry(hass, entries[1])
+        assert hass.data[DOMAIN]["provider_status"] is provider_status
+        assert await async_unload_entry(hass, entries[0])
+        assert hass.data[DOMAIN]["provider_status"] is provider_status
+        assert await async_unload_entry(hass, entries[1])
+        assert "provider_status" not in hass.data[DOMAIN]
+
     with (
         patch("custom_components.codex_usage.aiohttp_client.async_get_clientsession"),
         patch("custom_components.codex_usage.CodexUsageCoordinator") as coordinator_cls,
@@ -302,13 +336,10 @@ def test_two_entries_share_registration_until_final_unload() -> None:
         ) as registration_cls,
     ):
         coordinator_cls.return_value.async_config_entry_first_refresh = AsyncMock()
-        asyncio.run(async_setup_entry(hass, entries[0]))
-        asyncio.run(async_setup_entry(hass, entries[1]))
-        first_unload = asyncio.run(async_unload_entry(hass, entries[0]))
-        final_unload = asyncio.run(async_unload_entry(hass, entries[1]))
+        asyncio.run(_async_lifecycle())
 
-    assert first_unload is True
-    assert final_unload is True
+    offline_public_status.assert_called_once()
+    hass.bus.async_listen_once.return_value.assert_called_once()
     registration_cls.assert_called_once_with(hass)
     registration.async_register.assert_awaited_once()
     registration.async_unregister.assert_awaited_once()
@@ -321,7 +352,8 @@ def test_two_entries_share_registration_until_final_unload() -> None:
 def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> None:
     hass = SimpleNamespace(
         data={},
-        bus=SimpleNamespace(async_fire=MagicMock()),
+        bus=_bus(),
+        async_create_background_task=asyncio.create_task,
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     entries = [
@@ -371,7 +403,8 @@ def test_concurrent_entry_setup_uses_shared_registration_for_each_entry() -> Non
 def test_registration_error_does_not_block_setup_and_next_entry_retries() -> None:
     hass = SimpleNamespace(
         data={},
-        bus=SimpleNamespace(async_fire=MagicMock()),
+        bus=_bus(),
+        async_create_background_task=asyncio.create_task,
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
     )
     entries = [

@@ -80,3 +80,18 @@ OpenAI currently identifies Luna Reserve with the additional limit ID `base_mode
 ## Card and entity registry
 
 The bundled card uses an allowlisted WebSocket snapshot and can show optional values even when their HA entities are disabled. Card visibility, entity enablement and optional endpoint polling are separate controls. See [card configuration](card.md) and [privacy](privacy.md).
+
+## Public Codex service status (0.8)
+
+The enabled `provider_status` sensor reports public Codex service status for the
+account's existing device. All accounts share one independent public request;
+this sensor remains independent of the authenticated usage coordinator.
+
+Its states are `operational`, `degraded`, `outage` and `maintenance`. Missing or
+unrecognized relevant component data gives an unknown value. Failed status
+requests or data older than 15 minutes make the entity unavailable. The five
+components cover Codex Web, API, CLI, VS Code Extension and Codex in ChatGPT Desktop. This is a provider
+announcement, not a diagnosis of an individual account or local network.
+
+The fixed source is [OpenAI Status](https://status.openai.com/). Local successful
+receipt time determines freshness; a component's `updated_at` is its change time.

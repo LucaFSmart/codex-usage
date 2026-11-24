@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.8.0 - 2026-11-25
+
+- Require Home Assistant 2026.11.2 or newer. Older installations should remain on 0.7.7 until upgrading HA. Preserve existing account/entity identities and card schema 1.
+- Add a public Codex service-status sensor and separate bilingual card row/notice for Codex Web, API, CLI, VS Code and Codex in ChatGPT Desktop. Share one unauthenticated poll across accounts and stop it after the last account unloads.
+- Isolate status-source failures from usage, expose missing/unrecognized data as unknown, and neutralize stale or future status observations. Bound response size, disable redirects, omit credentials/cookies and honor provider retry deadlines.
+- Preserve restricted users' existing account-data permissions when adding the independent public status sensor.
+- Replace the old HA 2026.3.0 test snapshot under the explicitly selected minimum-version change. Update certifi to 2026.11.20 and pytest to 9.2.0, regenerate both locks and enforce strict audits for both environments without exclusions.
+- Update setup-python to 7.1.0 and CodeQL to 4.39.4; incorporate the reviewed open dependency proposals and correct their lock serialization through the documented compiler.
+- Add parser, transport, freshness, account lifecycle, permission and browser regression coverage; document provider-status scope, privacy and the minimum-version transition.
+
 ## 0.7.7 - 2026-11-24
 
 - Support the built-in Home Assistant Marketplace publishing metadata with a cloud/developer-tools category. Update installation and release guidance while retaining compatibility with HACS on older Home Assistant versions.

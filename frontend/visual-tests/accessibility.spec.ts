@@ -87,6 +87,57 @@ test("keyboard account and disclosure controls expose selection and expansion", 
   await expect(card.locator("#codex-details")).toBeVisible();
 });
 
+for (const theme of ["light", "dark"]) {
+  test(`the public outage notice is legible and keyboard-accessible in ${theme}`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await page.goto(
+      `/visual/?theme=${theme}&width=240&lang=de&state=blocked&accounts=2&mixed=1&provider=outage`,
+    );
+    await expect(page).toHaveTitle("Codex Usage Card visual test");
+    const card = page.locator("codex-usage-card");
+    const notice = card.locator(".provider-notice");
+    const statusLink = notice.getByRole("link", { name: "OpenAI-Statusseite" });
+    const studio = card.getByRole("button", { name: "Studio", exact: true });
+
+    await expect(notice).toBeInViewport();
+    await expect(notice).toContainText("Ausfall");
+    await expect(notice).toContainText("Codex in ChatGPT Desktop");
+    await expect(statusLink).toHaveAttribute("href", "https://status.openai.com/");
+    await expect(statusLink).toHaveAttribute("target", "_blank");
+    await expect(statusLink).toHaveAttribute("rel", /\bnoopener\b/);
+    expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const cardBounds = (await card.boundingBox())!;
+    const linkBounds = (await statusLink.boundingBox())!;
+    expect(cardBounds.width).toBe(240);
+    expect(linkBounds.x + linkBounds.width).toBeLessThanOrEqual(cardBounds.x + cardBounds.width);
+
+    const [foreground, tint, surface] = await statusLink.evaluate((node) => [
+      getComputedStyle(node).color,
+      getComputedStyle(node.closest(".provider-notice")!).backgroundColor,
+      getComputedStyle(node.closest("ha-card")!).backgroundColor,
+    ]);
+    expect(contrastRatio(foreground!, surface!, 1, tint!)).toBeGreaterThanOrEqual(4.5);
+
+    await expect(card.locator(".status")).toHaveText("Limit erreicht");
+    await page.keyboard.press("Tab");
+    await expect(statusLink).toBeFocused();
+    expect(await statusLink.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("solid");
+    await studio.press("Enter");
+    await expect(studio).toHaveAttribute("aria-pressed", "true");
+    await expect(card.locator(".status")).toHaveText("Gesund");
+    await expect(notice).toHaveCount(1);
+    await expect(notice).toContainText("Ausfall");
+    expect(errors).toEqual([]);
+  });
+}
+
 for (const width of [240, 320, 480]) {
   test(`a ${width}px card adapts inside a desktop dashboard`, async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 1000 });

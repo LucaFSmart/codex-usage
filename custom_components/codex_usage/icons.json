@@ -1,6 +1,15 @@
 {
   "entity": {
     "sensor": {
+      "provider_status": {
+        "default": "mdi:cloud-question",
+        "state": {
+          "operational": "mdi:cloud-check-outline",
+          "degraded": "mdi:cloud-alert",
+          "outage": "mdi:cloud-off-outline",
+          "maintenance": "mdi:wrench-outline"
+        }
+      },
       "plan": {"default": "mdi:account-key"},
       "five_hour_usage": {"default": "mdi:timer-sand"},
       "five_hour_remaining": {"default": "mdi:timer-outline"},

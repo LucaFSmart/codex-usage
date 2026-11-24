@@ -67,6 +67,15 @@
   },
   "entity": {
     "sensor": {
+      "provider_status": {
+        "name": "Anbieterstatus",
+        "state": {
+          "operational": "Betriebsbereit",
+          "degraded": "Eingeschränkte Leistung",
+          "outage": "Störung",
+          "maintenance": "Wartung"
+        }
+      },
       "plan": {
         "name": "Tarif"
       },

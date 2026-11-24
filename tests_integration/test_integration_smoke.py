@@ -2,19 +2,25 @@
 
 import asyncio
 import functools
+import json
+import logging
 import shutil
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from types import MappingProxyType
+from types import MappingProxyType, SimpleNamespace
 from unittest.mock import patch
 
+from aiohttp import ClientConnectionError, ClientSession
 from homeassistant import auth, loader
-from homeassistant.components import recorder
+from homeassistant.auth.const import GROUP_ID_READ_ONLY
+from homeassistant.components import recorder, websocket_api
 from homeassistant.components.recorder import statistics
 from homeassistant.components.recorder.core import Recorder
 from homeassistant.components.recorder.tasks import StatisticsTask, SynchronizeTask
+from homeassistant.components.websocket_api.http import WebSocketAdapter
 from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import (
     device_registry,
     entity_registry,
@@ -25,12 +31,14 @@ from homeassistant.helpers import (
 from homeassistant.helpers.recorder import async_initialize_recorder
 from homeassistant.setup import async_setup_component
 
+from custom_components.codex_usage import async_setup as async_setup_codex_usage
 from custom_components.codex_usage.api import (
     CodexConnectionError,
     CodexCredentials,
     ResetCredits,
     parse_usage,
 )
+from custom_components.codex_usage.card_data import EVENT_CARD_DATA_UPDATED, build_card_snapshot
 from custom_components.codex_usage.const import (
     CONF_ACCESS_TOKEN,
     CONF_ACCOUNT_ID,
@@ -50,6 +58,32 @@ from custom_components.codex_usage.repairs import (
 from custom_components.codex_usage.sensor import PROFILE_SENSORS
 
 ROOT = Path(__file__).parents[1]
+
+
+@asynccontextmanager
+async def _provider_response(web_status, *, before_read=None):
+    async def iter_chunked(_size):
+        if before_read is not None:
+            await before_read()
+        yield json.dumps(
+            {
+                "components": [
+                    {"id": component_id, "status": status}
+                    for component_id, status in (
+                        ("01JVCV8YSWZFRSM1G5CVP253SK", web_status),
+                        ("01KMP3KP5MGE23B80K1EK4S8PV", "operational"),
+                        ("01KMKFAMWKNQ84Z1766MV08ZDE", "operational"),
+                        ("01KMP3KP5M8X0EBTVW6KN327EE", "operational"),
+                        ("01KMKFAMWKQ81YWSE1Z18R6VHR", "operational"),
+                    )
+                ]
+            }
+        ).encode()
+
+    yield SimpleNamespace(
+        status=200,
+        content=SimpleNamespace(iter_chunked=iter_chunked),
+    )
 
 
 def _credentials() -> CodexCredentials:
@@ -90,6 +124,23 @@ async def _wait_for_recorder(hass: HomeAssistant, instance: Recorder) -> None:
 def test_real_setup_creates_new_entities_and_unloads(tmp_path):
     async def scenario() -> None:
         hass = await _hass(tmp_path)
+        status_request_started = asyncio.Event()
+        release_status_request = asyncio.Event()
+
+        async def block_then_fail_status() -> None:
+            status_request_started.set()
+            await release_status_request.wait()
+            raise ClientConnectionError
+
+        outage_observed = asyncio.Event()
+
+        @callback
+        def listen_for_outage(_event) -> None:
+            provider = hass.data[DOMAIN].get("provider_status")
+            if provider is not None and provider.state == "outage":
+                outage_observed.set()
+
+        unsubscribe_outage = hass.bus.async_listen(EVENT_CARD_DATA_UPDATED, listen_for_outage)
         observed_at = datetime.now(UTC)
         usage = parse_usage(
             {
@@ -132,6 +183,11 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             subentries_data=(),
         )
         with (
+            patch.object(
+                ClientSession,
+                "get",
+                return_value=_provider_response("operational", before_read=block_then_fail_status),
+            ) as status_request,
             patch(
                 "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
                 return_value=(parse_usage({"plan_type": "plus"}), _credentials()),
@@ -153,8 +209,20 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             await hass.config_entries.async_add(entry)
             if entry.state is ConfigEntryState.NOT_LOADED:
                 assert await hass.config_entries.async_setup(entry.entry_id)
-            await hass.async_block_till_done()
-            assert entry.state is ConfigEntryState.LOADED
+            await asyncio.wait_for(status_request_started.wait(), 5)
+            status_poll_ended = asyncio.Event()
+            unsubscribe_poll = hass.data[DOMAIN]["provider_status"].async_add_listener(
+                status_poll_ended.set
+            )
+            try:
+                await asyncio.wait_for(hass.async_block_till_done(), 2)
+                assert entry.state is ConfigEntryState.LOADED
+                assert not status_poll_ended.is_set()
+            finally:
+                release_status_request.set()
+                await asyncio.wait_for(status_poll_ended.wait(), 5)
+                unsubscribe_poll()
+            status_request.assert_called_once()
 
             registry = entity_registry.async_get(hass)
             initial_entities = entity_registry.async_entries_for_config_entry(
@@ -181,7 +249,7 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
         entities = entity_registry.async_entries_for_config_entry(registry, entry.entry_id)
         unique_ids = {item.unique_id for item in entities}
         # Regression guard: catches an accidental add/remove of an entity.
-        assert len(entities) == 37
+        assert len(entities) == 38
         for suffix in (
             "_five_hour_budget",
             "_weekly_budget",
@@ -189,6 +257,7 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             "_profile_last_success",
             "_reset_details_last_success",
             "_workspace_discovery_last_success",
+            "_provider_status",
         ):
             assert any(unique_id.endswith(suffix) for unique_id in unique_ids)
         usage_entity = next(
@@ -206,6 +275,7 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             return state.state if state else None
 
         assert _state_for("_limit_reached") == "off"
+        assert _state_for("_provider_status") == "unavailable"
         # Disabled-by-default entities: registered, but no live state.
         assert _state_for("_credits_available") is None
         assert _state_for("_spend_used") is None
@@ -220,6 +290,11 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
 
         previous_coordinator = entry.runtime_data
         with (
+            patch.object(
+                ClientSession,
+                "get",
+                return_value=_provider_response("major_outage"),
+            ),
             patch(
                 "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
                 return_value=(usage, _credentials()),
@@ -241,6 +316,8 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             await hass.config_entries.options.async_configure(
                 options_flow["flow_id"], {CONF_UPDATE_INTERVAL: 60}
             )
+            await asyncio.wait_for(outage_observed.wait(), 5)
+            unsubscribe_outage()
             await hass.async_block_till_done()
         assert entry.runtime_data is not previous_coordinator
         assert entry.runtime_data.update_interval == timedelta(seconds=60)
@@ -249,6 +326,12 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             is entity_registry.RegistryEntryDisabler.USER
         )
         assert hass.states.get(weekly_usage.entity_id) is None
+        provider_entity = next(
+            item for item in entities if item.unique_id.endswith("_provider_status")
+        )
+        assert provider_entity.device_id == usage_entity.device_id
+        assert provider_entity.disabled_by is None
+        assert _state_for("_provider_status") == "outage"
 
         with patch(
             "custom_components.codex_usage.api.CodexApiClient.async_get_usage",
@@ -258,11 +341,76 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             await hass.async_block_till_done()
         assert entry.runtime_data.last_update_success is False
         assert hass.states.get(usage_entity.entity_id).state == "unavailable"
+        assert _state_for("_provider_status") == "outage"
+        snapshot = build_card_snapshot(hass, SimpleNamespace(is_admin=True))
+        assert snapshot["provider_status"]["state"] == "outage"
+        assert snapshot["accounts"][0]["available"] is False
+        assert snapshot["accounts"][0]["blocker"] is None
 
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
         assert entry.state.value == "not_loaded"
+        restored = hass.states.get(provider_entity.entity_id)
+        assert restored.state == "unavailable"
+        assert restored.attributes["restored"] is True
+        assert "provider_status" not in hass.data[DOMAIN]
+        assert "provider_status" not in build_card_snapshot(hass, SimpleNamespace(is_admin=True))
         await hass.async_stop(force=True)
+
+    asyncio.run(scenario())
+
+
+def test_non_admin_can_subscribe_to_empty_card_updates_and_unsubscribe(tmp_path):
+    async def scenario() -> None:
+        hass = await _hass(tmp_path)
+        try:
+            websocket_api.commands.async_register_commands(
+                hass, websocket_api.async_register_command
+            )
+            assert await async_setup_codex_usage(hass, {})
+            await hass.auth.async_create_user("Owner")
+            viewer = await hass.auth.async_create_user(
+                "Dashboard reader", group_ids=[GROUP_ID_READ_ONLY]
+            )
+            assert not viewer.is_admin
+
+            messages = []
+            connection = websocket_api.ActiveConnection(
+                WebSocketAdapter(logging.getLogger(__name__), {"connid": "test"}),
+                hass,
+                lambda message: messages.append(
+                    message if isinstance(message, dict) else json.loads(message)
+                ),
+                viewer,
+                None,
+                None,
+            )
+            connection.async_handle(
+                {"id": 1, "type": "subscribe_events", "event_type": EVENT_CARD_DATA_UPDATED}
+            )
+            assert messages.pop()["error"]["code"] == "unauthorized"
+
+            connection.async_handle({"id": 2, "type": "codex_usage/subscribe_updates"})
+            assert messages.pop() == {"id": 2, "type": "result", "success": True, "result": None}
+
+            hass.bus.async_fire(EVENT_CARD_DATA_UPDATED, {"account_id": "private"})
+            await hass.async_block_till_done()
+            assert messages.pop() == {"id": 2, "type": "event", "event": {}}
+
+            connection.async_handle({"id": 3, "type": "unsubscribe_events", "subscription": 2})
+            assert messages.pop() == {"id": 3, "type": "result", "success": True, "result": None}
+            hass.bus.async_fire(EVENT_CARD_DATA_UPDATED)
+            await hass.async_block_till_done()
+            assert messages == []
+            assert EVENT_CARD_DATA_UPDATED not in hass.bus.async_listeners()
+
+            connection.async_handle({"id": 4, "type": "codex_usage/subscribe_updates"})
+            assert messages.pop()["success"] is True
+            assert hass.bus.async_listeners()[EVENT_CARD_DATA_UPDATED] == 1
+            connection.async_handle_close()
+            assert EVENT_CARD_DATA_UPDATED not in hass.bus.async_listeners()
+        finally:
+            await hass.async_stop(force=True)
 
     asyncio.run(scenario())
 

@@ -4,13 +4,28 @@ import "../src/codex-usage-card";
 import "../src/codex-usage-card-editor";
 import { CodexUsageCard } from "../src/codex-usage-card";
 import { CodexUsageCardEditor } from "../src/codex-usage-card-editor";
-import { makeFakeHass, SNAPSHOT } from "./fixtures";
+import { makeFakeHass, PROVIDER_STATUS, SNAPSHOT } from "./fixtures";
+
+const PROVIDER_OUTAGE = {
+  ...PROVIDER_STATUS,
+  state: "outage",
+  components: [
+    { ...PROVIDER_STATUS.components[0], state: "outage" },
+    ...PROVIDER_STATUS.components.slice(1),
+  ],
+} as const;
 
 async function mount<T extends HTMLElement>(tag: string): Promise<T> {
   const element = document.createElement(tag) as T & { updateComplete: Promise<boolean> };
   document.body.append(element);
   await element.updateComplete;
   return element;
+}
+
+function setProviderClock(wallTime: string): void {
+  vi.useRealTimers();
+  vi.useFakeTimers({ toFake: ["Date", "performance", "setInterval", "clearInterval"] });
+  vi.setSystemTime(new Date(wallTime));
 }
 
 // Only Date is faked (not setTimeout/setInterval) so the setTimeout-based
@@ -27,6 +42,290 @@ afterEach(() => {
 });
 
 describe("CodexUsageCard", () => {
+  it.each([
+    ["legacy payload", undefined, null, null],
+    ["fresh operational status", PROVIDER_STATUS, "Operational", "operational"],
+    ["unknown status", { ...PROVIDER_STATUS, state: "unknown" }, "Status unknown", "unknown"],
+    ["unavailable status", { ...PROVIDER_STATUS, available: false }, "Status unknown", "unknown"],
+    ["unavailable outage", { ...PROVIDER_OUTAGE, available: false }, "Status unknown", "unknown"],
+    ["stale outage", { ...PROVIDER_OUTAGE, stale: true }, "Status unknown", "unknown"],
+    [
+      "locally expired status",
+      { ...PROVIDER_STATUS, last_success: "2026-07-15T09:45:00Z" },
+      "Status unknown",
+      "unknown",
+    ],
+    [
+      "future status timestamp",
+      { ...PROVIDER_STATUS, last_success: "2026-07-15T10:01:00Z" },
+      "Status unknown",
+      "unknown",
+      "2026-07-15T10:01:05Z",
+    ],
+    [
+      "unparseable status timestamp",
+      { ...PROVIDER_OUTAGE, last_success: "invalid" },
+      "Status unknown",
+      "unknown",
+    ],
+  ])(
+    "shows the compact provider row for %s",
+    async (_case, providerStatus, label, state, generatedAt = SNAPSHOT.generated_at) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card", compact: true });
+      card.hass = makeFakeHass({
+        ...SNAPSHOT,
+        generated_at: generatedAt,
+        provider_status: providerStatus,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      const row = card.shadowRoot?.querySelector(".provider-status");
+      expect(row?.textContent).toEqual(label ? expect.stringContaining(label) : undefined);
+      expect(row?.getAttribute("data-provider-state")).toBe(state ?? undefined);
+      expect(card.shadowRoot?.querySelector(".provider-notice")).toBeNull();
+    },
+  );
+
+  it("clears a cached outage after fifteen minutes without another provider update", async () => {
+    setProviderClock(SNAPSHOT.generated_at);
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    const hass = makeFakeHass({
+      ...SNAPSHOT,
+      provider_status: { ...PROVIDER_OUTAGE, last_success: "2026-07-15T09:46:00+00:00" },
+    });
+    const load = vi.spyOn(hass, "callWS");
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".provider-notice")?.textContent).toContain("Outage");
+    await vi.advanceTimersByTimeAsync(60_000);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".provider-notice")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".provider-status")?.textContent).toContain(
+      "Status unknown",
+    );
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a cached outage expired after a sleep-time clock jump and rollback", async () => {
+    setProviderClock(SNAPSHOT.generated_at);
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    const hass = makeFakeHass({ ...SNAPSHOT, provider_status: PROVIDER_OUTAGE });
+    const load = vi.spyOn(hass, "callWS");
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    const row = card.shadowRoot?.querySelector(".provider-status");
+    expect(row?.getAttribute("data-provider-state")).toBe("outage");
+
+    const beforeSleep = performance.now();
+    vi.setSystemTime(new Date("2026-07-15T11:00:00Z"));
+    expect(performance.now()).toBe(beforeSleep);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await card.updateComplete;
+    expect(row?.getAttribute("data-provider-state")).toBe("unknown");
+
+    vi.setSystemTime(new Date(SNAPSHOT.generated_at));
+    await vi.advanceTimersByTimeAsync(60_000);
+    await card.updateComplete;
+    expect(row?.getAttribute("data-provider-state")).toBe("unknown");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["behind", "2026-07-15T09:55:00Z", "2026-07-15T09:46:00Z"],
+    ["ahead", "2026-07-15T10:13:00Z", "2026-07-15T09:59:00Z"],
+  ])(
+    "expires a cached healthy reading when the browser clock is %s",
+    async (_skew, wall, lastSuccess) => {
+      setProviderClock(wall);
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card" });
+      const hass = makeFakeHass({
+        ...SNAPSHOT,
+        provider_status: { ...PROVIDER_STATUS, last_success: lastSuccess },
+      });
+      const load = vi.spyOn(hass, "callWS");
+      card.hass = hass;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+      const row = card.shadowRoot?.querySelector(".provider-status");
+      expect(row?.getAttribute("data-provider-state")).toBe("operational");
+
+      vi.setSystemTime(Date.parse(wall) - 2 * 60_000);
+      await vi.advanceTimersByTimeAsync(60_000);
+      await card.updateComplete;
+
+      expect(row?.getAttribute("data-provider-state")).toBe("unknown");
+      expect(load).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("keeps a future reading unknown after the browser clock passes it", async () => {
+    setProviderClock(SNAPSHOT.generated_at);
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    const hass = makeFakeHass({
+      ...SNAPSHOT,
+      generated_at: "2026-07-15T10:18:05Z",
+      provider_status: { ...PROVIDER_OUTAGE, last_success: "2026-07-15T10:18:00Z" },
+    });
+    const load = vi.spyOn(hass, "callWS");
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector(".provider-notice")).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(20 * 60_000);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".provider-notice")).toBeNull();
+    expect(
+      card.shadowRoot?.querySelector(".provider-status")?.getAttribute("data-provider-state"),
+    ).toBe("unknown");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the read-only status subscription for a viewer denied access to custom bus events", async () => {
+    const hass = makeFakeHass();
+    let update!: () => void;
+    const connection = {
+      subscribeMessage: vi.fn(async (callback: () => void) => {
+        update = callback;
+        return () => undefined;
+      }),
+      subscribeEvents: vi.fn().mockRejectedValue({ code: "unauthorized" }),
+    };
+    hass.connection = connection;
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    const load = vi.spyOn(hass, "callWS");
+    card.hass = hass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(connection.subscribeMessage).toHaveBeenCalledWith(expect.any(Function), {
+      type: "codex_usage/subscribe_updates",
+    });
+    expect(connection.subscribeEvents).not.toHaveBeenCalled();
+    expect(card.shadowRoot?.textContent).toContain("Beta");
+    expect(card.shadowRoot?.querySelector(".freshness")).toBeNull();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    update();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["unknown_command", "unauthorized"])(
+    "limits legacy event fallback for %s",
+    async (code) => {
+      const hass = makeFakeHass();
+      const connection = {
+        subscribeMessage: vi.fn().mockRejectedValue({ code }),
+        subscribeEvents: vi.fn(async () => () => undefined),
+      };
+      hass.connection = connection;
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card" });
+      card.hass = hass;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      expect(connection.subscribeMessage).toHaveBeenCalledTimes(1);
+      if (code === "unknown_command") {
+        expect(connection.subscribeEvents).toHaveBeenCalledWith(
+          expect.any(Function),
+          "codex_usage_card_data_updated",
+        );
+        expect(card.shadowRoot?.querySelector(".freshness")).toBeNull();
+      } else {
+        expect(connection.subscribeEvents).not.toHaveBeenCalled();
+        expect(card.shadowRoot?.querySelector(".freshness")).not.toBeNull();
+      }
+      expect(card.shadowRoot?.textContent).toContain("Beta");
+    },
+  );
+
+  it("keeps status unknown when the last success falls after its snapshot timestamp", async () => {
+    vi.setSystemTime(new Date("2026-07-15T10:02:00Z"));
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card" });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      provider_status: { ...PROVIDER_OUTAGE, last_success: "2026-07-15T10:01:00Z" },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".provider-notice")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".provider-status")?.textContent).toContain(
+      "Status unknown",
+    );
+  });
+
+  it("keeps the account freshness text next to the account header", async () => {
+    const card = await mount<CodexUsageCard>("codex-usage-card");
+    card.setConfig({ type: "custom:codex-usage-card", stale_after_minutes: 1 });
+    card.hass = makeFakeHass({
+      ...SNAPSHOT,
+      accounts: [{ ...SNAPSHOT.accounts[0]!, updated_at: "2026-07-15T09:00:00Z" }],
+      provider_status: PROVIDER_OUTAGE,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await card.updateComplete;
+
+    const freshness = card.shadowRoot?.querySelector(".freshness");
+    expect(freshness?.previousElementSibling?.tagName).toBe("HEADER");
+    expect(freshness?.nextElementSibling?.classList.contains("provider-notice")).toBe(true);
+  });
+
+  it.each([
+    ["degraded", "Degraded performance", "Beeinträchtigte Leistung", "Codex Web"],
+    ["outage", "Outage", "Ausfall", "Codex in ChatGPT Desktop"],
+    ["maintenance", "Maintenance", "Wartung", "Codex API"],
+  ] as const)(
+    "renders a localized public %s notice independently of the usage status",
+    async (state, en, de, affected) => {
+      const card = await mount<CodexUsageCard>("codex-usage-card");
+      card.setConfig({ type: "custom:codex-usage-card", compact: true });
+      const hass = makeFakeHass({
+        ...SNAPSHOT,
+        provider_status: {
+          ...PROVIDER_STATUS,
+          state,
+          url: "https://untrusted.example/",
+          components: PROVIDER_STATUS.components.map((component) =>
+            component.name === affected ? { ...component, state } : component,
+          ),
+        },
+      });
+      card.hass = hass;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await card.updateComplete;
+
+      const notice = card.shadowRoot?.querySelector(".provider-notice");
+      expect(notice?.textContent).toContain(en);
+      expect(notice?.textContent).toContain(affected);
+      expect(notice?.querySelector("a")?.getAttribute("href")).toBe("https://status.openai.com/");
+      expect(notice?.querySelector("a")?.rel.split(" ")).toContain("noopener");
+      expect(card.shadowRoot?.querySelector(".status")?.textContent).toContain(
+        "Critically low usage remaining",
+      );
+
+      card.hass = { ...hass, language: "de", locale: { language: "de-DE" } };
+      await card.updateComplete;
+      expect(notice?.textContent).toContain(de);
+      expect(notice?.querySelector("a")?.textContent).toContain("OpenAI-Statusseite");
+    },
+  );
+
   it.each(["auto", "all"] as const)(
     "updates color, status and freshness when switching accounts in %s mode",
     async (mode) => {
@@ -435,7 +734,7 @@ describe("CodexUsageCard", () => {
       update = callback;
       return unsubscribe;
     });
-    hass.connection.subscribeEvents = subscribe;
+    hass.connection.subscribeMessage = subscribe;
     let snapshot = SNAPSHOT;
     hass.callWS = async <T>() => structuredClone(snapshot) as T;
     card.setConfig({ type: "custom:codex-usage-card", compact: false });
@@ -462,7 +761,7 @@ describe("CodexUsageCard", () => {
     const card = document.createElement("codex-usage-card") as CodexUsageCard;
     const hass = makeFakeHass();
     let resolveSubscription!: (unsubscribe: () => void) => void;
-    hass.connection.subscribeEvents = () =>
+    hass.connection.subscribeMessage = () =>
       new Promise((resolve) => {
         resolveSubscription = resolve;
       });
@@ -484,7 +783,7 @@ describe("CodexUsageCard", () => {
     const oldUnsubscribe = vi.fn();
     const newUnsubscribe = vi.fn();
     let subscriptions = 0;
-    hass.connection.subscribeEvents = async (callback) => {
+    hass.connection.subscribeMessage = async (callback) => {
       if (++subscriptions === 1) {
         oldUpdate = callback as () => void;
         return new Promise((resolve) => {
@@ -577,7 +876,7 @@ describe("CodexUsageCard", () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     const hass = makeFakeHass();
     let failed = true;
-    hass.connection.subscribeEvents = async () => {
+    hass.connection.subscribeMessage = async () => {
       if (failed) throw new Error("Subscription failed");
       return () => undefined;
     };
@@ -597,7 +896,7 @@ describe("CodexUsageCard", () => {
     const card = await mount<CodexUsageCard>("codex-usage-card");
     const hass = makeFakeHass();
     let update!: () => void;
-    hass.connection.subscribeEvents = async (callback) => {
+    hass.connection.subscribeMessage = async (callback) => {
       update = callback as () => void;
       return () => undefined;
     };
@@ -677,11 +976,11 @@ describe("CodexUsageCard", () => {
     });
   });
 
-  it("refreshes on the integration event without refetching on every hass update", async () => {
+  it("refreshes on card invalidation without refetching on every hass update", async () => {
     const hass = makeFakeHass();
     let update: (() => void) | undefined;
-    hass.connection.subscribeEvents = vi.fn(async (callback, eventType) => {
-      expect(eventType).toBe("codex_usage_card_data_updated");
+    hass.connection.subscribeMessage = vi.fn(async (callback, command) => {
+      expect(command).toEqual({ type: "codex_usage/subscribe_updates" });
       update = callback as () => void;
       return () => undefined;
     });
@@ -701,10 +1000,10 @@ describe("CodexUsageCard", () => {
     expect(callWS).toHaveBeenCalledTimes(2);
   });
 
-  it("cleans up a stale subscribeEvents resolution instead of letting it overwrite a newer connection's handle", async () => {
+  it("cleans up a stale subscription resolution instead of letting it overwrite a newer connection's handle", async () => {
     let resolveOld!: (unsub: () => void) => void;
     const oldHass = makeFakeHass();
-    oldHass.connection.subscribeEvents = vi.fn(
+    oldHass.connection.subscribeMessage = vi.fn(
       () =>
         new Promise<() => void>((resolve) => {
           resolveOld = resolve;
@@ -714,7 +1013,7 @@ describe("CodexUsageCard", () => {
 
     const newHass = makeFakeHass();
     const newUnsubscribe = vi.fn();
-    newHass.connection.subscribeEvents = vi.fn(async () => newUnsubscribe);
+    newHass.connection.subscribeMessage = vi.fn(async () => newUnsubscribe);
 
     const card = await mount<CodexUsageCard>("codex-usage-card");
     card.setConfig({ type: "custom:codex-usage-card" });
@@ -782,7 +1081,7 @@ describe("CodexUsageCard", () => {
         return structuredClone({ ...SNAPSHOT, accounts: [SNAPSHOT.accounts[0]!] }) as T;
       throw new Error("offline");
     };
-    hass.connection.subscribeEvents = vi.fn(async (callback) => {
+    hass.connection.subscribeMessage = vi.fn(async (callback) => {
       update = callback as () => void;
       return () => undefined;
     });

@@ -1,10 +1,10 @@
 # Installation and setup
 
-Requires Home Assistant 2026.3.0 or newer and a ChatGPT account or workspace with Codex access. This is the functionally tested compatibility floor; use the latest stable Home Assistant release for security updates. Allow outbound HTTPS to `auth.openai.com` and `chatgpt.com`. This integration uses the Codex device-code login; OpenAI Platform API keys are a different product.
+Requires Home Assistant 2026.11.2 or newer for version 0.8.0 and a ChatGPT account or workspace with Codex access. Installations on older Home Assistant releases should stay on Codex Usage 0.7.7 until Home Assistant is upgraded. Allow outbound HTTPS to `auth.openai.com` and `chatgpt.com`. Public service status additionally uses `status.openai.com`; failure to reach it does not stop usage monitoring. This integration uses the Codex device-code login; OpenAI Platform API keys are a different product.
 
 ## Install
 
-On Home Assistant 2026.11 or newer, open **Settings → Marketplace** and find **Codex Usage** under Integrations. It is in the default catalog; no custom repository or separate HACS installation is needed. On Home Assistant 2026.3–2026.10, install it through HACS Integrations. Existing HACS installations migrate automatically when Home Assistant upgrades to 2026.11; installed repositories and update entities carry over.
+Open **Settings → Marketplace** and find **Codex Usage** under Integrations. It is in the default catalog; no custom repository or separate HACS installation is needed. Older Codex Usage releases through 0.7.7 continue to support HACS on Home Assistant 2026.3–2026.10. Existing HACS installations migrate automatically when Home Assistant upgrades to 2026.11; installed repositories and update entities carry over.
 
 After updating an already loaded integration, restart Home Assistant and refresh the dashboard browser. The Marketplace can load a first installation with a config flow immediately; follow any restart repair shown by Home Assistant. For manual installation, copy `custom_components/codex_usage` into your Home Assistant configuration's `custom_components` directory and restart.
 
@@ -37,7 +37,7 @@ For YAML-managed resources, register the bundle manually:
 
 ```yaml
 resources:
-  - url: /codex_usage/frontend/codex-usage-card.js?v=0.7.7
+  - url: /codex_usage/frontend/codex-usage-card.js?v=0.8.0
     type: module
 ```
 

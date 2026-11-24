@@ -5,15 +5,33 @@ import type {
   CardLimitStatus,
   CardLimitSummary,
   CardProfile,
+  CardProviderComponent,
+  CardProviderStatus,
   CardSnapshot,
   CardSpend,
   CardSource,
   HomeAssistant,
+  ProviderStatusState,
   SafeBlocker,
 } from "./types";
 
 const SOURCE_KEYS = ["usage", "profile", "reset_details", "workspace_discovery"] as const;
 const SOURCE_STATES = ["ok", "error", "unsupported", "disabled", "never"] as const;
+export const PROVIDER_STATUS_URL = "https://status.openai.com/";
+const PROVIDER_STATES: readonly ProviderStatusState[] = [
+  "operational",
+  "degraded",
+  "outage",
+  "maintenance",
+  "unknown",
+];
+const PROVIDER_COMPONENT_NAMES = new Map([
+  ["01JVCV8YSWZFRSM1G5CVP253SK", "Codex Web"],
+  ["01KMP3KP5MGE23B80K1EK4S8PV", "Codex API"],
+  ["01KMKFAMWKNQ84Z1766MV08ZDE", "Codex CLI"],
+  ["01KMP3KP5M8X0EBTVW6KN327EE", "Codex VS Code Extension"],
+  ["01KMKFAMWKQ81YWSE1Z18R6VHR", "Codex in ChatGPT Desktop"],
+]);
 const ERROR_CODES = [
   "rate_limited",
   "quota_exceeded",
@@ -63,6 +81,59 @@ function text(value: unknown): string | null {
 function date(value: unknown): string | null {
   const candidate = text(value);
   return candidate && Number.isFinite(Date.parse(candidate)) ? candidate : null;
+}
+
+function providerTimestamp(value: unknown): string | null {
+  const candidate = date(value);
+  return candidate &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(candidate)
+    ? candidate
+    : null;
+}
+
+function providerState(value: unknown): ProviderStatusState {
+  return PROVIDER_STATES.includes(value as ProviderStatusState)
+    ? (value as ProviderStatusState)
+    : "unknown";
+}
+
+function providerStatus(value: unknown): CardProviderStatus | undefined {
+  const source = record(value);
+  if (!source) return undefined;
+
+  const components = new Map<string, CardProviderComponent>();
+  if (Array.isArray(source.components)) {
+    for (const rawComponent of source.components) {
+      const component = record(rawComponent);
+      if (typeof component?.id !== "string") continue;
+      const id = component.id;
+      const name = PROVIDER_COMPONENT_NAMES.get(id);
+      if (!name) continue;
+      const state = components.has(id) ? "unknown" : providerState(component.state);
+      components.set(id, { id, name, state });
+    }
+  }
+  const knownComponents = [...components.values()];
+  let state = providerState(source.state);
+  if (state === "operational") {
+    if (
+      knownComponents.length !== PROVIDER_COMPONENT_NAMES.size ||
+      knownComponents.some((item) => item.state !== "operational")
+    )
+      state = "unknown";
+  } else if (!knownComponents.some((item) => item.state === state)) {
+    state = "unknown";
+  }
+
+  return {
+    state,
+    available: source.available === true,
+    last_success: providerTimestamp(source.last_success),
+    last_attempt: providerTimestamp(source.last_attempt),
+    stale: source.stale !== false,
+    components: knownComponents,
+    url: PROVIDER_STATUS_URL,
+  };
 }
 
 function percent(value: unknown): number | null {
@@ -312,11 +383,13 @@ export function normalizeCardSnapshot(value: unknown): CardSnapshot {
   const integrationVersion = text(source.integration_version);
   const generatedAt = date(source.generated_at);
   if (!integrationVersion || !generatedAt) throw new Error("Incomplete Codex Usage card data");
+  const status = providerStatus(source.provider_status);
   return {
     schema_version: 1,
     integration_version: integrationVersion,
     generated_at: generatedAt,
     accounts: source.accounts.map(account).filter((item): item is CardAccount => item !== null),
+    ...(status ? { provider_status: status } : {}),
   };
 }
 
