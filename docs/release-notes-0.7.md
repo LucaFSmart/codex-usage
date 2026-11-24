@@ -2,6 +2,14 @@
 
 0.7 is a broad consistency, resilience and dashboard release line. It keeps existing account and entity identities while making unknown, stale and optional data explicit.
 
+## 0.7.7 maintenance update
+
+Version 0.7.7 supports the built-in Marketplace in Home Assistant 2026.11 with category metadata and updated installation guidance. Codex Usage remains in the existing shared default catalog and continues to support HACS on Home Assistant 2026.3–2026.10. No reinstallation or account migration is required. After updating, restart Home Assistant and refresh the dashboard browser; manually managed resources should use `?v=0.7.7`.
+
+Workspace discovery now omits accounts explicitly reported as deactivated or inaccessible to the current session. Existing entries and entity identities are preserved. November OpenAI guidance is reflected in the documentation; provider usage percentages remain authoritative for new models and speed modes.
+
+The current Linux test target is Home Assistant 2026.11.2. The unused HA pytest harness and old Pillow override are removed, and compatible frontend dependencies and the bundled card build are refreshed. The old 2026.3.0 lane remains a compatibility snapshot with inherited advisories. See the [verification record](verification-0.7.md).
+
 ## 0.7.6 maintenance update
 
 Version 0.7.6 changes no entity, option or card behavior. It rebuilds the bundled card with current tooling and moves the current test environment to Home Assistant 2026.10.3 with advisory-free Python and frontend dependencies. The old 2026.3.0 lane remains a compatibility snapshot with known inherited advisories. See the [verification record](verification-0.7.md). Refresh the browser and update manual resource URLs to `?v=0.7.6` after installing the update.

@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: home-assistant/actions/hassfest@06749dd8c0b54f350bc69c8752456cee498808a3 # master (2026-09-27)
+      - uses: home-assistant/actions/hassfest@9e9565e68f5a70d874202871f4c4064d23814235 # master (2026-11-23)
 
   tests:
     runs-on: ubuntu-latest
@@ -36,13 +36,12 @@ jobs:
         run: |
           mkdir -p "${RUNNER_TEMP}/lock-check/requirements/latest" "${RUNNER_TEMP}/lock-check/requirements/minimum"
           cp requirements/latest/test-requirements.in "${RUNNER_TEMP}/lock-check/requirements/latest/test-requirements.in"
-          cp requirements/latest-test-overrides.txt "${RUNNER_TEMP}/lock-check/requirements/latest-test-overrides.txt"
           cp requirements/latest/test-requirements.txt "${RUNNER_TEMP}/lock-check/requirements/latest/test-requirements.txt"
           cp requirements/minimum/test-requirements.in "${RUNNER_TEMP}/lock-check/requirements/minimum/test-requirements.in"
           cp requirements/minimum/test-requirements.txt "${RUNNER_TEMP}/lock-check/requirements/minimum/test-requirements.txt"
           (
             cd "${RUNNER_TEMP}/lock-check"
-            uv pip compile requirements/latest/test-requirements.in --override requirements/latest-test-overrides.txt --python-version 3.14.2 --python-platform x86_64-manylinux_2_28 --generate-hashes --output-file requirements/latest/test-requirements.txt
+            uv pip compile requirements/latest/test-requirements.in --python-version 3.14.2 --python-platform x86_64-manylinux_2_28 --generate-hashes --output-file requirements/latest/test-requirements.txt
             uv pip compile requirements/minimum/test-requirements.in --python-version 3.14.2 --python-platform x86_64-manylinux_2_28 --generate-hashes --output-file requirements/minimum/test-requirements.txt
           )
           diff -u requirements/latest/test-requirements.txt "${RUNNER_TEMP}/lock-check/requirements/latest/test-requirements.txt"
@@ -60,7 +59,7 @@ jobs:
           - ha_version: "2026.3.0"
             requirements: "requirements/minimum/test-requirements.txt"
             pytest_args: ""
-          - ha_version: "2026.10.3"
+          - ha_version: "2026.11.2"
             requirements: "requirements/latest/test-requirements.txt"
             pytest_args: "-o asyncio_mode=auto -o asyncio_default_fixture_loop_scope=function"
     steps:

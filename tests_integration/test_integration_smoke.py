@@ -15,7 +15,13 @@ from homeassistant.components.recorder.core import Recorder
 from homeassistant.components.recorder.tasks import StatisticsTask, SynchronizeTask
 from homeassistant.config_entries import ConfigEntries, ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry, entity_registry, issue_registry, restore_state
+from homeassistant.helpers import (
+    device_registry,
+    entity_registry,
+    frame,
+    issue_registry,
+    restore_state,
+)
 from homeassistant.helpers.recorder import async_initialize_recorder
 from homeassistant.setup import async_setup_component
 
@@ -61,6 +67,7 @@ async def _hass(tmp_path: Path) -> HomeAssistant:
     component_target = tmp_path / "custom_components" / DOMAIN
     shutil.copytree(ROOT / "custom_components" / DOMAIN, component_target)
     hass = HomeAssistant(str(tmp_path))
+    frame.async_setup(hass)
     loader.async_setup(hass)
     hass.config_entries = ConfigEntries(hass, {})
     await hass.config_entries.async_initialize()
@@ -147,6 +154,7 @@ def test_real_setup_creates_new_entities_and_unloads(tmp_path):
             if entry.state is ConfigEntryState.NOT_LOADED:
                 assert await hass.config_entries.async_setup(entry.entry_id)
             await hass.async_block_till_done()
+            assert entry.state is ConfigEntryState.LOADED
 
             registry = entity_registry.async_get(hass)
             initial_entities = entity_registry.async_entries_for_config_entry(

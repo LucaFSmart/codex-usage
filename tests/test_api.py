@@ -852,6 +852,47 @@ def test_parse_accounts_accepts_nested_map_and_backend_ordering() -> None:
     assert "profile_picture" not in repr(result)
 
 
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize(
+    "restriction", [{"is_deactivated": True}, {"can_access_with_session": False}]
+)
+def test_parse_accounts_excludes_explicitly_inaccessible_workspaces(
+    nested: bool, restriction: dict[str, bool]
+) -> None:
+    unavailable = {"account_id": "unavailable", "name": "Unavailable"}
+    if nested:
+        entry = {"account": unavailable}
+        if "is_deactivated" in restriction:
+            unavailable.update(restriction)
+        else:
+            entry.update(restriction)
+        payload = {"accounts": {"unavailable": entry, "active": {"account": {"id": "active"}}}}
+    else:
+        unavailable.update(restriction)
+        payload = {"accounts": [unavailable, {"id": "active"}]}
+
+    assert parse_accounts(payload) == (AvailableAccount("active", None, None),)
+
+
+@pytest.mark.parametrize("access", [None, True, "false", 0])
+@pytest.mark.parametrize("deactivated", [None, False, "true", 1])
+def test_parse_accounts_does_not_infer_restrictions_from_non_boolean_flags(
+    access: object, deactivated: object
+) -> None:
+    result = parse_accounts(
+        {
+            "accounts": {
+                "active": {
+                    "can_access_with_session": access,
+                    "account": {"id": "active", "is_deactivated": deactivated},
+                }
+            }
+        }
+    )
+
+    assert result == (AvailableAccount("active", None, None),)
+
+
 def test_parse_reset_credits_discards_private_fields() -> None:
     result = parse_reset_credits(
         {
@@ -1274,7 +1315,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.6",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1373,7 +1414,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.6",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1398,7 +1439,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.6",
+        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
         "Cache-Control": "no-store",
     }
 

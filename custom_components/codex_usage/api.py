@@ -826,9 +826,16 @@ def parse_accounts(payload: dict[str, Any]) -> tuple[AvailableAccount, ...]:
     for fallback_id, item in candidates:
         if not isinstance(item, dict):
             continue
+        # Session access belongs to the wrapper in ChatGPT's map response,
+        # whereas deactivation belongs to the nested account. Older responses
+        # omit both fields, so only explicit restrictions exclude a workspace.
+        if item.get("can_access_with_session") is False:
+            continue
         nested = item.get("account")
         if isinstance(nested, dict):
             item = nested
+        if item.get("is_deactivated") is True:
+            continue
         account_id = item.get("id") or item.get("account_id") or fallback_id
         if not isinstance(account_id, str) or not account_id or account_id in seen:
             continue
