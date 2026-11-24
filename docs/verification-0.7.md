@@ -32,7 +32,16 @@ are recorded separately below.
 
 ## Linux CI and publication
 
-Pending the final release-candidate PR and merged-commit checks. Do not treat
+The initial HA 2026.11.2 runtime job exposed a test-bootstrap omission:
+`frame.async_setup(hass)` was missing. HA checks config-entry return values via
+that helper even when the boolean remains valid for a custom integration.
+The test now initializes it and asserts the entry is loaded before checking
+entities. See the [initial failed job](https://github.com/LucaFSmart/codex-usage/actions/runs/45388611653).
+This is a test-environment correction; the production entrypoint contract
+remains compatible with the retained minimum. See
+[HA's contract guidance](https://contributors.home-assistant.io/blog/2026/10/23/config-entry-methods-return-none/).
+
+Final release-candidate PR and merged-commit checks are pending. Do not treat
 local results as proof that the HA 2026.11.2 or 2026.3.0 matrix passed.
 
 ## Production observations and limits
