@@ -1,7 +1,7 @@
 # Linux/Python 3.14 CI inputs. Regenerate with the command in the lock header.
 homeassistant==2026.11.2
 # The portable tests use asyncio.run and do not use Home Assistant harness fixtures.
-pytest==9.0.3
+pytest==9.2.0
 pytest-asyncio==1.5.0
 ruff==0.17.6
 # Keep the lock compiler compatible with Home Assistant's exact uv dependency.

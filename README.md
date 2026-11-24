@@ -19,6 +19,7 @@ Codex Usage is a read-only Home Assistant integration for reported Codex and oth
 - OpenAI device-code login without passwords, copied cookies or API keys
 - Multiple accounts/workspaces with stable Home Assistant entity identities
 - Reported five-hour, weekly and additional eligible-agent windows without a hard-coded plan matrix
+- Public Codex service status in a separate sensor and dashboard notice
 - Luna Reserve quota metadata when OpenAI reports the separate `base_model_inference` bucket
 - Consistent unknown, zero, stale, blocked and optional-source behavior
 - Saved-reset counts and reconciled expiry details, including banked-reset date changes
@@ -32,10 +33,10 @@ The integration never purchases credits, redeems resets, changes limits, sends p
 
 ## Requirements
 
-- Home Assistant 2026.3.0 or newer; use the [latest stable Home Assistant release](https://www.home-assistant.io/security/) for security updates
+- Home Assistant 2026.11.2 or newer; use the [latest stable Home Assistant release](https://www.home-assistant.io/security/) for security updates
 - A ChatGPT account or workspace with Codex access
 - Device-code login enabled by the account or workspace administrator
-- Outbound HTTPS to `auth.openai.com` and `chatgpt.com`
+- Outbound HTTPS to `auth.openai.com` and `chatgpt.com`; `status.openai.com` supplies public Codex service status
 
 OpenAI Platform API keys and API billing are a separate product.
 
@@ -47,7 +48,7 @@ Not every plan has a fixed five-hour window. OpenAI currently documents Pro plan
 
 On Home Assistant 2026.11 or newer, open **Settings → Marketplace**, find **Codex Usage** under Integrations and install it. On older supported releases, use HACS. Codex Usage is already in the shared default catalog. The installation button above works with both. After an update, restart Home Assistant and refresh the dashboard browser. Then add the integration under **Settings → Devices & services** and follow the device-code flow. Add another config entry for another account or workspace.
 
-See [installation and setup](docs/installation.md) for Marketplace/HACS, manual installation, authorization, polling and YAML-managed resources.
+See [installation and setup](docs/installation.md) for Marketplace, manual installation, authorization, polling and YAML-managed resources.
 
 ## Dashboard card
 
@@ -101,13 +102,13 @@ The optional [warning Blueprint](blueprints/automation/codex_usage/usage_warning
 
 ## Data sources and privacy
 
-The integration reads the authenticated usage source plus optional profile and saved-reset details. These account-level observations do not identify which eligible agent surface, model or task consumed the allowance. Workspace discovery runs during setup and reauthentication. Usage defaults to a five-minute interval; optional sources default to hourly. Provider retry deadlines take priority over configured and manual refreshes.
+The integration reads the authenticated usage source plus optional profile and saved-reset details. A separate shared poll reads the public Codex components from [OpenAI Status](https://status.openai.com/) without credentials or account identifiers. These account-level observations do not identify which eligible agent surface, model or task consumed the allowance. Workspace discovery runs during setup and reauthentication. Usage defaults to a five-minute interval; optional sources default to hourly. Provider retry deadlines take priority over configured and manual refreshes.
 
 Tokens are stored in Home Assistant config entries. Card and diagnostic payloads use explicit allowlists and exclude credentials, backend account/user IDs, raw responses and arbitrary error text. See [privacy and data handling](docs/privacy.md) and [security reporting](SECURITY.md).
 
 ## Upgrade and support
 
-The **0.7.7** maintenance update adds Marketplace category metadata and current installation guidance, filters inaccessible workspaces during setup, and refreshes the bundled card build and development dependencies. CI targets Home Assistant 2026.11.2 and the retained 2026.3.0 compatibility minimum. The 0.7 line improves card readability, keyboard and screen-reader controls, narrow dashboard layouts and account lifecycle updates. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended. The old minimum is a compatibility target; its exact dependency snapshot inherits known advisories and is not a recommended installation.
+Version **0.8.0** adds an independent public Codex status sensor and card notice. It requires **Home Assistant 2026.11.2 or newer**; installations on older HA releases should remain on **0.7.7** until they upgrade HA. The minimum was advanced explicitly to retire the old development dependency snapshot and its unresolved advisories. Both current and minimum test environments are audited in CI. Existing accounts, entity identities and card schema 1 are preserved. See the [0.8 release notes](docs/release-notes-0.8.md), [upgrade guide](docs/upgrading-to-0.8.md) and [verification record](docs/verification-0.8.md).
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)

@@ -168,11 +168,30 @@ export interface CardAccount {
   >;
 }
 
+export type ProviderStatusState = "operational" | "degraded" | "outage" | "maintenance" | "unknown";
+
+export interface CardProviderComponent {
+  id: string;
+  name: string;
+  state: ProviderStatusState;
+}
+
+export interface CardProviderStatus {
+  state: ProviderStatusState;
+  available: boolean;
+  last_success: string | null;
+  last_attempt: string | null;
+  stale: boolean;
+  components: CardProviderComponent[];
+  url: "https://status.openai.com/";
+}
+
 export interface CardSnapshot {
   schema_version: 1;
   integration_version: string;
   generated_at: string;
   accounts: CardAccount[];
+  provider_status?: CardProviderStatus;
 }
 
 export interface LimitViewModel extends CardLimit {
@@ -202,6 +221,10 @@ export interface HomeAssistant {
   locale?: { language: string };
   callWS<T>(message: Record<string, unknown>): Promise<T>;
   connection: {
+    subscribeMessage<T>(
+      callback: (message: T) => void,
+      command: { type: string },
+    ): Promise<() => void>;
     subscribeEvents<T>(callback: (event: T) => void, eventType: string): Promise<() => void>;
   };
 }

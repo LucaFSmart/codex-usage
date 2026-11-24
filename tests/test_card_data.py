@@ -55,7 +55,7 @@ def test_card_snapshot_contains_only_display_safe_normalized_data() -> None:
     snapshot = build_card_snapshot(hass, ADMIN_USER)
 
     assert snapshot["schema_version"] == 1
-    assert snapshot["integration_version"] == "0.7.7"
+    assert snapshot["integration_version"] == "0.8.0"
     assert snapshot["accounts"] == [
         {
             "id": "entry-a",
@@ -316,6 +316,14 @@ def test_card_snapshot_filters_entries_by_all_entity_read_permissions() -> None:
                 config_entry_id="entry-b",
                 disabled_by=None,
             ),
+            "sensor.beta_provider_status": SimpleNamespace(
+                entity_id="sensor.beta_provider_status",
+                unique_id="beta_provider_status",
+                platform=DOMAIN,
+                config_entry_id="entry-b",
+                disabled_by=None,
+                translation_key="provider_status",
+            ),
         }
     )
     hass = SimpleNamespace(
@@ -333,9 +341,11 @@ def test_card_snapshot_filters_entries_by_all_entity_read_permissions() -> None:
     with patch("custom_components.codex_usage.card_data.er.async_get", return_value=registry):
         partial = build_card_snapshot(hass, _restricted_user("sensor.alpha"))
         beta_only = build_card_snapshot(hass, _restricted_user("sensor.beta"))
+        public_only = build_card_snapshot(hass, _restricted_user("sensor.beta_provider_status"))
 
     assert partial["accounts"] == []
     assert [account["id"] for account in beta_only["accounts"]] == ["entry-b"]
+    assert public_only["accounts"] == []
 
 
 def test_card_snapshot_fails_closed_without_registry_evidence() -> None:

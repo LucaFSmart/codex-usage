@@ -1,11 +1,83 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { fetchCardSnapshot, normalizeCardSnapshot } from "../src/card-data";
-import { makeFakeHass, SNAPSHOT } from "./fixtures";
+import { makeFakeHass, PROVIDER_STATUS, SNAPSHOT } from "./fixtures";
 
 describe("normalizeCardSnapshot", () => {
   it("accepts the versioned, privacy-safe integration snapshot", () => {
     expect(normalizeCardSnapshot(SNAPSHOT)).toEqual(SNAPSHOT);
+  });
+
+  it("keeps legacy schema 1 snapshots without provider status", () => {
+    expect(normalizeCardSnapshot(SNAPSHOT)).not.toHaveProperty("provider_status");
+  });
+
+  it("accepts the separate public Codex component snapshot", () => {
+    expect(normalizeCardSnapshot({ ...SNAPSHOT, provider_status: PROVIDER_STATUS })).toEqual({
+      ...SNAPSHOT,
+      provider_status: PROVIDER_STATUS,
+    });
+  });
+
+  it("only accepts allowlisted public component data and the official URL", () => {
+    const normalized = normalizeCardSnapshot({
+      ...SNAPSHOT,
+      provider_status: {
+        ...PROVIDER_STATUS,
+        state: "outage",
+        last_attempt: "not a timestamp",
+        url: "javascript:alert(1)",
+        title: "Untrusted incident title",
+        components: [
+          { ...PROVIDER_STATUS.components[0], state: "outage", name: "Untrusted name" },
+          { ...PROVIDER_STATUS.components[1], state: "new_status", secret: "private" },
+          { id: "other-service", name: "Other Service", state: "outage" },
+        ],
+      },
+    });
+
+    expect(normalized).toEqual({
+      ...SNAPSHOT,
+      provider_status: {
+        ...PROVIDER_STATUS,
+        state: "outage",
+        last_attempt: null,
+        url: "https://status.openai.com/",
+        components: [
+          { id: "01JVCV8YSWZFRSM1G5CVP253SK", name: "Codex Web", state: "outage" },
+          { id: "01KMP3KP5MGE23B80K1EK4S8PV", name: "Codex API", state: "unknown" },
+        ],
+      },
+    });
+  });
+
+  it("downgrades incomplete or ambiguous health readings to unknown", () => {
+    for (const components of [
+      PROVIDER_STATUS.components.slice(0, -1),
+      [...PROVIDER_STATUS.components, { ...PROVIDER_STATUS.components[0], state: "outage" }],
+      [
+        { ...PROVIDER_STATUS.components[0], state: "new_status" },
+        ...PROVIDER_STATUS.components.slice(1),
+      ],
+    ]) {
+      const result = normalizeCardSnapshot({
+        ...SNAPSHOT,
+        provider_status: { ...PROVIDER_STATUS, components },
+      });
+      expect(result).toHaveProperty("provider_status.state", "unknown");
+    }
+  });
+
+  it("discards malformed optional status without affecting account usage", () => {
+    expect(normalizeCardSnapshot({ ...SNAPSHOT, provider_status: "outage" })).toEqual(SNAPSHOT);
+    const malformed = normalizeCardSnapshot({
+      ...SNAPSHOT,
+      provider_status: { ...PROVIDER_STATUS, state: "new_status", available: "yes", stale: null },
+    });
+    expect(malformed).toEqual({
+      ...SNAPSHOT,
+      provider_status: { ...PROVIDER_STATUS, state: "unknown", available: false, stale: true },
+    });
   });
 
   it("drops invalid accounts, values, and unsafe entity IDs", () => {

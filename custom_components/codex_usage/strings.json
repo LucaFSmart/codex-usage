@@ -67,6 +67,15 @@
   },
   "entity": {
     "sensor": {
+      "provider_status": {
+        "name": "Provider status",
+        "state": {
+          "operational": "Operational",
+          "degraded": "Degraded performance",
+          "outage": "Outage",
+          "maintenance": "Maintenance"
+        }
+      },
       "plan": {
         "name": "Plan"
       },

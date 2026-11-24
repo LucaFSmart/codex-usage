@@ -76,3 +76,15 @@ OpenAI's [Codex App Server reference](https://learn.chatgpt.com/docs/app-server)
 Reported usage can be shared across supported agentic surfaces. This integration cannot attribute a percentage to one app, reconstruct token-level history, or separate activity that the backend aggregates. Window labels and availability follow received capabilities, not assumptions about a model or subscription name.
 
 The browser updates relative times once per minute while connected. These ticks make no HTTP or WebSocket requests. Cached pre-0.7 cards can read the schema 1 envelope, but need a browser refresh to gain the new presentation rules.
+
+## Public provider status (0.8)
+
+A separate row reports official public Codex component status and links to
+OpenAI Status. A fresh known disruption gets a visible notice; unknown,
+unreachable or stale status is neutral. It does not change account quota,
+credit, spend or local connection-error calculations. Account switching does
+not trigger more public requests, because all accounts share the same source.
+
+Older backend payloads without the optional status field retain their previous
+card behavior. Public incident titles are not included because the observed
+compatibility API does not reliably associate them with affected components.

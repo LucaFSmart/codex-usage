@@ -1,7 +1,7 @@
 # Contributing
 
 1. Fork the repository and create a focused branch.
-2. Use Python 3.14 for development (matches CI); the integration's functionally tested minimum is Home Assistant 2026.3.0 (see `hacs.json`), while contributors should use the latest stable release for security updates. The real Home Assistant smoke test requires Linux and runs on Ubuntu in CI.
+2. Use Python 3.14 for development (matches CI); the integration's functionally tested minimum is Home Assistant 2026.11.2 (see `hacs.json`), while contributors should use the latest stable release for security updates. The real Home Assistant smoke test requires Linux and runs on Ubuntu in CI.
 3. Follow the README's hash-locked development setup, then run `ruff format --check .`, `ruff check .`, the full Python suite and the real integration tests with the documented asyncio options.
 4. In `frontend/`, run `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run audit`, `npm test`, `npm run test:coverage`, `npm run build`, and `npm run test:visual`.
 5. Never include access tokens, refresh tokens, ID tokens, device codes, cookies, or unredacted diagnostics in issues or test fixtures.
@@ -15,4 +15,4 @@ Backend compatibility changes should remain inside `custom_components/codex_usag
 2. Rebuild and commit the bundled card, then run every Validate and CodeQL check on the final PR commit. Both supported Home Assistant targets and byte-for-byte Python lock reproduction must pass. Record fresh evidence in `docs/verification-0.7.md`.
 3. Test fresh setup, token refresh, reauthentication, reload, and removal on a current Home Assistant release.
 4. Merge only after the final checks pass. Verify the merged commit's checks, then tag a GitHub release at that commit whose tag matches the manifest version exactly (for example, `1.2.3`).
-5. Codex Usage is listed in the shared Marketplace/HACS default catalog. Publish a GitHub release: a tag alone is insufficient. The tag must match the manifest version. The catalog and Marketplace pick it up on their normal refresh schedules; no separate submission step is needed. Keep `hacs.json` and the declared minimum version for older supported installations. See the [Marketplace release guide](https://contributors.home-assistant.io/marketplace/guides/releases/).
+5. Codex Usage is listed in the shared Marketplace/HACS default catalog. Publish a GitHub release: a tag alone is insufficient. The tag must match the manifest version. The catalog and Marketplace pick it up on their normal refresh schedules; no separate submission step is needed. Set `homeassistant` in `hacs.json` to the release's actual minimum, so older installations retain a compatible previous release. See the [Marketplace release guide](https://contributors.home-assistant.io/marketplace/guides/releases/).

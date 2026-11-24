@@ -18,8 +18,26 @@ Version 0.7 reads authenticated ChatGPT WHAM HTTP endpoints. OpenAI now document
 
 Usage/profile/reset caches and polling source states are memory-only. Restart clears them until a real fetch succeeds. Only successful workspace-discovery time is persisted as additional entry metadata; it does not indicate continuous account availability. HA may independently record enabled sensor states under your Recorder configuration.
 
-The card uses an authenticated HA WebSocket and Home Assistant entry IDs. Entry data is withheld if the viewer lacks read access to any associated entry entity. Payload fields are explicitly allowlisted; credential and backend account/user IDs are excluded. Dynamic limit labels are provider-supplied and rendered as text.
+The card uses an authenticated HA WebSocket and Home Assistant entry IDs. Private account data is withheld if the viewer lacks read access to any associated private-data entity. The independent public provider-status sensor is excluded from this account-data permission gate; it contains no private account information. Payload fields are explicitly allowlisted; credential and backend account/user IDs are excluded. Dynamic limit labels are provider-supplied and rendered as text.
 
 Diagnostics contain safe source states, configured request options, normalized status and structural counters. They omit raw responses, arbitrary error strings, unknown provider fields, credentials and backend identities. Review any additional logs/screenshots yourself before sharing; account labels shown in the UI can still be personal information.
 
 There is no external telemetry service, separate history database or per-credit transaction ledger. Removing an entry removes its configuration through HA. Existing Recorder history and backups follow HA's retention rules and are not erased by this integration.
+
+## Public service status (0.8)
+
+The integration polls `https://status.openai.com/api/v2/components.json` once
+per Home Assistant instance while Codex Usage accounts are loaded, normally
+every five minutes. Requests contain no OpenAI credentials, account IDs,
+conversation data or code. The endpoint receives ordinary network metadata,
+such as the source IP, as with any HTTPS request.
+
+Only five known public Codex component IDs, fixed display names and normalized
+states are retained. Requests have a size limit, timeout and no redirects.
+Status data is memory-only, uses local fetch time for freshness, and stops
+polling when the last account unloads. Public status cannot establish why a
+particular authenticated usage request failed.
+
+The card's read-only update subscription emits empty invalidation events to
+authenticated Home Assistant viewers. Actual account snapshots are separately
+filtered by the existing per-account entity permissions.

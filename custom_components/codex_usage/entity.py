@@ -11,6 +11,17 @@ from .coordinator import CodexUsageCoordinator
 from .entry_title import safe_entry_title
 
 
+def codex_device_info(entry: CodexUsageConfigEntry) -> DeviceInfo:
+    """Return the device identity shared by all sensors of this account."""
+    identity = entry.unique_id or entry.data[CONF_ACCOUNT_ID]
+    return DeviceInfo(
+        identifiers={(DOMAIN, identity)},
+        name=safe_entry_title(entry),
+        entry_type=DeviceEntryType.SERVICE,
+        manufacturer="OpenAI",
+    )
+
+
 class CodexUsageEntity(CoordinatorEntity[CodexUsageCoordinator]):
     """Base class for Codex Usage entities."""
 
@@ -18,11 +29,4 @@ class CodexUsageEntity(CoordinatorEntity[CodexUsageCoordinator]):
 
     def __init__(self, coordinator: CodexUsageCoordinator, entry: CodexUsageConfigEntry) -> None:
         super().__init__(coordinator)
-        account_id = entry.data[CONF_ACCOUNT_ID]
-        identity = entry.unique_id or account_id
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, identity)},
-            name=safe_entry_title(entry),
-            entry_type=DeviceEntryType.SERVICE,
-            manufacturer="OpenAI",
-        )
+        self._attr_device_info = codex_device_info(entry)

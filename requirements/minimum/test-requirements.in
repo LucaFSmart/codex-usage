@@ -1,4 +1,6 @@
-# Linux/Python 3.14 minimum-version CI inputs. Regenerate with the lock header command.
-homeassistant==2026.3.0
-pytest==9.1.1
-ruff==0.17.0
+# Linux/Python 3.14 supported-minimum CI inputs. Regenerate with the lock header command.
+homeassistant==2026.11.2
+pytest==9.2.0
+pytest-asyncio==1.5.0
+ruff==0.17.6
+uv==0.13.6

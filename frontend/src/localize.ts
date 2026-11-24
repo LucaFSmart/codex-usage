@@ -88,6 +88,13 @@ export const STRINGS = {
     severityCritical: "Critically low usage remaining",
     severityBlocked: "Limit reached",
     severityReserveFallback: "Luna Reserve available",
+    providerStatus: "Codex service",
+    providerOperational: "Operational",
+    providerDegraded: "Degraded performance",
+    providerOutage: "Outage",
+    providerMaintenance: "Maintenance",
+    providerUnknown: "Status unknown",
+    providerStatusLink: "OpenAI Status",
     // freshness
     dataMayBeOutdated: "Data may be outdated",
     // most-constrained callout
@@ -228,6 +235,13 @@ export const STRINGS = {
     severityCritical: "Kritisch wenig Nutzung übrig",
     severityBlocked: "Limit erreicht",
     severityReserveFallback: "Luna Reserve verfügbar",
+    providerStatus: "Codex-Dienst",
+    providerOperational: "In Betrieb",
+    providerDegraded: "Beeinträchtigte Leistung",
+    providerOutage: "Ausfall",
+    providerMaintenance: "Wartung",
+    providerUnknown: "Status unbekannt",
+    providerStatusLink: "OpenAI-Statusseite",
     // freshness
     dataMayBeOutdated: "Daten könnten veraltet sein",
     // most-constrained callout

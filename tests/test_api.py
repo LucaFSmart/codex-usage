@@ -1315,7 +1315,7 @@ def test_usage_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
+        "User-Agent": "HomeAssistant-CodexUsage/0.8.0",
         "X-OpenAI-Fedramp": "true",
     }
     assert "x-openai-codex-luna-reserve" not in session.last_headers
@@ -1414,7 +1414,7 @@ def test_profile_request_sends_workspace_and_fedramp_headers() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
+        "User-Agent": "HomeAssistant-CodexUsage/0.8.0",
         "X-OpenAI-Fedramp": "true",
         "Cache-Control": "no-store",
     }
@@ -1439,7 +1439,7 @@ def test_account_request_uses_read_only_endpoint() -> None:
     assert session.last_headers == {
         "Authorization": "Bearer access-token",
         "ChatGPT-Account-Id": "workspace-1",
-        "User-Agent": "HomeAssistant-CodexUsage/0.7.7",
+        "User-Agent": "HomeAssistant-CodexUsage/0.8.0",
         "Cache-Control": "no-store",
     }
 

@@ -10,6 +10,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 
 from custom_components.codex_usage.api import parse_usage
 from custom_components.codex_usage.binary_sensor import BINARY_SENSORS, CodexUsageBinarySensor
+from custom_components.codex_usage.const import DOMAIN
 from custom_components.codex_usage.entity import CodexUsageEntity
 from custom_components.codex_usage.monitoring import SourceState
 from custom_components.codex_usage.sensor import (
@@ -212,7 +213,11 @@ def test_main_windows_discovered_after_setup_create_stable_entities_once(existin
         ),
     ):
         asyncio.run(
-            async_setup_entry(SimpleNamespace(), entry, lambda entities: added.extend(entities))
+            async_setup_entry(
+                SimpleNamespace(data={DOMAIN: {"provider_status": SimpleNamespace()}}),
+                entry,
+                lambda entities: added.extend(entities),
+            )
         )
     initial = {entity.unique_id for entity in added}
     assert ("identity_five_hour_usage" in initial) is existing_five_hour

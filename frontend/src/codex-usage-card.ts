@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { fetchCardSnapshot } from "./card-data";
+import { fetchCardSnapshot, PROVIDER_STATUS_URL } from "./card-data";
 import { DEFAULT_CONFIG, normalizeConfig } from "./config";
 import {
   formatAbsoluteReset,
@@ -21,12 +21,15 @@ import type {
   HomeAssistant,
   LimitViewModel,
   LovelaceCardConfig,
+  ProviderStatusState,
   SectionKey,
   Severity,
 } from "./types";
 import { buildCardViewModel, isActionablyStaleSource, isSectionVisible } from "./view-model";
 
 const CARD_DATA_EVENT = "codex_usage_card_data_updated";
+const CARD_UPDATES_COMMAND = "codex_usage/subscribe_updates";
+const PROVIDER_STALE_AFTER_MS = 15 * 60_000;
 
 const PROFILE_FIELDS: readonly {
   key: keyof CardProfile;
@@ -58,6 +61,14 @@ const STATUS_LABEL_KEY: Record<Severity, TranslationKey> = {
   blocked: "severityBlocked",
 };
 
+const PROVIDER_STATUS_LABEL_KEY: Record<ProviderStatusState, TranslationKey> = {
+  operational: "providerOperational",
+  degraded: "providerDegraded",
+  outage: "providerOutage",
+  maintenance: "providerMaintenance",
+  unknown: "providerUnknown",
+};
+
 function formatPercent(value: number | null, locale: string | undefined): string {
   return value === null
     ? "—"
@@ -66,6 +77,32 @@ function formatPercent(value: number | null, locale: string | undefined): string
 
 function truncateId(id: string): string {
   return id.length > 4 ? `…${id.slice(-4)}` : id;
+}
+
+interface ProviderDeadline {
+  wallTime: number;
+  monotonicTime: number;
+}
+
+function providerDeadline(snapshot: CardSnapshot): ProviderDeadline | null {
+  const status = snapshot.provider_status;
+  if (!status?.available || status.stale || !status.last_success) return null;
+
+  const lastSuccess = Date.parse(status.last_success);
+  const serverAge = Date.parse(snapshot.generated_at) - lastSuccess;
+  const wallTimeAtReceipt = Date.now();
+  const clientAge = wallTimeAtReceipt - lastSuccess;
+  const ageAtReceipt = Math.max(serverAge, clientAge);
+  if (
+    !Number.isFinite(ageAtReceipt) ||
+    serverAge < 0 ||
+    clientAge < 0 ||
+    ageAtReceipt >= PROVIDER_STALE_AFTER_MS
+  )
+    return null;
+
+  const remaining = PROVIDER_STALE_AFTER_MS - ageAtReceipt;
+  return { wallTime: wallTimeAtReceipt + remaining, monotonicTime: performance.now() + remaining };
 }
 
 @customElement("codex-usage-card")
@@ -85,6 +122,7 @@ export class CodexUsageCard extends LitElement {
   private loadingGeneration: number | undefined;
   private pendingRefresh = false;
   private minuteTimer: ReturnType<typeof setInterval> | undefined;
+  private providerFreshUntil: ProviderDeadline | null = null;
 
   public override connectedCallback(): void {
     super.connectedCallback();
@@ -164,9 +202,24 @@ export class CodexUsageCard extends LitElement {
       this.snapshot = undefined;
       this.error = false;
       try {
-        const unsubscribe = await connection.subscribeEvents(() => {
+        const update = () => {
           if (this.clientGeneration === generation && this.isConnected) void this.loadSnapshot();
-        }, CARD_DATA_EVENT);
+        };
+        let unsubscribe;
+        try {
+          unsubscribe = await connection.subscribeMessage(update, { type: CARD_UPDATES_COMMAND });
+        } catch (error) {
+          if (
+            !error ||
+            typeof error !== "object" ||
+            !("code" in error) ||
+            error.code !== "unknown_command"
+          ) {
+            throw error;
+          }
+          if (this.clientGeneration !== generation || !this.isConnected) return;
+          unsubscribe = await connection.subscribeEvents(update, CARD_DATA_EVENT);
+        }
         if (this.clientGeneration !== generation || !this.isConnected) {
           unsubscribe();
           return;
@@ -202,6 +255,7 @@ export class CodexUsageCard extends LitElement {
         this.hass?.connection === hass.connection &&
         this.isConnected
       ) {
+        this.providerFreshUntil = providerDeadline(snapshot);
         this.snapshot = snapshot;
         this.error = this.subscribedConnection !== hass.connection;
       }
@@ -237,6 +291,40 @@ export class CodexUsageCard extends LitElement {
       return this.t("severityReserveFallback");
     }
     return this.t(STATUS_LABEL_KEY[severity]);
+  }
+
+  private renderProviderStatus(snapshot?: CardSnapshot): TemplateResult | typeof nothing {
+    if (!snapshot?.provider_status) return nothing;
+    const status = snapshot.provider_status;
+    const deadline = this.providerFreshUntil;
+    // Some browsers pause the monotonic clock while the device sleeps.
+    if (
+      deadline &&
+      (Date.now() >= deadline.wallTime || performance.now() >= deadline.monotonicTime)
+    ) {
+      this.providerFreshUntil = null;
+    }
+    const state = this.providerFreshUntil ? status.state : "unknown";
+    const notice = state !== "operational" && state !== "unknown";
+    const affected = notice
+      ? status.components
+          .filter((item) => item.state === state)
+          .map((item) => item.name)
+          .join(", ")
+      : "";
+
+    return html`<div
+      class=${notice ? "provider-status provider-notice" : "provider-status"}
+      data-provider-state=${state}
+    >
+      <span role="status">
+        ${this.t("providerStatus")} <strong>${this.t(PROVIDER_STATUS_LABEL_KEY[state])}</strong>
+        ${affected ? html`<span class="provider-components">${affected}</span>` : nothing}
+      </span>
+      <a href=${PROVIDER_STATUS_URL} target="_blank" rel="noopener noreferrer">
+        ${this.t("providerStatusLink")}
+      </a>
+    </div>`;
   }
 
   private limitLabel(limit: LimitViewModel): string {
@@ -906,6 +994,7 @@ export class CodexUsageCard extends LitElement {
               </p>`
             : nothing
         }
+        ${this.renderProviderStatus(this.snapshot)}
         ${
           multipleAccounts && view && this.config.allow_account_switching
             ? html`<nav aria-label=${this.t("account")}>
@@ -1072,6 +1161,43 @@ export class CodexUsageCard extends LitElement {
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--primary-text-color);
+    }
+    .provider-status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--codex-space-1) var(--codex-space-3);
+      min-width: 0;
+      color: var(--primary-text-color);
+      font-size: 0.82rem;
+      overflow-wrap: anywhere;
+    }
+    .provider-status a {
+      color: inherit;
+      text-underline-offset: 0.15em;
+    }
+    .provider-status a:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+    .provider-notice {
+      --provider-accent: var(--warning-color, #d08700);
+      padding: var(--codex-space-2) var(--codex-space-3);
+      border: 1px solid var(--divider-color);
+      border-inline-start: 3px solid var(--provider-accent);
+      border-radius: var(--codex-radius);
+      background: color-mix(in srgb, var(--provider-accent) 12%, transparent);
+    }
+    .provider-notice[data-provider-state="outage"] {
+      --provider-accent: var(--error-color, #d94343);
+    }
+    .provider-notice[data-provider-state="maintenance"] {
+      --provider-accent: var(--info-color, #25b7f3);
+    }
+    .provider-components {
+      display: block;
+      margin-top: var(--codex-space-1);
     }
     nav {
       display: flex;

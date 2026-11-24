@@ -8,6 +8,7 @@ const accountCount = Number(query.get("accounts") ?? "1");
 const compact = query.get("mode") === "compact";
 const language = query.get("lang") === "de" ? "de" : "en";
 const showSources = query.get("sources") === "1";
+const providerOutage = query.get("provider") === "outage";
 const mixedAccounts = query.get("mixed") === "1";
 const longLabels = query.get("long") === "1";
 const cardWidth = Number(query.get("width"));
@@ -23,10 +24,38 @@ const usage =
         ? 100
         : 35;
 const updated = requestedState === "stale" ? "2000-01-01T00:00:00Z" : new Date().toISOString();
+const generatedAt = new Date().toISOString();
 const snapshot: CardSnapshot = {
   schema_version: 1,
-  integration_version: "0.7.7",
-  generated_at: new Date().toISOString(),
+  integration_version: "0.8.0",
+  generated_at: generatedAt,
+  ...(providerOutage
+    ? {
+        provider_status: {
+          state: "outage" as const,
+          available: true,
+          last_success: generatedAt,
+          last_attempt: generatedAt,
+          stale: false,
+          components: [
+            { id: "01JVCV8YSWZFRSM1G5CVP253SK", name: "Codex Web", state: "operational" as const },
+            { id: "01KMP3KP5MGE23B80K1EK4S8PV", name: "Codex API", state: "operational" as const },
+            { id: "01KMKFAMWKNQ84Z1766MV08ZDE", name: "Codex CLI", state: "operational" as const },
+            {
+              id: "01KMP3KP5M8X0EBTVW6KN327EE",
+              name: "Codex VS Code Extension",
+              state: "operational" as const,
+            },
+            {
+              id: "01KMKFAMWKQ81YWSE1Z18R6VHR",
+              name: "Codex in ChatGPT Desktop",
+              state: "outage" as const,
+            },
+          ],
+          url: "https://status.openai.com/" as const,
+        },
+      }
+    : {}),
   accounts: Array.from({ length: accountCount }, (_, index) => {
     const state = mixedAccounts && index > 0 ? "normal" : requestedState;
     const accountUsage = state === "normal" ? 35 : usage;
@@ -183,6 +212,9 @@ const hass: HomeAssistant = {
     return structuredClone(snapshot) as T;
   },
   connection: {
+    async subscribeMessage(): Promise<() => void> {
+      return () => undefined;
+    },
     async subscribeEvents(): Promise<() => void> {
       return () => undefined;
     },
