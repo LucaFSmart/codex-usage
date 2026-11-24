@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 0.7.7 - 2026-11-24
+
+- Support the built-in Home Assistant Marketplace publishing metadata with a cloud/developer-tools category. Update installation and release guidance while retaining compatibility with HACS on older Home Assistant versions.
+
+- Exclude explicitly deactivated workspaces and workspaces inaccessible to the current session from account discovery. Read session access from the map wrapper and deactivation from the nested account; keep older responses with absent flags compatible.
+- Recheck November OpenAI pricing, GPT-6.2, authentication, reset guidance and the current open-source WHAM contracts. Document automatic promotional resets and the distinction between model pricing and provider-reported usage.
+- Refresh compatible frontend tooling and rebuild the bundled card. Retain TypeScript 6.0.3 because typescript-eslint 8.74.0 supports TypeScript below 6.1.
+- Run the current Python test target against Home Assistant 2026.11.2 and Ruff 0.17.6. Remove the unused Home Assistant pytest harness that pinned an older runtime, and retire the test-only Pillow override now that Home Assistant pins Pillow 13.0.0. Retain the 2026.3.0 compatibility floor.
+
 ## 0.7.6 - 2026-10-25
 
 - Rebuild the bundled card with Vite 8.3.5 and refreshed frontend tooling (vitest and coverage 5.0.5, ESLint 10.13.0, typescript-eslint 8.72.0, Playwright 1.64.1). happy-dom 21.0.4 resolves its high-severity advisory; the card's source and behavior are unchanged. TypeScript remains 6.0.3 until the parser supports 7.

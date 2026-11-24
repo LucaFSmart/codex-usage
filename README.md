@@ -2,7 +2,7 @@
 
 <img src="custom_components/codex_usage/brand/icon.png" alt="Codex Usage icon" width="128">
 
-[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Listed-41BDF5.svg)](https://contributors.home-assistant.io/marketplace/)
 [![Validate](https://github.com/LucaFSmart/codex-usage/actions/workflows/validate.yml/badge.svg)](https://github.com/LucaFSmart/codex-usage/actions/workflows/validate.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/LucaFSmart/codex-usage)](https://github.com/LucaFSmart/codex-usage/releases)
 [![License](https://img.shields.io/github/license/LucaFSmart/codex-usage)](LICENSE)
@@ -45,9 +45,9 @@ Not every plan has a fixed five-hour window. OpenAI currently documents Pro plan
 
 [![Open your Home Assistant instance and open a repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=LucaFSmart&repository=codex-usage&category=integration)
 
-Install **Codex Usage** from HACS Integrations, restart Home Assistant, then add it under **Settings → Devices & services** and follow the device-code flow. Add another config entry for another account or workspace.
+On Home Assistant 2026.11 or newer, open **Settings → Marketplace**, find **Codex Usage** under Integrations and install it. On older supported releases, use HACS. Codex Usage is already in the shared default catalog. The installation button above works with both. After an update, restart Home Assistant and refresh the dashboard browser. Then add the integration under **Settings → Devices & services** and follow the device-code flow. Add another config entry for another account or workspace.
 
-See [installation and setup](docs/installation.md) for HACS, manual installation, authorization, polling and YAML-managed resources.
+See [installation and setup](docs/installation.md) for Marketplace/HACS, manual installation, authorization, polling and YAML-managed resources.
 
 ## Dashboard card
 
@@ -107,13 +107,14 @@ Tokens are stored in Home Assistant config entries. Card and diagnostic payloads
 
 ## Upgrade and support
 
-The **0.7.6** maintenance update refreshes the bundled card build and moves the current development environment to advisory-free test dependencies. The 0.7 line improves card readability, keyboard and screen-reader controls, narrow dashboard layouts and account lifecycle updates. It retains Home Assistant 2026.3.0 as the functionally tested minimum and validates the current runtime against Home Assistant 2026.10.3. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended. The old minimum is a compatibility target; its exact dependency snapshot inherits known advisories and is not a recommended installation.
+The **0.7.7** maintenance update adds Marketplace category metadata and current installation guidance, filters inaccessible workspaces during setup, and refreshes the bundled card build and development dependencies. CI targets Home Assistant 2026.11.2 and the retained 2026.3.0 compatibility minimum. The 0.7 line improves card readability, keyboard and screen-reader controls, narrow dashboard layouts and account lifecycle updates. Home Assistant only accepts security reports for its [latest stable release](https://www.home-assistant.io/security/), so running the current stable version is strongly recommended. The old minimum is a compatibility target; its exact dependency snapshot inherits known advisories and is not a recommended installation.
 
 - [0.7 release notes](docs/release-notes-0.7.md)
 - [Upgrading to 0.7](docs/upgrading-to-0.7.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [0.7 verification record](docs/verification-0.7.md)
 - [OpenAI documentation review, October 2026](docs/research/2026-10-04-openai-documentation-recheck.md)
+- [OpenAI documentation and compatibility review, November 2026](docs/research/2026-11-24-openai-documentation-recheck.md)
 - [Complete maintenance and card review, October 12](docs/research/2026-10-12-maintenance-and-card-review.md)
 - [Changelog](CHANGELOG.md)
 
@@ -142,6 +143,6 @@ npm run check:bundle
 npm run test:visual
 ```
 
-CI installs the development-only, hash-locked Linux environments in `requirements/latest/test-requirements.txt` and `requirements/minimum/test-requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Their `test` filenames let GitHub classify them as development dependencies rather than shipped runtime packages. Dependabot checks both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI installs the development-only, hash-locked Linux environments in `requirements/latest/test-requirements.txt` and `requirements/minimum/test-requirements.txt`, verifies that both locks reproduce exactly, then repeats the Python runtime suite on the declared minimum Home Assistant version. Their `test` filenames let GitHub classify them as development dependencies rather than shipped runtime packages. Dependabot checks both environments monthly but deliberately leaves the supported Home Assistant floor unchanged until a compatibility review advances it. The built JavaScript is committed under `custom_components/codex_usage/frontend`, so Marketplace/HACS installs integration and card together. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License. See [LICENSE](LICENSE), [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) and the bundled card's [third-party notices](custom_components/codex_usage/THIRD_PARTY_NOTICES.md).

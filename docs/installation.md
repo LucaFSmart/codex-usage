@@ -4,7 +4,11 @@ Requires Home Assistant 2026.3.0 or newer and a ChatGPT account or workspace wit
 
 ## Install
 
-In HACS, find **Codex Usage** under Integrations, install, and restart Home Assistant. If needed, add `https://github.com/LucaFSmart/codex-usage` as a custom repository of category **Integration**. For manual installation, copy `custom_components/codex_usage` into your Home Assistant configuration's `custom_components` directory and restart.
+On Home Assistant 2026.11 or newer, open **Settings → Marketplace** and find **Codex Usage** under Integrations. It is in the default catalog; no custom repository or separate HACS installation is needed. On Home Assistant 2026.3–2026.10, install it through HACS Integrations. Existing HACS installations migrate automatically when Home Assistant upgrades to 2026.11; installed repositories and update entities carry over.
+
+After updating an already loaded integration, restart Home Assistant and refresh the dashboard browser. The Marketplace can load a first installation with a config flow immediately; follow any restart repair shown by Home Assistant. For manual installation, copy `custom_components/codex_usage` into your Home Assistant configuration's `custom_components` directory and restart.
+
+New versions are published as [GitHub releases](https://github.com/LucaFSmart/codex-usage/releases) and appear under **Settings → Updates** after catalog refresh. This can take several hours. See the [Marketplace release guide](https://contributors.home-assistant.io/marketplace/guides/releases/).
 
 ## Authorize
 
@@ -33,8 +37,8 @@ For YAML-managed resources, register the bundle manually:
 
 ```yaml
 resources:
-  - url: /codex_usage/frontend/codex-usage-card.js?v=0.7.6
+  - url: /codex_usage/frontend/codex-usage-card.js?v=0.7.7
     type: module
 ```
 
-See [card configuration](card.md), [entity reference](entities.md), and [troubleshooting](troubleshooting.md). The optional warning Blueprint is imported separately; HACS does not activate it.
+See [card configuration](card.md), [entity reference](entities.md), and [troubleshooting](troubleshooting.md). The optional warning Blueprint is imported separately; Marketplace/HACS does not activate it.

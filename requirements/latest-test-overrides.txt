@@ -1,3 +1,0 @@
-# Home Assistant pins Pillow exactly, but every Pillow release before 13.0.0 has
-# open advisories. The test environment is installed with --no-deps from the lock.
-pillow==13.0.0
